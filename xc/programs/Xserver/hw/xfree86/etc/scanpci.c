@@ -21,7 +21,7 @@
  *
  */
 
-/* $XFree86: xc/programs/Xserver/hw/xfree86/etc/scanpci.c,v 3.34.2.10 1998/02/27 17:13:22 robin Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/etc/scanpci.c,v 3.34.2.12 1998/07/16 06:55:03 hohndel Exp $ */
 
 /*
  * Copyright 1995 by Robin Cutshaw <robin@XFree86.Org>
@@ -1113,8 +1113,8 @@ struct pci_vendor_device {
                             { 0x8A01, "ViRGE/DX or /GX", NF },
                             { 0x8A10, "ViRGE/GX2", NF },
                             { 0x8C01, "ViRGE/MX", NF },
-                            { 0x8C02, "ViRGE/MX+", NF },
-                            { 0x8C03, "ViRGE/MX+MV", NF },
+                            { 0x8C02, "ViRGE/MX?", NF },
+                            { 0x8C03, "ViRGE/MX+", NF },
                             { 0x0000, (char *)NULL, NF } } },
         { 0x8086, "Intel", {
                             { 0x0482, "82375EB pci-eisa bridge", NF },
@@ -1186,7 +1186,7 @@ main(int argc, unsigned char *argv[])
     unsigned int idx;
     struct pci_config_reg pcr;
     int ch, verbose = 0, do_mode1_scan = 0, do_mode2_scan = 0;
-    int func;
+    int func, hostbridges=0;
 
     while((ch = getopt(argc, argv, "v12")) != EOF) {
      	switch((char)ch) {
@@ -1339,6 +1339,12 @@ main(int argc, unsigned char *argv[])
 		case PCI_CLASS_BRIDGE|PCI_SUBCLASS_BRIDGE_PCI:
 		    if (pcr._secondary_bus_number > 0) {
 		        pcr._pcibuses[pcr._pcinumbus++] = pcr._secondary_bus_number;
+		    }
+			break;
+		case PCI_CLASS_BRIDGE:
+		    if ( ++hostbridges > 1) {
+			pcr._pcibuses[pcr._pcinumbus] = pcr._pcinumbus;
+			pcr._pcinumbus++;
 		    }
 			break;
 		default:

@@ -122,7 +122,15 @@ SOFTWARE.
  *	Currently defined for SPARC.
  */
 
-#ifdef vax
+#if defined(__mc68000__) && !defined(mc68000)
+#define mc68000
+#endif
+
+#if defined(__mc68020__) && !defined(mc68020)
+#define mc68020
+#endif
+
+#if defined(vax) || defined(__vax__)
 
 #define IMAGE_BYTE_ORDER	LSBFirst        /* Values for the VAX only */
 #define BITMAP_BIT_ORDER	LSBFirst
@@ -179,6 +187,18 @@ SOFTWARE.
 #define GETLEFTBITS_ALIGNMENT	1
 
 #endif /* sun && !(i386 && SVR4) */
+
+
+#if defined(__NetBSD__) && defined(__mac68k__)
+# define IMAGE_BYTE_ORDER	MSBFirst        /* Values for mac68k only */
+# define BITMAP_BIT_ORDER	MSBFirst
+# define GLYPHPADBYTES		4
+# define GETLEFTBITS_ALIGNMENT	1
+
+# ifdef mc68020
+#  define FAST_UNALIGNED_READS
+# endif
+#endif
 
 
 #if defined(AIXV3)
