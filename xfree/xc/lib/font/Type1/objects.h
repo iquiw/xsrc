@@ -105,8 +105,8 @@ __attribute((noreturn))
 extern void ErrorF(const char *f, ...);
 #endif
 
-#undef abort
-#define   abort(line)       FatalError(line)
+#undef Xabort
+#define   Xabort(line)      FatalError(line)
 #define   Allocate(n,t,s)   t1_Allocate(n,t,s)
 #define   Free(obj)         t1_Free(obj)
 #define   NonObjectFree(a)  xiFree((long *)(a))

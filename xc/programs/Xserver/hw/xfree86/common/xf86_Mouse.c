@@ -136,6 +136,11 @@ Bool xf86SupportedMouseTypes[] =
 #else
 	FALSE,	/* wsmouse */
 #endif
+#if defined(__NetBSD__) && defined(__atari__)
+	TRUE,	/* sun */
+#else
+	FALSE,	/* sun */
+#endif
 #ifdef USB_MOUSE
         TRUE,
 #else
@@ -234,6 +239,12 @@ static unsigned char proto[][7] = {
      				       0x00,   0x00 },  /* wsmouse */
 #else
   {  0x00,   0x00, 0x00,   0x00, 0,    0x00,   0x00 },  /* wsmouse */
+#endif
+#if defined(__NetBSD__) && defined(__atari__)
+  {  0x00,   0x00, 0x00,   0x00, sizeof(Firm_event),
+     				       0x00,   0x00 },  /* sun */
+#else
+  {  0x00,   0x00, 0x00,   0x00, 0,    0x00,   0x00 },  /* sun */
 #endif
   {  0x00,   0x00, 0x00,   0x00, 0,    0x00,   0x00 },  /* USB mouse */
 };
@@ -590,6 +601,10 @@ MouseDevPtr mouse;
 	}
 	break;
 #endif
+#if defined(__NetBSD__) && defined(__atari__)
+      case P_SUN:
+	break;
+#endif
 
 #ifdef USB_MOUSE
       case P_USB:
@@ -688,13 +703,14 @@ xf86MouseProtocol(device, rBuf, nBytes)
  *   static unsigned char pBuf[8];
  */
   MouseDevPtr          mouse = MOUSE_DEV(device);
-  
+
 #ifdef EXTMOUSEDEBUG
     ErrorF("received %d bytes ",nBytes);
     for ( i=0; i < nBytes; i++)
     	ErrorF("%2x ",rBuf[i]);
     ErrorF("\n");
 #endif
+
   for ( i=0; i < nBytes; i++) {
     /*
      * Hack for resyncing: We check here for a package that is:
@@ -723,6 +739,9 @@ xf86MouseProtocol(device, rBuf, nBytes)
 #endif
 #ifdef WSCONS_SUPPORT
 	mouse->mseType != P_WSMOUSE &&
+#endif
+#if defined(__NetBSD__) && defined(__atari__)
+	mouse->mseType != P_SUN &&
 #endif
 #ifdef USB_MOUSE
 	mouse->mseType != P_USB &&
@@ -1023,8 +1042,38 @@ xf86MouseProtocol(device, rBuf, nBytes)
 	return;
       }
       break;
-      }
+    }
 #endif /* WSCONS_SUPPORT */
+#if defined(__NetBSD__) && defined(__atari__)
+    case P_SUN: {
+      Firm_event fe;
+
+      /* copy to guarantee alignment */
+      memcpy(&fe, mouse->pBuf, sizeof(Firm_event));
+      switch(fe.id) {
+	case MS_LEFT:
+	case MS_MIDDLE:
+	case MS_RIGHT:
+	  if (fe.value == VKEY_DOWN)
+	    buttons = mouse->lastButtons | (4 >> (fe.id & 0x03));
+	  else
+	    buttons = mouse->lastButtons & ~(4 >> (fe.id & 0x03));
+	  dx = dy = 0;
+	  break;
+	case LOC_Y_DELTA:
+	  dx = 0;
+	  dy = fe.value;
+	  buttons = mouse->lastButtons;
+	  break;
+	case LOC_X_DELTA:
+	  dx = fe.value;
+	  dy = 0;
+	  buttons = mouse->lastButtons;
+	  break;
+      }
+      break;
+    }
+#endif /* __NETBSD__ && __atari__ */
 
 #ifdef USB_MOUSE
     case P_USB:

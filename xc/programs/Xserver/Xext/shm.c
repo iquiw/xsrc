@@ -38,6 +38,7 @@ in this Software without prior written authorization from the X Consortium.
 #include <ipc.h>
 #include <shm.h>
 #endif
+#include <sys/stat.h>
 #define NEED_REPLIES
 #define NEED_EVENTS
 #include "X.h"
@@ -293,6 +294,47 @@ ProcShmQueryVersion(client)
     return (client->noClientException);
 }
 
+/*
+ * Simulate the access() system call for a shared memory segement,
+ * using the credentials from the client if available
+ */
+static int
+shm_access(ClientPtr client, struct ipc_perm *perm, int readonly)
+{
+    int uid, gid;
+    mode_t mask;
+
+    if (LocalClientCred(client, &uid, &gid) != -1) {
+	
+	/* User id 0 always gets access */
+	if (uid == 0) {
+	    return 0;
+	}
+	/* Check the owner */
+	if (perm->uid == uid || perm->cuid == uid) {
+	    mask = S_IRUSR;
+	    if (!readonly) {
+		mask |= S_IWUSR;
+	    }
+	    return (perm->mode & mask) == mask ? 0 : -1;
+	}
+	/* Check the group */
+	if (perm->gid == gid || perm->cgid == gid) {
+	    mask = S_IRGRP;
+	    if (!readonly) {
+		mask |= S_IWGRP;
+	    }
+	    return (perm->mode & mask) == mask ? 0 : -1;
+	}
+    }
+    /* Otherwise, check everyone else */
+    mask = S_IROTH;
+    if (!readonly) {
+	mask |= S_IWOTH;
+    }
+    return (perm->mode & mask) == mask ? 0 : -1;
+}
+
 static int
 ProcShmAttach(client)
     register ClientPtr client;
@@ -331,6 +373,17 @@ ProcShmAttach(client)
 	    xfree(shmdesc);
 	    return BadAccess;
 	}
+
+	/* The attach was performed with root privs. We must
+	 * do manual checking of access rights for the credentials 
+	 * of the client */
+
+	if (shm_access(client, &(buf.shm_perm), stuff->readOnly) == -1) {
+	    shmdt(shmdesc->addr);
+	    xfree(shmdesc);
+	    return BadAccess;
+	}
+
 	shmdesc->shmid = stuff->shmid;
 	shmdesc->refcnt = 1;
 	shmdesc->writable = !stuff->readOnly;

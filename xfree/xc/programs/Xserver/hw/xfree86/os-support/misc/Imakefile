@@ -14,6 +14,9 @@ XOBJS = BUSmemcpy.o IODelay.o SlowBcopy.o
 #else
 XSRCS = BUSmemcpy.c IODelay.c SlowBcopy.c
 XOBJS = BUSmemcpy.o IODelay.o SlowBcopy.o
+BUSmemcpy.o: BUSmemcpy.c
+IODelay.o: IODelay.c
+SlowBcopy.o: SlowBcopy.c
 #endif
 
 #if HasGcc || HasGcc2
