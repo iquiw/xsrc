@@ -846,7 +846,7 @@ NEODisplayVideo(ScrnInfoPtr pScrn, int id, int offset,
 	 * When the video window is less than about 160 pixel wide
 	 * it will be distoreted. We attempt to fix it by actually
 	 * making it wider and relying on the color key to prevent
-	 * it from appearanig outside of the video.
+	 * it from appearing outside of the video.
 	 */
 	int pre, post;
 	int scale = 1;
