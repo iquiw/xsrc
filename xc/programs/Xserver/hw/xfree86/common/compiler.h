@@ -60,6 +60,17 @@
 #define inl RealInl
 #endif
 
+#ifndef __mc68000__
+  /*
+   * On m68k we sometimes must do a byteswap (BIG endian to LITTLE endian).
+   * For others who don't need this the functions are defined as makro.
+   */
+# define byteswap16(x) (x)
+# define byteswap32(x) (x)
+# define BYTESWAP16(x) (x)
+# define BYTESWAP32(x) (x)
+#endif
+
 #ifdef NO_INLINE
 
 extern void outb();
@@ -274,7 +285,7 @@ static __inline__ void stw_u(unsigned long r5, unsigned short * r11)
 #endif
 
 #else /* defined(__alpha__) */
-#if defined(__mips__)
+#if defined(__mips__) || defined(__arm32__)
 
 unsigned int IOPortBase;  /* Memory mapped I/O port area */
 
@@ -324,6 +335,7 @@ inl(port)
 }
 
 
+#if defined(__mips__)
 static __inline__ unsigned long ldq_u(unsigned long * r11)
 {
 	unsigned long r1;
@@ -370,8 +382,20 @@ static __inline__ unsigned long ldw_u(unsigned short * r11)
 			((unsigned char *)(p)+1) = ((v) >> 8)
 
 #define mem_barrier()   /* NOP */
+#endif /* defined(mips) */
 
-#else /* defined(mips) */
+#if defined(__arm32__)
+#define ldq_u(p)	(*((unsigned long  *)(p)))
+#define ldl_u(p)	(*((unsigned int   *)(p)))
+#define ldw_u(p)	(*((unsigned short *)(p)))
+#define stq_u(v,p)	((unsigned long  *)(p)) = (v)
+#define stl_u(v,p)	((unsigned int   *)(p)) = (v)
+#define stw_u(v,p)	((unsigned short *)(p)) = (v)
+#define mem_barrier()   /* NOP */
+#define write_mem_barrier()   /* NOP */
+#endif /* defined(arm32) */
+
+#else /* defined(mips) || defined(arm32) */
 
 #define ldq_u(p)	(*((unsigned long  *)(p)))
 #define ldl_u(p)	(*((unsigned int   *)(p)))
@@ -909,6 +933,138 @@ unsigned short int port;
 
 #else /* !defined(FAKEIT) && !defined(__mc68000__) && !defined(__powerpc__) */
 
+#if defined(__NetBSD__) && defined(__atari__) && !defined(FAKEIT)
+
+extern unsigned int IOPortBase;  /* Memory mapped I/O port area */
+
+static __inline__ void
+#if NeedFunctionPrototypes
+outb(
+unsigned short int port,
+unsigned char val)
+#else
+outb(port, val)
+unsigned short int port;
+unsigned char val;
+#endif /* NeedFunctionPrototypes */
+{
+       *(volatile unsigned char*)(((unsigned short)(port))+IOPortBase) = val;
+}
+
+static __inline__ void
+#if NeedFunctionPrototypes
+outw(
+unsigned short int port,
+unsigned short int val)
+#else
+outw(port, val)
+unsigned short int port;
+unsigned short int val;
+#endif /* NeedFunctionPrototypes */
+{
+       /*
+        * This outw at the drivers which write an index and a value to an indexd
+        * register does not work (at least on Atari Hades). Therefore we better
+        * write two char.
+        */
+#if NO_BYTEWIDE_IO
+       *(volatile unsigned short*)(((unsigned short)(port))+IOPortBase) = val;
+#else
+       *(volatile unsigned char*)(((unsigned short)(port))+IOPortBase) = val;
+       *(volatile unsigned char*)(((unsigned short)(port + 1))+IOPortBase) = val >> 8;
+#endif
+}
+
+static __inline__ void
+#if NeedFunctionPrototypes
+outl(
+unsigned short int port,
+unsigned int val)
+#else
+outl(port, val)
+unsigned short int port;
+unsigned int val;
+#endif /* NeedFunctionPrototypes */
+{
+       *(volatile unsigned long*)(((unsigned short)(port))+IOPortBase) = val;
+}
+
+static __inline__ unsigned int
+#if NeedFunctionPrototypes
+inb(
+unsigned short int port)
+#else
+inb(port)
+unsigned short int port;
+#endif /* NeedFunctionPrototypes */
+{
+       return(*(volatile unsigned char*)(((unsigned short)(port))+IOPortBase));
+}
+
+static __inline__ unsigned int
+#if NeedFunctionPrototypes
+inw(
+unsigned short int port)
+#else
+inw(port)
+unsigned short int port;
+#endif /* NeedFunctionPrototypes */
+{
+       return(*(volatile unsigned short*)(((unsigned short)(port))+IOPortBase));
+
+}
+
+static __inline__ unsigned int
+#if NeedFunctionPrototypes
+inl(
+unsigned short int port)
+#else
+inl(port)
+unsigned short int port;
+#endif /* NeedFunctionPrototypes */
+{
+       return(*(volatile unsigned long*)(((unsigned short)(port))+IOPortBase));
+}
+
+/*
+ * Some special functions for swaping word and long (MSB <-> LSB)
+ */
+
+static __inline__ unsigned short
+#if NeedFunctionPrototypes
+byteswap16(unsigned short x)
+#else
+byteswap16(x)
+unsigned short x;
+#endif /* NeedFunctionPrototypes */
+{
+       __asm__ __volatile__("rorw #8,%0" : "=d" (x) : "0" (x));
+       return x;
+}
+
+static __inline__ unsigned int
+#if NeedFunctionPrototypes
+byteswap32(unsigned int x)
+#else
+byteswap32(x)
+unsigned int x;
+#endif /* NeedFunctionPrototypes */
+{
+       __asm__ __volatile__("rorw #8,%0\nswap %0\nrorw #8,%0" : "=d" (x) : "0" (x));
+       return x;
+}
+
+/*
+ * Makro for swaping constants. The compiler then does the swaping. No additional
+ * code is generated, the compiler uses the constant result.
+ */
+
+#define BYTESWAP16(x) ((((x) & 0xff) << 8) | (((x) >> 8) & 0xff))
+#define BYTESWAP32(x) ((((x) & 0xff) << 24) | (((x) & 0xff00) << 8) |\
+                      (((x) >> 8) & 0xff00) | (((x) >> 24) & 0xff))
+
+#else /* __NetBSD__ && __atari__ */
+
 static __inline__ void
 #if NeedFunctionPrototypes
 outb(
@@ -984,9 +1140,10 @@ unsigned short int port;
   return 0;
 }
 
+#endif /* __NetBSD__ && __atari__ */
 #endif /* FAKEIT */
 
-#endif /* defined(mips) */
+#endif /* defined(mips) || defined(arm32) */
 #endif /* defined(AlphaArchitecture) && defined(LinuxArchitecture) */
 
 #else /* __GNUC__ */
