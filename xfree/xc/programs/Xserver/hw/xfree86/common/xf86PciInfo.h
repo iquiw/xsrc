@@ -399,6 +399,9 @@
 /* NEC */
 #define PCI_CHIP_POWER_VR		0x0046
 
+/* FD */
+#define PCI_CHIP_TMC_18C30	0x0000
+
 /* SiS */
 #define PCI_CHIP_SG86C201		0x0001
 #define PCI_CHIP_SG86C202		0x0002

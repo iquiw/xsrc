@@ -428,17 +428,6 @@ GiveUp(int sig)
     errno = olderrno;
 }
 
-#ifndef DDXTIME
-CARD32
-GetTimeInMillis(void)
-{
-    struct timeval  tp;
-
-    X_GETTIMEOFDAY(&tp);
-    return(tp.tv_sec * 1000) + (tp.tv_usec / 1000);
-}
-#endif
-
 void
 AdjustWaitForDelay (pointer waitTime, unsigned long newdelay)
 {
@@ -2000,7 +1989,11 @@ CheckUserParameters(int argc, char **argv, char **envp)
 
 #ifdef USE_PAM
 #include <security/pam_appl.h>
+#ifndef _OPENPAM
 #include <security/pam_misc.h>
+#else
+#include <security/openpam.h>
+#endif
 #include <pwd.h>
 #endif /* USE_PAM */
 
@@ -2009,7 +2002,11 @@ CheckUserAuthorization(void)
 {
 #ifdef USE_PAM
     static struct pam_conv conv = {
+#ifndef _OPENPAM
 	misc_conv,
+#else
+	openpam_ttyconv,
+#endif
 	NULL
     };
 

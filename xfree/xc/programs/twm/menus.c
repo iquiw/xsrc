@@ -208,6 +208,11 @@ Bool AddFuncKey (name, cont, mods, func, win_name, action)
     if (tmp == NULL)
     {
 	tmp = (FuncKey *) malloc(sizeof(FuncKey));
+	if (!tmp)
+	{
+	    return False;
+	}
+	memset(tmp, 0, sizeof(FuncKey));
 	tmp->next = Scr->FuncKeyRoot.next;
 	Scr->FuncKeyRoot.next = tmp;
     }
@@ -242,6 +247,7 @@ int CreateTitleButton (name, func, action, menuroot, rightside, append)
 		 ProgramName, (unsigned long)sizeof(TitleButton));
 	return 0;
     }
+    memset(tb, 0, sizeof(TitleButton));
 
     tb->next = NULL;
     tb->name = name;			/* note that we are not copying */
@@ -652,6 +658,7 @@ NewMenuRoot(name)
 #define UNUSED_PIXEL ((unsigned long) (~0))	/* more than 24 bits */
 
     tmp = (MenuRoot *) malloc(sizeof(MenuRoot));
+    memset(tmp, 0, sizeof(MenuRoot));
     tmp->hi_fore = UNUSED_PIXEL;
     tmp->hi_back = UNUSED_PIXEL;
     tmp->name = name;
@@ -729,6 +736,7 @@ AddToMenu(menu, item, action, sub, func, fore, back)
 #endif
 
     tmp = (MenuItem *) malloc(sizeof(MenuItem));
+    memset(tmp, 0, sizeof(MenuItem));
     tmp->root = menu;
 
     if (menu->first == NULL)
@@ -1041,7 +1049,8 @@ PopUpMenu (menu, x, y, center)
         if (WindowNameCount != 0)
         {
             WindowNames =
-              (TwmWindow **)malloc(sizeof(TwmWindow *)*WindowNameCount);
+              (TwmWindow **)malloc(sizeof(TwmWindow *) * WindowNameCount);
+	    memset(WindowNames, 0, sizeof(TwmWindow *) * WindowNameCount);
             WindowNames[0] = Scr->TwmRoot.next;
             for(tmp_win = Scr->TwmRoot.next->next , WindowNameCount=1;
                 tmp_win != NULL;
@@ -2082,8 +2091,8 @@ ExecuteFunction(func, action, w, tmp_win, eventp, context, pulldown)
 	break;
 
     case F_CUT:
-	strcpy(tmp, action);
-	strcat(tmp, "\n");
+	strlcpy(tmp, action, sizeof(tmp));
+	strlcat(tmp, "\n", sizeof(tmp));
 	XStoreBytes(dpy, tmp, strlen(tmp));
 	break;
 
@@ -2479,7 +2488,11 @@ Execute(s)
     oldDisplay[0] = '\0';
     doisplay=getenv("DISPLAY");
     if (doisplay)
-	strcpy (oldDisplay, doisplay);
+	if (strlcpy (oldDisplay, doisplay, sizeof(oldDisplay)) >=
+	    sizeof(oldDisplay)) {
+	    /* some error report? */
+	    return;
+	}
 
     /*
      * Build a display string using the current screen number, so that
@@ -2489,8 +2502,8 @@ Execute(s)
      */
     colon = strrchr (ds, ':');
     if (colon) {			/* if host[:]:dpy */
-	strcpy (buf, "DISPLAY=");
-	strcat (buf, ds);
+	strlcpy (buf, "DISPLAY=", sizeof(buf));
+	strlcat (buf, ds, sizeof(buf));
 	colon = buf + 8 + (colon - ds);	/* use version in buf */
 	dot1 = strchr (colon, '.');	/* first period after colon */
 	if (!dot1) dot1 = colon + strlen (colon);  /* if not there, append */
@@ -2502,7 +2515,7 @@ Execute(s)
     (void) system (s);
 
     if (restorevar) {		/* why bother? */
-	(void) sprintf (buf, "DISPLAY=%s", oldDisplay);
+	(void) snprintf (buf, sizeof(buf), "DISPLAY=%s", oldDisplay);
 	putenv (buf);
     }
 }

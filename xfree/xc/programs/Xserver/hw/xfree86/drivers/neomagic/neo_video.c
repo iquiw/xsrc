@@ -187,7 +187,7 @@ static XF86ImageRec NEOVideoImages[] =
 	16,
 	XvPacked,
 	1,
-	16, 0xF800, 0x07E0, 0x001F,
+	16, 0x001F, 0x07E0, 0xF800,
 	0, 0, 0,
 	0, 0, 0,
 	0, 0, 0,

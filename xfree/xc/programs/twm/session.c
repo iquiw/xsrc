@@ -424,6 +424,7 @@ ReadWinConfigEntry (FILE *configFile, unsigned short version,
 	sizeof (TWMWinConfigEntry));
     if (!*pentry)
 	return 0;
+    memset(entry, 0, sizeof(TWMWinConfigEntry));
 
     entry->tag = 0;
     entry->client_id = NULL;
@@ -462,6 +463,7 @@ ReadWinConfigEntry (FILE *configFile, unsigned short version,
 
 	    if (!entry->wm_command)
 		goto give_up;
+	    memset(entry->wm_command, 0, entry->wm_command_count * sizeof(char *));
 
 	    for (i = 0; i < entry->wm_command_count; i++)
 		if (!read_counted_string (configFile, &entry->wm_command[i]))
@@ -736,12 +738,11 @@ int *pFd;
     char tempFile[PATH_MAX];
     char *tmp;
 
-    sprintf (tempFile, "%s/%sXXXXXX", path, prefix);
+    snprintf (tempFile, sizeof(tempFile), "%s/%sXXXXXX", path, prefix);
     tmp = (char *) mktemp (tempFile);
     if (tmp)
     {
-	char *ptr = (char *) malloc (strlen (tmp) + 1);
-	strcpy (ptr, tmp);
+	char *ptr = strdup(tmp);
 	return (ptr);
     }
     else
@@ -751,13 +752,8 @@ int *pFd;
     char tempFile[PATH_MAX];
     char *ptr;
 
-    sprintf (tempFile, "%s/%sXXXXXX", path, prefix);
-    ptr = (char *)malloc(strlen(tempFile) + 1);
-    if (ptr != NULL) 
-    {
-	strcpy(ptr, tempFile);
-	*pFd =  mkstemp(ptr);
-    }
+    snprintf (tempFile, sizeof(tempFile), "%s/%sXXXXXX", path, prefix);
+    ptr = strdup(tempFile);
     return ptr;
 #endif
 }
@@ -800,7 +796,7 @@ SmPointer clientData;
 	prop1val.value = Argv[0];
 	prop1val.length = strlen (Argv[0]);
 
-	sprintf (userId, "%ld", (long)getuid());
+	snprintf (userId, sizeof(userId), "%ld", (long)getuid());
 	prop2.name = SmUserID;
 	prop2.type = SmARRAY8;
 	prop2.num_vals = 1;
@@ -888,6 +884,7 @@ SmPointer clientData;
 	success = False;
 	goto bad;
     }
+    memset(prop1.vals, 0, (Argc + 4) * sizeof (SmPropValue));
 
     numVals = 0;
 
@@ -919,7 +916,7 @@ SmPointer clientData;
 
     prop1.num_vals = numVals;
 
-    sprintf (discardCommand, "rm %s", filename);
+    snprintf (discardCommand, sizeof(discardCommand), "rm %s", filename);
     prop2.name = SmDiscardCommand;
     prop2.type = SmARRAY8;
     prop2.num_vals = 1;

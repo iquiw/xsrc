@@ -629,6 +629,123 @@ ServerDriverSDKTarget(XFree86)
 #endif
 #endif        /* XF86Server */
 
+#if defined(XalphaNetBSDServer) && XalphaNetBSDServer
+XCOMM
+XCOMM NetBSD/Alpha server
+XCOMM
+MFBSUBDIR   = mfb
+CFB8SUBDIR  = cfb
+CFB32SUBDIR = cfb32
+ANBDDXDIR  = hw/netbsd/alpha
+ANBDIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB32DIR) $(ANBDDXDIR) $(DEPDIRS)
+ANBOBJS = hw/netbsd/alpha/alphaInit.o hw/netbsd/alpha/stubs.o
+ANBLIBS = hw/netbsd/alpha/tga/libalphaTga.a hw/netbsd/alpha/sfb/libalphaSfb.a \
+	  hw/netbsd/alpha/libalpha.a CFB32Libs CFB8Libs
+SetUIDServerTarget(XalphaNetBSD,$(ANBDIRS),$(ANBOBJS), \
+	$(LIBCWAPPER) $(ANBLIBS), \
+	$(FONTLIBS) $(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall XalphaNetBSD
+#endif
+#endif /* XalphaNetBSDServer */
+
+#if defined(XdecNetBSDServer) && XdecNetBSDServer
+XCOMM
+XCOMM NetBSD/alpha and NetBSD/pmax server
+XCOMM
+MFBSUBDIR   = mfb
+CFB8SUBDIR  = cfb
+CFB32SUBDIR = cfb32
+DNBDDXDIR  = hw/netbsd/dec
+DNBDIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB32DIR) $(DNBDDXDIR) $(DEPDIRS)
+DNBOBJS = hw/netbsd/dec/decInit.o hw/netbsd/dec/stubs.o
+DNBLIBS = hw/netbsd/dec/sfb/libdecSfb.a hw/netbsd/dec/px/libdecPX.a \
+	  hw/netbsd/dec/cfb/libdecCfb.a hw/netbsd/dec/mfb/libdecMfb.a
+#if defined(AlphaArchitecture)
+DNBLIBS += hw/netbsd/dec/tga/libdecTga.a
+#endif
+DNBLIBS += hw/netbsd/dec/libdec.a CFB32Libs CFB8Libs
+SetUIDServerTarget(XdecNetBSD,$(DNBDIRS),$(DNBOBJS), \
+	$(LIBCWAPPER) $(DNBLIBS), \
+	$(FONTLIBS) $(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall XdecNetBSD
+#endif
+#endif /* XdecNetBSDServer */
+
+#if defined(XdreamcastServer) && XdreamcastServer
+XCOMM
+XCOMM NetBSD/dreamcast server
+XCOMM
+MFBSUBDIR  = mfb
+CFB8SUBDIR = cfb
+CFB16SUBDIR = cfb16
+DREAMCASTDDXDIR = hw/netbsd/dreamcast
+DREAMCASTDIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB16DIR) \
+		$(DREAMCASTDDXDIR) $(DEPDIRS)
+DREAMCASTLIBS = hw/netbsd/dreamcast/libdreamcast.a CFB8Libs CFB16Libs
+SetUIDServerTarget(Xdreamcast,$(DREAMCASTDIRS),$(DREAMCASTOBJS), \
+	$(DREAMCASTLIBS) $(LOADABLEEXTS) $(LIBCWRAPPER), \
+	$(DREAMCASTLIBS) $(LOADABLEEXTS) $(FONTLIBS) $(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall Xdreamcast
+#endif
+#endif /* XdreamcastServer */
+
+#if defined(XhpcServer) && XhpcServer
+XCOMM
+XCOMM NetBSD/hpcmips server
+XCOMM
+MFBSUBDIR  = mfb
+CFB8SUBDIR = cfb
+CFB16SUBDIR = cfb16
+HPCDDXDIR = hw/netbsd/hpc
+HPCDIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB16DIR) $(HPCDDXDIR) $(DEPDIRS)
+HPCLIBS = hw/netbsd/hpc/libhpc.a CFB8Libs CFB16Libs
+SetUIDServerTarget(Xhpc,$(HPCDIRS),$(HPCOBJS), \
+	$(HPCLIBS) $(LOADABLEEXTS) $(LIBCWRAPPER), \
+	$(HPCLIBS) $(LOADABLEEXTS) $(FONTLIBS) $(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall Xhpc
+#endif
+#endif /* XhpcServer */
+
+#if defined(XmacppcServer) && XmacppcServer
+XCOMM
+XCOMM NetBSD/macppc server
+XCOMM
+MFBSUBDIR   = mfb
+CFB8SUBDIR  = cfb
+MACPPCDDXDIR  = hw/netbsd/macppc
+MACPPCDIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(MACPPCDDXDIR) $(DEPDIRS)
+MACPPCOBJS = hw/netbsd/macppc/macppcInit.o
+MACPPCLIBS = hw/netbsd/macppc/libmacppc.a CFB8Libs
+ServerTarget(Xmacppc,$(MACPPCDIRS),$(MACPPCOBJS), \
+	$(MACPPCLIBS) $(LOADABLEEXTS) $(LIBCWRAPPER), \
+	$(MACPPCLIBS) $(LOADABLEEXTS) $(FONTLIBS) $(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall Xmacppc
+#endif
+#endif /* XmacppcServer */
+
+#if defined(X68kServer) && X68kServer
+XCOMM
+XCOMM NetBSD/x68k server
+XCOMM
+MFBSUBDIR   = mfb
+CFB8SUBDIR  = cfb
+CFB16SUBDIR = cfb16
+X68DDXDIR = hw/netbsd/x68k
+X68DIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB16DIR) $(X68DDXDIR) $(DEPDIRS)
+X68OBJS = hw/netbsd/x68k/x68kInit.o
+X68LIBS = hw/netbsd/x68k/libx68k.a CFB16Libs CFB8Libs $(OTHEREXTS)
+SetUIDServerTarget(X68k,$(X68DIRS),$(X68OBJS),$(X68LIBS),$(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall X68k
+#endif
+#endif /* X68kServer */
+
+
 #if defined(KDriveXServer) && KDriveXServer
 XCOMM
 XCOMM Tiny X server section
@@ -1116,6 +1233,22 @@ Xnon: $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB16DIR) $(CFB32DIR) $(DEPDIRS)
 #endif /* XnonServer */
 
 
+#if defined(XvaxMonoServer) && XvaxMonoServer
+XCOMM
+XCOMM NetBSD/vax Monochrome server
+XCOMM
+MFBSUBDIR  = mfb
+VAXDDXDIR = hw/netbsd/vax
+VAXDIRS = $(STDDIRS) $(MFBDIR) $(VAXDDXDIR) $(DEPDIRS)
+VAXOBJS = hw/netbsd/vax/init.o hw/netbsd/vax/mono_io.o hw/netbsd/vax/lk201.o
+VAXLIBS = MFBLibs
+ServerTarget(Xmono,$(VAXDIRS),$(VAXOBJS),$(VAXLIBS),$(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall Xmono
+#endif
+#endif /* XvaxMonoServer */
+
+
 #if defined(XVirtualFramebufferServer) && XVirtualFramebufferServer
 XCOMM
 XCOMM server with Virtual (malloced) framebuffer
@@ -1330,11 +1463,44 @@ BundleProgramTarget(glxMesa,XDarwinApp,GL,GL/glx/glxext.o,GL/glx/libglx.a \
 
 #endif /* XDarwinServer */
 
+#if defined(Xmac68kServer) && Xmac68kServer
+XCOMM
+XCOMM NetBSD/mac68k Xserver
+XCOMM
+MFBSUBDIR = mfb
+CFB8SUBDIR = cfb
+#if 0
+CFB16SUBDIR = cfb16
+CFB24SUBDIR = cfb24
+CFB32SUBDIR = cfb32
+#endif
+MAC68KDDXDIR = hw/netbsd/mac68k
+MAC68KDIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) \
+#if 0
+	$(CFB16DIR) $(CFB24DIR) $(CFB32DIR) \
+#endif
+	$(MAC68KDDXDIR) $(DEPDIRS)
+MAC68KOBJS = $(MAC68KDDXDIR)/mac68kInit.o $(MAC68KDDXDIR)/mac68kEvent.o
+MAC68KLIBS = hw/netbsd/mac68k/libmac68k.a CFBLibs
+ServerTarget(Xmac68k,$(MAC68KDIRS),$(MAC68KOBJS),$(MAC68KLIBS) $(LIBCWRAPPER), \
+	$(FONTLIBS) $(SYSLIBS))
+#ifndef ServerToInstall
+#define ServerToInstall Xmac68k
+#endif
+#endif /* XmacServer */
+
 
 CFBSUBDIRS = $(CFB8SUBDIR) $(CFB16SUBDIR) $(CFB24SUBDIR) $(CFB32SUBDIR)
 MIEXTDIRS = $(SHADOWDIR) $(LAYERDIR) $(ROOTLESSDIR)
 IPLANDIRS = $(IPLAN2P2DIR) $(IPLAN2P4DIR) $(IPLAN2P8DIR)
 DDXDIRS = $(DECWSDDXDIR) $(SUNDDXDIR) $(LYNXDDXDIR) \
+	  $(ANBDDXDIR) \
+	  $(DNBDDXDIR) \
+	  $(DREAMCASTDDXDIR) \
+	  $(HPCDDXDIR) \
+	  $(MACPPCDDXDIR) $(MAC68KDDXDIR) \
+	  $(VAXDDXDIR) \
+	  $(X68DDXDIR) \
 	  $(HPDDXDIR) $(XFREE86DDXDIR) $(XWINDDXDIR) $(DARWINDDXDIR) \
 	  $(XVFBDDXDIR) $(XNESTDDXDIR)
 SUBDIRS = $(STDDIRS) $(MFBSUBDIR) $(CFBSUBDIRS) \

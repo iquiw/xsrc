@@ -801,6 +801,8 @@ install:: fonts.alias							@@\
 
 #ifdef Sparc64Architecture
 
+# define OptimizedCDebugFlags	-O2
+
 # if OSMajorVersion == 3 && OSMinorVersion > 1 || OSMajorVersion > 3
 #  define HasWeakSymbols	YES
 # endif
