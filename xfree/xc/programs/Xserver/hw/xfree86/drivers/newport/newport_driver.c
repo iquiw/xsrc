@@ -32,6 +32,12 @@
  */
 /* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/newport/newport_driver.c,v 1.24 2003/02/18 19:10:36 alanh Exp $ */
 
+#if defined(__NetBSD__)
+#include <fcntl.h>
+#include <dev/wscons/wsconsio.h>
+#include <sys/ioctl.h>
+#endif
+
 /* function prototypes, common data structures & generic includes */
 #include "newport.h"
 
@@ -51,6 +57,10 @@
 /* Xv Extension */
 #include "xf86xv.h"
 #include "Xv.h"
+
+/* DPMS */
+#define DPMS_SERVER
+#include "extensions/dpms.h"
 
 #define VERSION			4000
 #define NEWPORT_NAME		"NEWPORT"
@@ -78,6 +88,7 @@ static Bool NewportFreeRec(ScrnInfoPtr pScrn);
 static Bool NewportMapRegs(ScrnInfoPtr pScrn);
 static void NewportUnmapRegs(ScrnInfoPtr pScrn);
 static Bool NewportProbeCardInfo(ScrnInfoPtr pScrn);
+static void NewportDisplayPowerManagementSet(ScrnInfoPtr, int, int);
 /* ------------------------------------------------------------------ */
 
 DriverRec NEWPORT = {
@@ -589,6 +600,10 @@ NewportScreenInit(int index, ScreenPtr pScreen, int argc, char **argv)
 	pNewport->CloseScreen = pScreen->CloseScreen;
 	pScreen->CloseScreen = NewportCloseScreen;
 
+	if(xf86DPMSInit(pScreen, NewportDisplayPowerManagementSet, 0) == FALSE)
+	    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "DPMS initialization failed!\n");
+
+
 	if (serverGeneration == 1) {
 		xf86ShowUnusedOptions(pScrn->scrnIndex, pScrn->options);
 	}
@@ -658,6 +673,39 @@ NewportSaveScreen(ScreenPtr pScreen, int mode)
 		pNewport->vc2ctrl &= ~VC2_CTRL_EDISP;           
 	NewportVc2Set( pNewportRegs, VC2_IREG_CONTROL, pNewport->vc2ctrl);
 	return TRUE;
+}
+
+static void
+NewportDisplayPowerManagementSet(ScrnInfoPtr pScrn, int Mode, int flags)
+{
+	NewportPtr pNewport;
+	NewportRegsPtr pNewportRegs;
+	char modestr[][40] = { "On","Standby","Suspend","Off" };
+
+	pNewport = NEWPORTPTR(pScrn);
+	pNewportRegs = NEWPORTPTR(pScrn)->pNewportRegs;
+
+	switch (Mode) {
+		case DPMSModeOn:
+			/* Screen: On; HSync: On, VSync: On */
+			pNewport->vc2ctrl |= VC2_CTRL_EDISP;            
+			NewportVc2Set(  pNewportRegs, VC2_IREG_CONTROL,
+					pNewport->vc2ctrl);
+			break;
+		case DPMSModeStandby:
+		case DPMSModeSuspend:
+		case DPMSModeOff:
+			pNewport->vc2ctrl &= ~VC2_CTRL_EDISP;           
+			NewportVc2Set(  pNewportRegs, VC2_IREG_CONTROL,
+					pNewport->vc2ctrl);
+			break;
+		default:
+			xf86ErrorFVerb(1, "Invalid PowerManagementMode %d passed to NewportDisplay PowerManagementSet\n", Mode);
+			break;
+	}
+
+	xf86ErrorFVerb(1, "Power Manag: set:%s\n", modestr[Mode]);
+
 }
 
 
@@ -743,7 +791,7 @@ NewportModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
 					NPORT_DMODE1_RGBMD;
 	pNewportRegs->set.colorvram = 0;
 	pNewportRegs->set.xystarti = 0;
-	pNewportRegs->go.xyendi = ( (1279+64) << 16) | 1023;
+	pNewportRegs->go.xyendi = ( ( (width-1)+64) << 16) | (height-1);
 
 	/* default drawmode */
 	NewportWait(pNewportRegs);
@@ -781,9 +829,21 @@ NewportRestore(ScrnInfoPtr pScrn, Bool Closing)
 static unsigned
 NewportHWProbe(unsigned probedIDs[])
 {
+	unsigned hasNewport = 0;
+#if defined(__NetBSD__)
+	int fd, type, i;
+
+	probedIDs[0] = 0;
+
+	fd = open("/dev/ttyE0", O_RDONLY, 0);
+	i = ioctl(fd, WSDISPLAYIO_GTYPE, &type);
+	close(fd);
+
+	if ( (i == 0) && ( type == WSDISPLAY_TYPE_NEWPORT) )
+		hasNewport = 1;
+#else
 	FILE* cpuinfo;
 	char line[80];
-	unsigned hasNewport = 0;
 
 	if ((cpuinfo = fopen("/proc/cpuinfo", "r"))) {
 		while(fgets(line, 80, cpuinfo) != NULL) {
@@ -800,6 +860,7 @@ NewportHWProbe(unsigned probedIDs[])
 		}
 		fclose(cpuinfo);
 	}
+#endif
 	return hasNewport;
 }
 
@@ -835,10 +896,15 @@ NewportMapRegs(ScrnInfoPtr pScrn)
 {
 	NewportPtr pNewport = NEWPORTPTR(pScrn);
 
+#if defined(__NetBSD__)
+	pNewport->pNewportRegs = xf86MapVidMem(pScrn->scrnIndex,
+			VIDMEM_MMIO, NEWPORT_REGISTERS, sizeof(NewportRegs));
+#else
 	pNewport->pNewportRegs = xf86MapVidMem(pScrn->scrnIndex, 
 			VIDMEM_MMIO,
 			NEWPORT_BASE_ADDR0 + pNewport->busID * NEWPORT_BASE_OFFSET,
 			 sizeof(NewportRegs));
+#endif
 	if ( ! pNewport->pNewportRegs ) 
 		return FALSE;
 	return TRUE;

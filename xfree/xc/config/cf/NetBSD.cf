@@ -2,7 +2,7 @@ XCOMM platform:  $Xorg: NetBSD.cf,v 1.3 2000/08/17 19:41:46 cpqbld Exp $
 
 
 
-XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.108 2002/12/14 22:36:03 dawes Exp $
+XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.108.2.1 2003/09/17 05:58:15 herrb Exp $
 
 
 #ifndef OSName
@@ -695,18 +695,9 @@ sed 's/\.[0-9]*$$//'`
 #endif
 
 /*
- * Definition for compiling on Alpha machines
- */
-#ifdef AlphaArchitecture
-
-/* Build the shared XDM greeter on Alpha if it supports shared libs */
-#define SharedLibXdmGreet HasSharedLibraries
-#endif
-
-/*
  * Definition for compile on macppc machines
  */
-#ifdef PpcArchitecture
+#ifdef macppcArchitecture
 
 # define OptimizedCDebugFlags 	-O2
 # define XkbServerDefines	-DXKB_ALWAYS_USES_SOFT_REPEAT
@@ -716,6 +707,8 @@ sed 's/\.[0-9]*$$//'`
 # endif
 
 # define UseElfFormat		YES
+
+# define XmacppcServer		YES
 
 #endif
 
@@ -746,4 +739,11 @@ sed 's/\.[0-9]*$$//'`
 
 #ifndef UseSeparateConfDir
 #define UseSeparateConfDir NO	/* We don't want appdefs in "/etc/X11". */
+#endif
+
+#if defined(NetBSDArchitecture) && \
+     ((OSMajorVersion > 1) || \
+      (OSMajorVersion == 1 && OSMinorVersion > 3))
+#define HasDevRandom		YES
+#define RandomDeviceFile	/dev/urandom
 #endif

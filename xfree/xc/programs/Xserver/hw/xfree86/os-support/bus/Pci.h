@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/os-support/bus/Pci.h,v 1.36 2002/12/23 15:37:26 tsi Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/os-support/bus/Pci.h,v 1.36.2.1 2003/03/21 22:29:59 tsi Exp $ */
 /*
  * Copyright 1998 by Concurrent Computer Corporation
  *
@@ -96,8 +96,6 @@
 #else
 # define MAX_PCI_BUSES   256	/* Max number of PCI buses           */
 #endif
-
-#define PCI_NOT_FOUND   0xffffffff
 
 #define DEVID(vendor, device) \
     ((CARD32)((PCI_CHIP_##device << 16) | PCI_VENDOR_##vendor))
@@ -218,6 +216,10 @@
 #  define ARCH_PCI_INIT linuxPciInit
 #  define INCLUDE_XF86_MAP_PCI_MEM
 #  define INCLUDE_XF86_NO_DOMAIN
+# elif defined(__NetBSD__)
+#  define ARCH_PCI_INIT netbsdPciInit
+#  define INCLUDE_XF86_MAP_PCI_MEM
+#  define INCLUDE_XF86_NO_DOMAIN
 # endif
 #elif defined(__hppa__)
 # if defined(linux)
@@ -249,6 +251,10 @@
 #elif defined(__mips__)
 # if defined(linux)
 #  define ARCH_PCI_INIT linuxPciInit
+#  define INCLUDE_XF86_MAP_PCI_MEM
+#  define INCLUDE_XF86_NO_DOMAIN
+# elif defined(__NetBSD__)
+#  define ARCH_PCI_INIT netbsdPciInit
 #  define INCLUDE_XF86_MAP_PCI_MEM
 #  define INCLUDE_XF86_NO_DOMAIN
 # endif

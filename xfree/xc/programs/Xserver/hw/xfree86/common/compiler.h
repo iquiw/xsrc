@@ -848,11 +848,15 @@ static __inline__ void stw_u(unsigned long val, unsigned short *p)
 #    define mem_barrier()         /* XXX: nop for now */
 #    define write_mem_barrier()   /* XXX: nop for now */
 
-#   elif defined(__mips__) || defined(__arm32__) || defined(__arm__)
-#ifdef __arm32__
+#   elif defined(__mips__) || defined(__arm32__) || defined(__arm__) || defined(__sh__)
+#if defined(__NetBSD__)
+#define PORT_SIZE int
+#else
+#if defined(__arm32__)
 #define PORT_SIZE long
 #else
 #define PORT_SIZE short
+#endif
 #endif
 
 unsigned int IOPortBase;  /* Memory mapped I/O port area */
@@ -1002,11 +1006,26 @@ xf86WriteMmio32Be(__volatile__ void *base, const unsigned long offset,
 #      define stw_u(v,p)	(*(unsigned char *)(p)) = (v); \
 				(*(unsigned char *)(p)+1) = ((v) >> 8)
 
+#if defined(__NetBSD__)
+#      define mem_barrier() \
+        __asm__ __volatile__(					\
+		"# prevent instructions being moved around\n\t"	\
+       		".set\tnoreorder\n\t"				\
+		"# 8 nops to fool the R4400 pipeline\n\t"	\
+		"nop;nop;nop;nop;nop;nop;nop;nop\n\t"		\
+		".set\treorder"					\
+		: /* no output */				\
+		: /* no input */				\
+		: "memory")
+#      define write_mem_barrier() mem_barrier()
+#else
 #      define mem_barrier()   /* NOP */
+#endif
+
 #     endif /* !linux */
 #    endif /* __mips__ */
 
-#    if defined(__arm32__)
+#    if defined(__arm32__) || defined(__arm__) || defined(__sh__)
 #     define ldq_u(p)	(*((unsigned long  *)(p)))
 #     define ldl_u(p)	(*((unsigned int   *)(p)))
 #     define ldw_u(p)	(*((unsigned short *)(p)))
@@ -1015,7 +1034,7 @@ xf86WriteMmio32Be(__volatile__ void *base, const unsigned long offset,
 #     define stw_u(v,p)	(*(unsigned short *)(p)) = (v)
 #     define mem_barrier()	/* NOP */
 #     define write_mem_barrier()	/* NOP */
-#    endif /* __arm32__ */
+#    endif /* __arm32__ || __arm__ || __sh__ */
 
 #   elif (defined(Lynx) || defined(linux) || defined(__OpenBSD__) || defined(__NetBSD__)) && defined(__powerpc__)
 

@@ -60,8 +60,6 @@ in this Software without prior written authorization from The Open Group.
 
 #if GLYPHPADBYTES != 4
 #define USE_LEFTBITS
-#elif (BITMAP_BIT_ORDER == MSBFirst) && (PGSZ == 64)
-#define USE_LEFTBITS
 #endif
 
 #ifdef USE_LEFTBITS
@@ -285,7 +283,7 @@ cfbPolyGlyphBlt8Clipped (pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
 #endif
     register glyphPointer   glyphBits;
     register int	xoff;
-#if defined(USE_LEFT_BITS) || (!defined(STIPPLE) && !defined(USE_STIPPLE_CODE))
+#if defined(USE_LEFTBITS) || (!defined(STIPPLE) && !defined(USE_STIPPLE_CODE))
     register CfbBits	*dst;
 #endif
 
@@ -293,7 +291,7 @@ cfbPolyGlyphBlt8Clipped (pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
     FontPtr		pfont = pGC->font;
     CfbBits		*dstLine;
     CfbBits		*pdstBase;
-#ifdef USE_LEFT_BITS
+#ifdef USE_LEFTBITS
     CARD32		*cTmp;
 #endif
     CARD32		*clips;
@@ -400,7 +398,7 @@ cfbPolyGlyphBlt8Clipped (pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
 		    }
 	    	} while (--hTmp);
 	    	break;
-#else /* !USE_LEFT_BITS */
+#else /* !USE_LEFTBITS */
 	    	{
 		    int h;
     
@@ -413,7 +411,7 @@ cfbPolyGlyphBlt8Clipped (pDrawable, pGC, x, y, nglyph, ppci, pglyphBase)
 	    	}
 	    	glyphBits = clips;
 	    	/* fall through */
-#endif /* USE_LEFT_BITS */
+#endif /* USE_LEFTBITS */
 	    case rgnIN:
 #ifdef STIPPLE
 	    	STIPPLE(dstLine,glyphBits,pixel,bwidthDst,hTmp,xoff);
