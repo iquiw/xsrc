@@ -1,4 +1,4 @@
-/* $NetBSD: alphaTGA.c,v 1.5 2001/10/06 02:25:51 thorpej Exp $ */
+/* $NetBSD: alphaTGA.c,v 1.3 2000/07/03 21:06:31 elric Exp $ */
 
 /* $XConsortium: sunCfb.c,v 1.15.1.2 95/01/12 18:54:42 kaleb Exp $ */
 /* $XFree86: xc/programs/Xserver/hw/sun/sunCfb.c,v 3.2 1995/02/12 02:36:22 dawes Exp $ */
@@ -123,7 +123,7 @@ static void CGUpdateColormap(pScreen, dex, count, rmap, gmap, bmap)
 #endif
 }
 
-void alphaTgaInstallColormap(cmap)
+void alphaInstallColormap(cmap)
     ColormapPtr	cmap;
 {
     SetupScreen(cmap->pScreen);
@@ -177,7 +177,7 @@ void alphaTgaInstallColormap(cmap)
     WalkTree(cmap->pScreen, TellGainedMap, (pointer) &(cmap->mid));
 }
 
-void alphaTgaUninstallColormap(cmap)
+void alphaUninstallColormap(cmap)
     ColormapPtr	cmap;
 {
     SetupScreen(cmap->pScreen);
@@ -196,7 +196,7 @@ void alphaTgaUninstallColormap(cmap)
     }
 }
 
-int alphaTgaListInstalledColormaps(pScreen, pCmapList)
+int alphaListInstalledColormaps(pScreen, pCmapList)
     ScreenPtr	pScreen;
     Colormap	*pCmapList;
 {
@@ -236,9 +236,9 @@ static void CGScreenInit (pScreen)
 {
 #ifndef STATIC_COLOR /* { */
     SetupScreen (pScreen);
-    pScreen->InstallColormap = alphaTgaInstallColormap;
-    pScreen->UninstallColormap = alphaTgaUninstallColormap;
-    pScreen->ListInstalledColormaps = alphaTgaListInstalledColormaps;
+    pScreen->InstallColormap = alphaInstallColormap;
+    pScreen->UninstallColormap = alphaUninstallColormap;
+    pScreen->ListInstalledColormaps = alphaListInstalledColormaps;
     pScreen->StoreColors = CGStoreColors;
     pPrivate->UpdateColormap = CGUpdateColormap;
     if (/*alphaFlipPixels ||*/ 1) {			/* XXX */
@@ -265,7 +265,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
     	if (!alphaScreenAllocate(pScreen))
 		return FALSE;
 	if (!fb) {
-		if ((fb = alphaMemoryMap ((size_t)alphaFbs[screen].size,
+		if ((fb = alphaMemoryMap ((size_t)alphaFbs[screen].info.fb_size,
 		    0, alphaFbs[screen].fd)) == NULL)
 			return FALSE;
 	        alphaFbs[screen].fb = fb;
@@ -281,7 +281,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 	 * things out, we have to look at the TGA registers.
 	 */ 
 	tgaregs = (tga_reg_t *)(fb + (1 * 1024 * 1024));
-	fb_off = (int)alphaFbs[screen].size / 2;
+	fb_off = (int)alphaFbs[screen].info.fb_size / 2;
 	fbr = fb + ( 1 * 1024 * 1024 );
 	alphaFbs[screen].tgaregs0 = (tga_reg_t *)(fbr + 0 * 64 * 1024);
 	alphaFbs[screen].tgaregs1 = (tga_reg_t *)(fbr + 1 * 64 * 1024);
@@ -308,7 +308,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 	 * where the displayed frame buffer actually starts.
 	 */
 	rowsize = 2 * 1024;			/* 2k for 128K VRAMs, 8BPP */
-	if (alphaFbs[screen].info.depth == 32)
+	if (alphaFbs[screen].info.fb_depth == 32)
 		rowsize *= 4;			/* increase by 4x for 32BPP */
 	if ((tgaregs[TGA_REG_GDER] & 0x200) == 0) /* 256K VRAMs */
 		rowsize *= 2;			/* increase by 2x */
@@ -323,11 +323,11 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 #endif
 
 	if (!alphaTgaScreenInit(pScreen, fb + fb_off,
-	    alphaFbs[screen].info.width,
-	    alphaFbs[screen].info.height,
+	    alphaFbs[screen].info.fb_width,
+	    alphaFbs[screen].info.fb_height,
 	    monitorResolution, monitorResolution,
 	    realwidth,
-	    alphaFbs[screen].info.depth)) {
+	    alphaFbs[screen].info.fb_depth)) {
 fprintf(stderr, "alphaTgaScreenInit failed\n");
             return FALSE;
 	}

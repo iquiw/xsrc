@@ -27,7 +27,6 @@ not be used in advertising or otherwise to promote the sale, use or
 other dealings in this Software without prior written authorization
 from the X Consortium.
 */
-/* $XFree86: xc/programs/xfindproxy/xfindproxy.c,v 1.1.1.1.2.1 2000/06/26 21:44:57 dawes Exp $ */
 
 
 #include <stdio.h>
@@ -331,17 +330,14 @@ char **argv;
 	    if (reply.status == PM_Success)
 	    {
 		fprintf (stdout, "%s\n", reply.addr);
-		exit (0);
 	    }
 	    else
 	    {
 		fprintf (stderr, "Error from proxy manager: %s\n",
 		    reply.error);
-		exit (1);
 	    }
 	}
     }
-    /*NOTREACHED*/
 }
 
 
@@ -439,7 +435,7 @@ XtInputId	*id;
 
     if (status == IceProcessMessagesIOError)
     {
-	fprintf (stderr,"IO error occured\n");
+	printf ("IO error occured\n");
 	exit (1);
     }
 }

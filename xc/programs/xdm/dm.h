@@ -57,8 +57,15 @@ from the X Consortium.
 #include <limits.h>
 #undef _POSIX_C_SOURCE
 #else
+#if defined(X_NOT_POSIX) || defined(_POSIX_SOURCE)
 #include <setjmp.h>
 #include <limits.h>
+#else
+#define _POSIX_SOURCE
+#include <setjmp.h>
+#include <limits.h>
+#undef _POSIX_SOURCE
+#endif
 #endif
 
 /* If XDMCP symbol defined, compile to run XDMCP protocol */

@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/os-support/bsd/bsd_VTsw.c,v 3.5.2.1 2001/02/04 21:41:27 herrb Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/os-support/bsd/bsd_VTsw.c,v 3.5 1996/12/23 06:49:35 dawes Exp $ */
 /*
  * Derived from VTsw_usl.c which is
  * Copyright 1993 by David Wexelblat <dwex@goblin.org>
@@ -45,9 +45,8 @@
 void xf86VTRequest(sig)
 int sig;
 {
-#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT) || defined(WSCONS_SUPPORT)
-	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT
-	    || xf86Info.consType == WSCONS) {
+#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT)
+	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT) {
 		xf86Info.vtRequestsPending = TRUE;
 	}	
 #endif
@@ -56,9 +55,8 @@ int sig;
 
 Bool xf86VTSwitchPending()
 {
-#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT) || defined(WSCONS_SUPPORT)
-	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT
-	    || xf86Info.consType == WSCONS) {
+#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT)
+	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT) {
 		return(xf86Info.vtRequestsPending ? TRUE : FALSE);
 	}
 #endif
@@ -67,9 +65,8 @@ Bool xf86VTSwitchPending()
 
 Bool xf86VTSwitchAway()
 {
-#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT) || defined(WSCONS_SUPPORT)
-	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT
-	    || xf86Info.consType == WSCONS) {
+#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT)
+	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT) {
 		xf86Info.vtRequestsPending = FALSE;
 		if (ioctl(xf86Info.consoleFd, VT_RELDISP, 1) < 0)
 			return(FALSE);
@@ -82,9 +79,8 @@ Bool xf86VTSwitchAway()
 
 Bool xf86VTSwitchTo()
 {
-#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT) || defined(WSCONS_SUPPORT)
-	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT 
-	    || xf86Info.consType == WSCONS) {
+#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT)
+	if (xf86Info.consType == SYSCONS || xf86Info.consType == PCVT) {
 		xf86Info.vtRequestsPending = FALSE;
 		if (ioctl(xf86Info.consoleFd, VT_RELDISP, VT_ACKACQ) < 0)
 			return(FALSE);

@@ -206,7 +206,6 @@ int section_num, entry_num;
   FILE * file;
   char path[BUFSIZ], page[BUFSIZ], section[BUFSIZ], *temp;
   char filename[BUFSIZ];
-  char suffix[BUFSIZ];
   char * entry = manual[section_num].entries[entry_num];
   int len_cat = strlen(CAT);
 #if defined(ISC) || defined(SCO)
@@ -217,21 +216,20 @@ int section_num, entry_num;
   sprintf(man_globals->manpage_title, "The current manual page is: %s.", temp);
   XtFree(temp);
   
-  ParseEntry(entry, path, section, page, suffix);
+  ParseEntry(entry, path, section, page);
 
 /*
  * Look for uncompressed files first.
  */
 #if defined(__OpenBSD__) || defined(__NetBSD__)
   /* look in machine subdir first */
-  sprintf(filename, "%s/%s%s/%s/%s.%s", path, CAT, 
-	  section + len_cat, MACHINE, page, suffix);
+  sprintf(filename, "%s/%s%s/%s/%s", path, CAT, 
+	  section + len_cat, MACHINE, page);
   if ( (file = fopen(filename,"r")) != NULL)
     return(file);
 #endif
   
-  sprintf(filename, "%s/%s%s/%s.%s", path, CAT, section + len_cat, page, 
-	  suffix);
+  sprintf(filename, "%s/%s%s/%s", path, CAT, section + len_cat, page);
   if ( (file = fopen(filename,"r")) != NULL)
     return(file);
 
@@ -242,34 +240,34 @@ int section_num, entry_num;
 #if !defined(ISC) && !defined(SCO)
 #if defined(__OpenBSD__) || defined(__NetBSD__)
   /* look in machine subdir first */
-  sprintf(filename, "%s/%s%s/%s/%s.%s.%s", path, CAT, 
-	  section + len_cat, MACHINE, page, suffix, COMPRESSION_EXTENSION);
+  sprintf(filename, "%s/%s%s/%s/%s.%s", path, CAT, 
+	  section + len_cat, MACHINE, page, COMPRESSION_EXTENSION);
   if ( (file = Uncompress(man_globals, filename)) != NULL)
     return(file);
 #endif
-  sprintf(filename, "%s/%s%s/%s.%s.%s", path, CAT, 
-	  section + len_cat, page, suffix, COMPRESSION_EXTENSION);
+  sprintf(filename, "%s/%s%s/%s.%s", path, CAT, 
+	  section + len_cat, page, COMPRESSION_EXTENSION);
   if ( (file = Uncompress(man_globals, filename)) != NULL) 
     return(file);
 #ifdef GZIP_EXTENSION
   else {
 #if defined(__OpenBSD__) || defined(__NetBSD__)
       /* look in machine subdir first */
-      sprintf(filename, "%s/%s%s/%s/%s.%s.%s", path, CAT, 
-	      section + len_cat, MACHINE, page, suffix, GZIP_EXTENSION);
+      sprintf(filename, "%s/%s%s/%s/%s.%s", path, CAT, 
+	      section + len_cat, MACHINE, page, GZIP_EXTENSION);
       if ( (file = Uncompress(man_globals, filename)) != NULL)
 	  return(file);
 #endif
-    sprintf(filename, "%s/%s%s/%s.%s.%s", path, CAT,
-	    section + len_cat, page, suffix, GZIP_EXTENSION);
+    sprintf(filename, "%s/%s%s/%s.%s", path, CAT,
+	    section + len_cat, page, GZIP_EXTENSION);
     if ( (file = Uncompress(man_globals, filename)) != NULL) 
       return(file);
   }
 #endif
 #else
   for(i = 0; i < strlen(COMPRESSION_EXTENSIONS); i++) {
-      sprintf(filename, "%s/%s%s/%s.%s.%c", path, CAT,
-            section + len_cat, page, suffix, COMPRESSION_EXTENSIONS[i]);
+      sprintf(filename, "%s/%s%s/%s.%c", path, CAT,
+            section + len_cat, page, COMPRESSION_EXTENSIONS[i]);
       uncompress_format = uncompress_formats[i];
 #ifdef DEBUG
       printf("Trying .%c ...\n", COMPRESSION_EXTENSIONS[i]);
@@ -287,8 +285,8 @@ int section_num, entry_num;
  * HP does it this way (really :-).
  */
 
-  sprintf(filename, "%s/%s%s.%s/%s.suffix", path, CAT, section + len_cat,
-	  COMPRESSION_EXTENSION, page, suffix);
+  sprintf(filename, "%s/%s%s.%s/%s", path, CAT, section + len_cat,
+	  COMPRESSION_EXTENSION, page);
   if ( (file = Uncompress(man_globals, filename)) != NULL)
     return(file);
 /*
@@ -421,7 +419,7 @@ char * entry;
   strcpy(tmp,MANTEMP);		          /* Get a temp file. */
   (void) mktemp(tmp);
   strcpy(man_globals->tempfile, tmp);
-  ParseEntry(entry, path, NULL, NULL, NULL);
+  ParseEntry(entry, path, NULL, NULL);
 
   sprintf(cmdbuf,"cd %s ; %s %s %s > %s %s", path, TBL,
 	  filename, FORMAT, man_globals->tempfile, "2> /dev/null");
@@ -495,22 +493,21 @@ UncompressUnformatted(man_globals, entry, filename)
 ManpageGlobals * man_globals;
 char * entry, * filename;
 {
-  char path[BUFSIZ], page[BUFSIZ], section[BUFSIZ], input[BUFSIZ],
-      suffix[BUFSIZ];
+  char path[BUFSIZ], page[BUFSIZ], section[BUFSIZ], input[BUFSIZ];
   int len_cat = strlen(CAT), len_man = strlen(MAN);
 
-  ParseEntry(entry, path, section, page, suffix);
+  ParseEntry(entry, path, section, page);
 
 #if defined(__OpenBSD__) || defined(__NetBSD__)
   /* 
    * look for uncomressed file in machine subdir first 
    */
-  sprintf(filename, "%s/%s%s/%s/%s.%s", path, MAN, 
-	  section + len_cat, MACHINE, page, suffix);
+  sprintf(filename, "%s/%s%s/%s/%s", path, MAN, 
+	  section + len_cat, MACHINE, page);
   if ( access( filename, R_OK ) == 0 ) {
     man_globals->compress = FALSE;
     man_globals->gzip = FALSE;
-    sprintf(man_globals->save_file, "%s/%s%s/%s/%s.0", path,
+    sprintf(man_globals->save_file, "%s/%s%s/%s/%s", path,
 	    CAT, section + len_cat, MACHINE, page);
     return(TRUE);
   }
@@ -520,7 +517,7 @@ char * entry, * filename;
   sprintf(input, "%s.%s", filename, COMPRESSION_EXTENSION);
   if ( UncompressNamed(man_globals, input, filename) ) {
     man_globals->compress = TRUE;
-    sprintf(man_globals->save_file, "%s/%s%s/%s.0.%s", path,
+    sprintf(man_globals->save_file, "%s/%s%s/%s.%s", path,
 	    CAT, section + len_cat, page, COMPRESSION_EXTENSION);
     return(TRUE);
   }
@@ -530,7 +527,7 @@ char * entry, * filename;
     if ( UncompressNamed(man_globals, input, filename) ) {
       man_globals->compress = TRUE;
       man_globals->gzip = TRUE;
-      sprintf(man_globals->save_file, "%s/%s%s/%s.0.%s", path,
+      sprintf(man_globals->save_file, "%s/%s%s/%s.%s", path,
 	      CAT, section + len_cat, page, GZIP_EXTENSION);
       return(TRUE);
     }
@@ -541,19 +538,12 @@ char * entry, * filename;
  * Look for uncompressed file first.
  */
 
-  sprintf(filename, "%s/%s%s/%s.%s", path, MAN, section + len_man, page, 
-	  suffix);
+  sprintf(filename, "%s/%s%s/%s", path, MAN, section + len_man, page);
   if ( access( filename, R_OK ) == 0 ) {
     man_globals->compress = FALSE;
     man_globals->gzip = FALSE;
-    sprintf(man_globals->save_file, "%s/%s%s/%s.%s", path,
-	    CAT, section + len_cat, page, 
-#if defined(__NetBSD__) || defined(__OpenBSD__) 
-	    CATEXT
-#else
-	    suffix
-#endif
-	);
+    sprintf(man_globals->save_file, "%s/%s%s/%s", path,
+	    CAT, section + len_cat, page);
     return(TRUE);
   }
 
@@ -564,14 +554,8 @@ char * entry, * filename;
   sprintf(input, "%s.%s", filename, COMPRESSION_EXTENSION);
   if ( UncompressNamed(man_globals, input, filename) ) {
     man_globals->compress = TRUE;
-    sprintf(man_globals->save_file, "%s/%s%s/%s.%s.%s", path,
-	    CAT, section + len_cat, page, 
-#if defined(__NetBSD__) || defined(__OpenBSD__) 
-	    CATEXT,
-#else
-	    suffix,
-#endif
-	    COMPRESSION_EXTENSION);
+    sprintf(man_globals->save_file, "%s/%s%s/%s.%s", path,
+	    CAT, section + len_cat, page, COMPRESSION_EXTENSION);
     return(TRUE);
   }
 #ifdef GZIP_EXTENSION
@@ -580,14 +564,8 @@ char * entry, * filename;
     if ( UncompressNamed(man_globals, input, filename) ) {
       man_globals->compress = TRUE;
       man_globals->gzip = TRUE;
-      sprintf(man_globals->save_file, "%s/%s%s/%s.%s.%s", path,
-	      CAT, section + len_cat, page, 
-#if defined(__NetBSD__) || defined(__OpenBSD__) 
-	      CATEXT,
-#else
-	      suffix,
-#endif
-	      GZIP_EXTENSION);
+      sprintf(man_globals->save_file, "%s/%s%s/%s.%s", path,
+	      CAT, section + len_cat, page, GZIP_EXTENSION);
       return(TRUE);
     }
   }
@@ -596,18 +574,12 @@ char * entry, * filename;
  * And lastly files in a compressed directory.
  */
 
-  sprintf(input, "%s/%s%s.%s/%s.%s", path, 
-	  MAN, section + len_man, COMPRESSION_EXTENSION, page, suffix);
+  sprintf(input, "%s/%s%s.%s/%s", path, 
+	  MAN, section + len_man, COMPRESSION_EXTENSION, page);
   if ( UncompressNamed(man_globals, input, filename) ) {
     man_globals->compress = TRUE;
-    sprintf(man_globals->save_file, "%s/%s%s.%s/%s.%s", path, 
-	    CAT, section + len_cat, COMPRESSION_EXTENSION, page,
-#if defined(__NetBSD__) || defined(__OpenBSD__) 
-	    CATEXT
-#else
-	    suffix
-#endif
-	);
+    sprintf(man_globals->save_file, "%s/%s%s.%s/%s", path, 
+	    CAT, section + len_cat, COMPRESSION_EXTENSION, page);
     return(TRUE);
   }
   return(FALSE);
@@ -739,32 +711,19 @@ int h_space,v_space;
  */
 
 void
-ParseEntry(entry, path, sect, page, suffix)
-char *entry, *path, *page, *sect, *suffix;
+ParseEntry(entry, path, sect, page)
+char *entry, *path, *page, *sect;
 {
   char *c, temp[BUFSIZ];
 
-  strncpy(temp, entry, BUFSIZ-1);
-  temp[BUFSIZ-1] = '\0';
-
-  c = rindex(temp, '.');
-  if (c == NULL)
-      PrintError("index failure (.) in ParseEntry.");
-  *c++ = '\0';
-  if (suffix != NULL) {
-      strncpy(suffix, c, BUFSIZ-1);
-      suffix[BUFSIZ-1] = '\0';
-  }
+  strcpy(temp, entry);
 
   c = rindex(temp, '/');
   if (c == NULL) 
     PrintError("index failure in ParseEntry.");
   *c++ = '\0';
-  if (page != NULL) {
-      strncpy(page, c, BUFSIZ);
-      page[BUFSIZ-1] = '\0';
-  }
-      
+  if (page != NULL)
+    strcpy(page, c);
 
   c = rindex(temp, '/');
   if (c == NULL) 
@@ -779,15 +738,11 @@ char *entry, *path, *page, *sect, *suffix;
       *c++ = '\0';
   }
 #endif 
-  if (sect != NULL) {
-    strncpy(sect, c, BUFSIZ);
-    sect[BUFSIZ-1] = '\0';
-  }
+  if (sect != NULL)
+    strcpy(sect, c);
 
-  if (path != NULL) {
-    strncpy(path, temp, BUFSIZ);
-    path[BUFSIZ-1] = '\0';
-  }
+  if (path != NULL)
+    strcpy(path, temp);
 }
 
 /*      Function Name: GetGlobals

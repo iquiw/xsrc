@@ -39,7 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <math.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <sys/mman.h>
 #include <signal.h>
 

@@ -166,13 +166,16 @@ Bool alphaSaveScreen (pScreen, on)
 	    state = 0;
 	else
 	    state = 1;
+#ifdef USE_WSCONS
 	(void) ioctl(alphaFbs[pScreen->myNum].fd, WSDISPLAYIO_SVIDEO, &state);
+#else
+	(void) ioctl(alphaFbs[pScreen->myNum].fd, FBIOSVIDEO, &state);
+#endif
     }
     return( TRUE );
 }
 
-Bool
-alphaCloseScreen (i, pScreen)
+static Bool closeScreen (i, pScreen)
     int		i;
     ScreenPtr	pScreen;
 {
@@ -206,7 +209,7 @@ Bool alphaScreenInit (pScreen)
 
     pPrivate->installedMap = 0;
     pPrivate->CloseScreen = pScreen->CloseScreen;
-    pScreen->CloseScreen = alphaCloseScreen;
+    pScreen->CloseScreen = closeScreen;
     pScreen->SaveScreen = alphaSaveScreen;
 #ifdef XKB
     if (noXkbExtension) {
@@ -260,7 +263,7 @@ Bool alphaInitCommon (scrn, pScrn, offset, init1, init2, cr_cm, save, fb_off)
     if (!alphaScreenAllocate (pScrn))
 	return FALSE;
     if (!fb) {
-	if ((fb = alphaMemoryMap ((size_t) alphaFbs[scrn].size, 
+	if ((fb = alphaMemoryMap ((size_t) alphaFbs[scrn].info.fb_size, 
 			     offset, 
 			     alphaFbs[scrn].fd)) == NULL)
 	    return FALSE;
@@ -268,11 +271,11 @@ Bool alphaInitCommon (scrn, pScrn, offset, init1, init2, cr_cm, save, fb_off)
     }
     /* mfbScreenInit() or cfbScreenInit() */
     if (!(*init1)(pScrn, fb + fb_off,
-	    alphaFbs[scrn].info.width,
-	    alphaFbs[scrn].info.height,
+	    alphaFbs[scrn].info.fb_width,
+	    alphaFbs[scrn].info.fb_height,
 	    monitorResolution, monitorResolution,
-	    alphaFbs[scrn].info.width,
-	    alphaFbs[scrn].info.depth))
+	    alphaFbs[scrn].info.fb_width,
+	    alphaFbs[scrn].info.fb_depth))
 	    return FALSE;
     /* alphaCGScreenInit() if cfb... */
     if (init2)

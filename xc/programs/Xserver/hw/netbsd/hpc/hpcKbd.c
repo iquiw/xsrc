@@ -1,4 +1,4 @@
-/* $NetBSD: hpcKbd.c,v 1.5 2002/03/29 15:48:54 shin Exp $	*/
+/* $NetBSD: hpcKbd.c,v 1.2 2000/07/29 14:23:58 takemura Exp $	*/
 /* $XConsortium: sunKbd.c,v 5.47 94/08/16 13:45:30 dpw Exp $ */
 /*-
  * Copyright (c) 1987 by the Regents of the University of California
@@ -47,11 +47,12 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <stdio.h>
 #include <sys/time.h>
 #include <dev/pckbc/pckbdreg.h>
-#include "atKeynames.h"
 
-#define MOUSE_EMUL_KEY	(KEY_Menu + MIN_KEYCODE)	/* menu key on windows keyboard */
-#define MOUSE_EMUL_KEY1	(KEY_1 + MIN_KEYCODE)
-#define MOUSE_EMUL_KEY5	(KEY_5 + MIN_KEYCODE)
+#define MIN_KEYCODE	8	/* necessary to avoid the mouse buttons */ /* XXX */
+#define MAX_KEYCODE	255	/* limited by the protocol */ /* XXX */
+#define MOUSE_EMUL_KEY	(0xdd + MIN_KEYCODE)	/* menu key on windows keyboard */
+#define MOUSE_EMUL_KEY1	(0x02 + MIN_KEYCODE)
+#define MOUSE_EMUL_KEY5	(0x07 + MIN_KEYCODE)
 
 extern KeySymsRec hpcKeySyms[];
 extern hpcModmapRec *hpcModMaps[];
@@ -89,7 +90,7 @@ hpcBell(percent, device, ctrl, unused)
     wbd.wbd_period = kctrl->bell_duration;
 
     if (ioctl (pPriv->fd, WSCONSIO_COMPLEXBELL, &wbd) == -1) {
- 	hpcError("Failed to activate bell");
+ 	Error("Failed to activate bell");
 	return;
     }
 #endif
@@ -142,7 +143,7 @@ hpcKbdProc(device, what)
     switch (what) {
     case DEVICE_INIT:
 	if (pKeyboard != LookupKeyboardDevice()) {
-	    hpcErrorF (("Cannot open non-system keyboard\n"));
+	    ErrorF ("Cannot open non-system keyboard\n");
 	    return (!Success);
 	}
 
@@ -206,7 +207,7 @@ hpcKbdProc(device, what)
 	case HPC_KBDDEV_RAW:
 	    pPriv->xlatestat = HPC_KBDXSTAT_INIT;
 	    if (ioctl(pPriv->fd, KDSKBMODE, K_RAW) < 0) {
-		hpcFatalError(("Can't set keyboard mode\n"));
+		FatalError("Can't set keyboard mode\n");
 	    }
 	    tcgetattr(pPriv->fd, &pPriv->kbdtty);
 	    tkbdtty = pPriv->kbdtty;
@@ -236,7 +237,7 @@ hpcKbdProc(device, what)
 	switch (pPriv->devtype) {
 	case HPC_KBDDEV_RAW:
 	    if (ioctl(pPriv->fd, KDSKBMODE, K_XLATE) < 0) {
-		hpcError("Can't set keyboard mode\n");
+		Error("Can't set keyboard mode\n");
 	    }
 	    tcsetattr(pPriv->fd, TCSANOW, &pPriv->kbdtty);
 	    break;
@@ -245,7 +246,7 @@ hpcKbdProc(device, what)
 	}
 	break;
     default:
-	hpcFatalError(("Unknown keyboard operation\n"));
+	FatalError("Unknown keyboard operation\n");
     }
     return Success;
 }
@@ -270,7 +271,7 @@ hpcKbdGetEvents(pPriv, pNumEvents, pAgain)
 {
     int fd;
     int	nBytes;	    /* number of bytes of events available. */
-    u_char c, c2;
+    u_char c;
     static hpcEvent evBuf[MAXEVENTS];   /* Buffer for hpcEvents */
 
     fd = pPriv->fd;
@@ -282,8 +283,8 @@ AGAIN:
 		    *pNumEvents = 0;
 		    *pAgain = FALSE;
 		} else {
-		    hpcError ("Reading keyboard");
-		    hpcFatalError (("Could not read the keyboard"));
+		    Error ("Reading keyboard");
+		    FatalError ("Could not read the keyboard");
 		}
 	    } else {
 		*pAgain = TRUE;
@@ -303,47 +304,8 @@ AGAIN:
 		    }
 		    break;
 		case HPC_KBDXSTAT_EXT0:
-		    /*
-		     * extended scan codes are mapped to 0x80~0x95
-		     * see xf86PostKbdEvent() in 
-		     * Xserver/hw/xfree86/common/xf86Events.c
-		     */
-		    switch (c & 0x7f) {
-		    case KEY_KP_7:        c2 = KEY_Home;      break;
-		    case KEY_KP_8:        c2 = KEY_Up;        break;
-		    case KEY_KP_9:        c2 = KEY_PgUp;      break;
-		    case KEY_KP_4:        c2 = KEY_Left;      break;
-		    case KEY_KP_5:        c2 = KEY_Begin;     break;
-		    case KEY_KP_6:        c2 = KEY_Right;     break;
-		    case KEY_KP_1:        c2 = KEY_End;       break;
-		    case KEY_KP_2:        c2 = KEY_Down;      break;
-		    case KEY_KP_3:        c2 = KEY_PgDown;    break;
-		    case KEY_KP_0:        c2 = KEY_Insert;    break;
-		    case KEY_KP_Decimal:  c2 = KEY_Delete;    break;
-		    case KEY_Enter:       c2 = KEY_KP_Enter;  break;
-		    case KEY_LCtrl:       c2 = KEY_RCtrl;     break;
-		    case KEY_KP_Multiply: c2 = KEY_Print;     break;
-		    case KEY_Slash:       c2 = KEY_KP_Divide; break;
-		    case KEY_Alt:         c2 = KEY_AltLang;   break;
-		    case KEY_ScrollLock:  c2 = KEY_Break;     break;
-		    case 0x5b:            c2 = KEY_LMeta;     break;
-		    case 0x5c:            c2 = KEY_RMeta;     break;
-		    case 0x5d:            c2 = KEY_Menu;      break;
-		    case KEY_F3:          c2 = KEY_F13;       break;
-		    case KEY_F4:          c2 = KEY_F14;       break;
-		    case KEY_F5:          c2 = KEY_F15;       break;
-		    case KEY_F6:          c2 = KEY_F16;       break;
-		    case KEY_F7:          c2 = KEY_F17;       break;
-		    case KEY_KP_Plus:     c2 = KEY_KP_DEC;    break;
-			/*
-			 * Ignore virtual shifts (E0 2A, E0 AA, E0 36, E0 B6)
-			 */
-		    default:
-			pPriv->xlatestat = HPC_KBDXSTAT_INIT;
-			return;	/* skip illegal */
-		    }
 		    *pNumEvents = 1;
-		    evBuf[0].value = c2;
+		    evBuf[0].value = (c | 0x80) ;
 		    pPriv->xlatestat = HPC_KBDXSTAT_INIT;
 		    break;
 		case HPC_KBDXSTAT_EXT1:
@@ -355,8 +317,8 @@ AGAIN:
 			pPriv->xlatestat = HPC_KBDXSTAT_EXT1_9D;
 			goto AGAIN;
 		    } else {
-			hpcErrorF(("hpcKbdGetEvents: unexpected input"
-			    " %02x, stat=%d", c, pPriv->xlatestat));
+			ErrorF("hpcKbdGetEvents: unexpected input"
+			       " %02x, stat=%d", c, pPriv->xlatestat);
 			pPriv->xlatestat = HPC_KBDXSTAT_INIT;
 			goto AGAIN;
 		    }
@@ -365,17 +327,17 @@ AGAIN:
 		case HPC_KBDXSTAT_EXT1_9D:
 		    if (c == 0x45 || c == (0x45 | 0x80)) {
 			*pNumEvents = 1;
-			evBuf[0].value = KEY_Break;
+			evBuf[0].value = 0x7f;
 			pPriv->xlatestat = HPC_KBDXSTAT_INIT;
 		    } else {
-			hpcErrorF(("hpcKbdGetEvents: unexpected input %02x, stat=%d",
-			    c, pPriv->xlatestat));
+			ErrorF("hpcKbdGetEvents: unexpected input %02x, stat=%d",
+			       c, pPriv->xlatestat);
 			pPriv->xlatestat = HPC_KBDXSTAT_INIT;
 			goto AGAIN;
 		    }
 		    break;
 		default:
-		    hpcFatalError(("hpcKbdGetEvents: invalid xlate status"));
+		    FatalError("hpcKbdGetEvents: invalid xlate status");
 		    break;
 		}
 		if (*pNumEvents != 0) {
@@ -394,8 +356,8 @@ AGAIN:
 		*pNumEvents = 0;
 		*pAgain = FALSE;
 	    } else {
-		hpcError ("Reading keyboard");
-		hpcFatalError (("Could not read the keyboard"));
+		Error ("Reading keyboard");
+		FatalError ("Could not read the keyboard");
 	    }
 	} else {
 	    *pNumEvents = nBytes / sizeof (hpcEvent);

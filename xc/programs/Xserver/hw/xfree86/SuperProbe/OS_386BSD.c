@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/SuperProbe/OS_386BSD.c,v 3.10.2.5 2001/02/04 19:50:43 herrb Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/SuperProbe/OS_386BSD.c,v 3.10.2.4 1999/07/30 11:21:15 hohndel Exp $ */
 /*
  * (c) Copyright 1993,1994 by David Dawes <dawes@xfree86.org>
  *
@@ -73,11 +73,13 @@
     /* This header is part of codrv */
 #   include <machine/ioctl_pc.h>
 #  endif
-#  if defined(WSCONS_SUPPORT)
-#   include <dev/wscons/wsdisplay_usl_io.h>
-#  endif
-#  if defined(PCVT_SUPPORT) && !defined(SYSCONS_SUPPORT) && !defined(WSCONS_SUPPORT)
-#   include <machine/pcvt_ioctl.h>
+#  if defined(PCVT_SUPPORT) && !defined(SYSCONS_SUPPORT)
+    /* NetBSD's wscons has a PCVT compatibility module. */
+#   if defined(__NetBSD__)
+#    include <dev/wscons/wsdisplay_usl_io.h>
+#   else
+#    include <machine/pcvt_ioctl.h>
+#   endif
 #  endif
 #  ifdef SYSCONS_SUPPORT
     /* both, Free and NetBSD have syscons */
@@ -382,7 +384,7 @@ int Len;
 	Byte *Base = Bios_Base + Offset;
 	unsigned long bs = (unsigned long) Base;
 
-#if defined(__arm__) || defined(__arm32__) || defined(__alpha__)
+#if defined(__arm32__) || defined(__alpha__)
 	return(-1);
 #endif
 

@@ -1,5 +1,5 @@
 /* $XConsortium: process.c,v 1.43 94/08/25 15:44:43 mor Exp $ */
-/* $XFree86: xc/lib/ICE/process.c,v 3.1.8.1 2001/02/08 21:13:14 herrb Exp $ */
+/* $XFree86: xc/lib/ICE/process.c,v 3.1 1994/09/17 13:43:45 dawes Exp $ */
 /******************************************************************************
 
 
@@ -2216,10 +2216,10 @@ IceReplyWaitInfo 	*replyWait;
 
     SKIP_STRING (pData, swap, pEnd,
 		 BAIL_STRING(iceConn, ICE_ProtocolReply,
-		             pStart));				/* vendor */
+			     pStart));			     /* vendor */
     SKIP_STRING (pData, swap, pEnd,
 		 BAIL_STRING(iceConn, ICE_ProtocolReply,
-		            pStart));				/* release */
+			     pStart));			     /* release */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ProtocolReply,
 	length, pData - pStart + SIZEOF (iceProtocolReplyMsg),

@@ -1,4 +1,4 @@
-/*	$NetBSD: rpccons.c,v 1.3 2001/12/17 23:59:49 bjh21 Exp $	*/
+/*	$NetBSD: rpccons.c,v 1.1 1999/06/05 00:21:00 mark Exp $	*/
 
 /*
  * Copyright (c) 1999 Mark Brinicombe & Neil A. Carson 
@@ -65,7 +65,7 @@
 #include "resource.h"
 
 /* NetBSD headers RiscPC specific */
-#include <arm/iomd/vidc.h>
+#include <machine/vidc.h>
 #include <machine/vconsole.h>
 #include <machine/mouse.h>
 #include <machine/kbd.h>
@@ -97,7 +97,7 @@
 
 extern struct _private private;
 
-void rpccons_write_palette(c, r, g, b)
+void write_palette(c, r, g, b)
 	int	c;
 	int	r;
 	int	g;
@@ -149,7 +149,7 @@ void rpc_mouse_io(void)
 {
 	int dy = 0, dx = 0;
 	struct mousebufrec mb;
-	static int buttons = BUTSTATMASK;
+	static int buttons = 0;
 	int was_mouse = 0;
 	xEvent x_event;
 
@@ -170,7 +170,7 @@ void rpc_mouse_io(void)
 		dy -= mb.y;
 
 		/* Have the buttons changed ? */
-		if (buttons != (mb.status & BUTSTATMASK)) {
+		if (buttons != mb.status) {
 			if(LEFTB(buttons) != LEFTB(mb.status)){
 				x_event.u.u.detail = 1;	/* leftmost */
 				x_event.u.u.type = LEFTB(mb.status) ?
@@ -189,7 +189,7 @@ void rpc_mouse_io(void)
 				    ButtonRelease : ButtonPress;
 				mieqEnqueue(&x_event);
 			}
-			buttons = mb.status & BUTSTATMASK;
+			buttons = mb.status;
 		}
 	}
 
