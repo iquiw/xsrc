@@ -6,7 +6,7 @@
 ! $XFree86: xc/programs/xdm/config/xdm-conf.cpp,v 1.9 2001/11/25 12:49:19 herrb Exp $
 !
 DisplayManager.errorLogFile:	XDMLOGDIR/xdm-errors
-DisplayManager.pidFile:		XDMPIDDIR/xdm-pid
+DisplayManager.pidFile:		XDMPIDDIR/xdm.pid
 DisplayManager.keyFile:		XDMDIR/xdm-keys
 DisplayManager.servers:		XDMDIR/Xservers
 DisplayManager.accessFile:	XDMDIR/Xaccess
