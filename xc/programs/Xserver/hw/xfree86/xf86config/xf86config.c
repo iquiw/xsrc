@@ -316,7 +316,7 @@ void getstring(s)
  * We also do the same for QNX4, since we use the OS mouse drivers.
  */
 
-static char *mousetype_identifier[11] = {
+static char *mousetype_identifier[12] = {
 	"Microsoft",
 	"MouseSystems",
 	"Busmouse",
@@ -327,6 +327,7 @@ static char *mousetype_identifier[11] = {
 	"MMHitTab",
 	"IntelliMouse",
 	"acecad",
+	"wsmouse",
 #if defined(__EMX__) || (defined(__QNX__) && !defined(__QNXNTO__))
 	"OSMOUSE"
 #endif
@@ -337,7 +338,7 @@ static char *mouseintro_text =
 "First specify a mouse protocol type. Choose one from the following list:\n"
 "\n";
 
-static char *mousetype_name[10] = {
+static char *mousetype_name[11] = {
 	"Microsoft compatible (2-button protocol)",
 	"Mouse Systems (3-button protocol)",
 	"Bus Mouse",
@@ -347,7 +348,8 @@ static char *mousetype_name[10] = {
 	"MM Series",	/* XXXX These descriptions should be improved. */
 	"MM HitTablet",
 	"Microsoft IntelliMouse",
-	"Acecad tablet"
+	"Acecad tablet",
+	"NetBSD WSCONS Mouse"
 };
 
 static char *mousedev_text =
@@ -403,7 +405,7 @@ void mouse_configuration() {
 	char s[80];
 	printf("%s", mouseintro_text);
 	
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < 11; i++)
 		printf("%2d.  %s\n", i + 1, mousetype_name[i]);
 
 	printf("\n");
@@ -498,7 +500,7 @@ void mouse_configuration() {
 
 #else /* __EMX__ */
        	/* set some reasonable defaults for OS/2 */
-       	config_mousetype = 10;
+       	config_mousetype = 11;
 	config_chordmiddle = 0;       
 	config_cleardtrrts = 0;
 	config_emulate3buttons = 0;
