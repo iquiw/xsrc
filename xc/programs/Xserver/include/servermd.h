@@ -122,7 +122,15 @@ SOFTWARE.
  *	Currently defined for SPARC.
  */
 
-#ifdef vax
+#if defined(__mc68000__) && !defined(mc68000)
+#define mc68000
+#endif
+
+#if defined(__mc68020__) && !defined(mc68020)
+#define mc68020
+#endif
+
+#if defined(vax) || defined(__vax__)
 
 #define IMAGE_BYTE_ORDER	LSBFirst        /* Values for the VAX only */
 #define BITMAP_BIT_ORDER	LSBFirst
@@ -132,7 +140,28 @@ SOFTWARE.
 
 #endif /* vax */
 
-#if (defined(Lynx) && defined(__powerpc__))
+#if defined(__arm32__)
+
+#define IMAGE_BYTE_ORDER        LSBFirst
+
+# if defined(XF86MONOVGA) || defined(XF86VGA16) || defined(XF86MONO)
+#  define BITMAP_BIT_ORDER      MSBFirst
+# else
+#  define BITMAP_BIT_ORDER      LSBFirst
+# endif
+
+# if defined(XF86MONOVGA) || defined(XF86VGA16)
+#  define BITMAP_SCANLINE_UNIT  8
+# endif
+
+#define GLYPHPADBYTES           4
+#define GETLEFTBITS_ALIGNMENT   1
+#define LARGE_INSTRUCTION_CACHE
+#define AVOID_MEMORY_READ
+
+#endif /* __arm32__ */
+
+#if (defined(Lynx) || defined(__NetBSD__)) && defined(__powerpc__)
 
 /* For now this is for Xvfb only */
 #define IMAGE_BYTE_ORDER        MSBFirst
@@ -179,6 +208,18 @@ SOFTWARE.
 #define GETLEFTBITS_ALIGNMENT	1
 
 #endif /* sun && !(i386 && SVR4) */
+
+
+#if defined(__NetBSD__) && defined(__mac68k__)
+# define IMAGE_BYTE_ORDER	MSBFirst        /* Values for mac68k only */
+# define BITMAP_BIT_ORDER	MSBFirst
+# define GLYPHPADBYTES		4
+# define GETLEFTBITS_ALIGNMENT	1
+
+# ifdef mc68020
+#  define FAST_UNALIGNED_READS
+# endif
+#endif
 
 
 #if defined(AIXV3)
