@@ -197,11 +197,6 @@ from the X Consortium.
 #  define CAT "cat"
 #endif
 
-#if defined(__NetBSD__) || defined(__OpenBSD__) 
-/* These systems save formatted man pages with a '.0' suffix */
-#define CATEXT "0"
-#endif
-
 extern void AddStandardSections();
 extern void AddNewSection();
 

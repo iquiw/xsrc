@@ -1,4 +1,4 @@
-/*	$NetBSD: vidc.c,v 1.5 2002/04/04 02:00:31 reinoud Exp $	*/
+/*	$NetBSD: vidc.c,v 1.1 1999/06/05 00:21:00 mark Exp $	*/
 
 /*
  * Copyright (c) 1999 Neil A. Carson & Mark Brinicombe
@@ -66,7 +66,7 @@
 #include "colormapst.h"
 #include "resource.h"
 
-/* #define DEBUG */
+/*#define DEBUG*/
 
 #ifdef DEBUG
 #define DPRINTF(x) ErrorF x
@@ -93,18 +93,6 @@ NULL_FUNC(mouse_cross_screen);
 NULL_FUNC(OsVendorInit);
 
 struct _private private;
-
-static void
-write_palette(int c, int r, int g, int b)
-{
-
-	DPRINTF(("write_palette: wsdisplay_fd = %d, c = %d\n",
-	    private.wsdisplay_fd, c));
-	if (private.wsdisplay_fd >= 0)
-		wsdisplay_write_palette(c, r, g, b);
-	else
-		rpccons_write_palette(c, r, g, b);
-}
 
 /*
  * Install a colour map
@@ -203,8 +191,6 @@ static int list_installed_colour_maps(ScreenPtr screen, Colormap *map_list)
 static void store_colours(ColormapPtr map, int colours, xColorItem *defs)
 {
 	DPRINTF(("store_colours\n"));
-	DPRINTF(("map = %p, private.colour_map = %p\n", map, private.colour_map));
-	DPRINTF(("colours=%d\n", colours));
 	if (private.colour_map && private.colour_map != map)
 		return;
 
@@ -352,9 +338,8 @@ static int vidc_kbd(DevicePtr dev, int what)
 					modmap[vidc_modmap[cnt].key + MIN_KEYCODE] =
 						vidc_modmap[cnt].modifiers;
 			}
-			InitKeyboardDeviceStruct(dev, &keysims, modmap,
-			    private.wskbd_fd == -1 ? vidc_bell : wscons_bell,
-			    vidc_kbdctrl);
+			InitKeyboardDeviceStruct(dev, &keysims, modmap, vidc_bell,
+				vidc_kbdctrl);
 			break;
 		case DEVICE_ON:
 			dev->on = TRUE;
@@ -396,14 +381,10 @@ int mouse_accel(DeviceIntPtr device, int delta)
  */
 static void sigio_handler(int flags)
 {
-	if (private.mouse_fd >= 0)
+	if (private.mouse_fd)
 		rpc_mouse_io();
-	if (private.wsmouse_fd >= 0)
-		wsmouse_io();
-	if (private.kbd_fd >= 0)
+	if (private.kbd_fd)
 		rpc_kbd_io();
-	if (private.wskbd_fd >= 0)
-		wskbd_io();
 }
 
 /* Start input devices
@@ -414,32 +395,27 @@ void InitInput(int argc, char *argv[])
 
 	DPRINTF(("InitInput\n"));
 
-	private.mouse_fd = -1;
-	private.wsmouse_fd = -1;
-	private.kbd_fd = -1;
-	private.wskbd_fd = -1;
-	private.beep_fd = -1;
+	/*
+	 * When we support wscons on the RiscPC we need to try
+	 * and open the wsmouse and wskbd devices here
+	 */
 
-	/* Try to init the wsmouse device */
-	private.wsmouse_fd = wsmouse_init();
-	if (private.wsmouse_fd == -1) {
-		/* Try and init the old rpc mouse device */
-		private.mouse_fd = rpc_init_mouse();
-		if (private.mouse_fd == -1)
-			FatalError("Cannot open mouse device\n");
+	/* Try and init the old rpc mouse device */
+	private.mouse_fd = rpc_init_mouse();
+	if (private.mouse_fd == -1) {
+		FatalError("Cannot open mouse device\n");
 	}
 	
-	/* ... and wskbd */
-	private.wskbd_fd = wskbd_init();
-	if (private.wskbd_fd == -1) {
-		/* Try and init the old rpc kbd device */
-		private.kbd_fd = rpc_init_kbd();
-		if (private.kbd_fd == -1)
-			FatalError("Cannot open kbd device\n");
-		/* Try and init the old rpc beep device */
-		private.beep_fd = rpc_init_bell();
-		if (private.beep_fd == -1)
-			ErrorF("Cannot open beep device\n");
+	/* Try and init the old rpc kbd device */
+	private.kbd_fd = rpc_init_kbd();
+	if (private.kbd_fd == -1) {
+		FatalError("Cannot open kbd device\n");
+	}
+
+	/* Try and init the old rpc beep device */
+	private.beep_fd = rpc_init_bell();
+	if (private.beep_fd == -1) {
+		ErrorF("Cannot open beep device\n");
 	}
 
 	/* Add the input devices */
@@ -458,14 +434,8 @@ void InitInput(int argc, char *argv[])
 		FatalError("mieqInit failed!!\n");
 
 	/* Start taking some SIGIOs on input device file descriptors. */
-	if (private.mouse_fd >= 0)
-		fcntl(private.mouse_fd, F_SETFL, O_ASYNC | O_NONBLOCK);
-	if (private.wsmouse_fd >= 0)
-		fcntl(private.wsmouse_fd, F_SETFL, O_ASYNC | O_NONBLOCK);
-       	if (private.kbd_fd >= 0)
-		fcntl(private.kbd_fd, F_SETFL, O_ASYNC | O_NONBLOCK);
-       	if (private.wskbd_fd >= 0)
-		fcntl(private.wskbd_fd, F_SETFL, O_ASYNC | O_NONBLOCK);
+	fcntl(private.mouse_fd, F_SETFL, O_ASYNC | O_NONBLOCK);
+	fcntl(private.kbd_fd, F_SETFL, O_ASYNC | O_NONBLOCK);
 	signal(SIGIO, sigio_handler);
 }
 
@@ -484,12 +454,12 @@ static Bool vidc_save_screen(ScreenPtr screen, int on)
 int vidc_init_screen(int index, ScreenPtr screen, int argc, char **argv)
 {
 	extern int defaultColorVisualClass;
+	/*
+	 * When we support wscons on the RiscPC we need to try
+	 * and open the wsmouse and wskbd devices here
+	 */
 
-	private.con_fd = -1;
-	private.wsdisplay_fd = -1;
-
-	if (!wsdisplay_init(screen, argc, argv))
-	    if (!rpc_init_screen(screen, argc, argv))
+	if (!rpc_init_screen(screen, argc, argv))
 		FatalError("Unabled to initialize frame buffer\n");
 
 	if ((private.vram_base = mmap(0, private.width * private.yres,
@@ -498,9 +468,6 @@ int vidc_init_screen(int index, ScreenPtr screen, int argc, char **argv)
 		FatalError("Unable to mmap frame buffer\n");
 		return FALSE;
 	}
-
-	DPRINTF(("mmap'ed vram ... the vram_base = %p, size = %d on filehandle %d\n",
-		private.vram_base, private.width * private.yres, private.vram_fd));
 
 	/* Set the palette for blackpixel and whitepixel */
 /*	write_palette(255, 0, 0, 0);
@@ -606,19 +573,13 @@ void AbortDDX(void)
 {
 	DPRINTF(("AbortDDX\n"));
 
-	if (private.wsdisplay_fd >= 0)
-		wsdisplay_closedown();
-	if (private.con_fd >= 0)
-		rpc_closedown();
+	rpc_closedown();
 
 	if (private.vram_fd != 0)
 		close(private.vram_fd);
 	close(private.mouse_fd);
-	close(private.wsmouse_fd);
 	close(private.con_fd);
-	close(private.wsdisplay_fd);
 	close(private.kbd_fd);
-	close(private.wskbd_fd);
 }
 
 /* Throw in the towel: Just call AbortDDX for now.
@@ -662,8 +623,6 @@ int ddxProcessArgument(int argc, char **argv, int i)
 	return 0;
 }
 
-
-#ifdef DDXTIME
 /*
  * DDXTIME is defined for the XFree86 servers in ServerOSDefines so
  * we have to implement a local version for the vidc server as os/util.c
@@ -677,8 +636,6 @@ GetTimeInMillis()
     gettimeofday(&tp, 0);
     return(tp.tv_sec * 1000) + (tp.tv_usec / 1000);
 }
-#endif
-
 
 /* dummy functions to link X server with X input Extension */
 void

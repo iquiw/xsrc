@@ -33,19 +33,13 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include	"atKeynames.h"
 #include	"xf86Keymap.h"
-#include	"lk201Keymap.h"
 
 KeySymsRec alphaKeySyms[] = {
     /*	map	   minKeyCode	maxKC	width */
-    NULL,               0,      0,                      0,   /* None */
-    lk201map,		0,	LK201_NUM_KEYCODES,	4,   /* lk201 */
-    lk201map,		0,	LK201_NUM_KEYCODES,	4,   /* lk401 */
-    map,		0,	MAX_STD_KEYCODE,	4,   /* XT */
-    map,		0,	MAX_STD_KEYCODE,	4,   /* AT */
-    map,		0,	MAX_STD_KEYCODE,	4,   /* USB/XT */
+    map,		0,	MAX_STD_KEYCODE,	4,
 };
 
-static AlphaModmapRec xf86modmap[] = {
+static AlphaModmapRec modmap[] = {
 	KEY_ShiftL,	ShiftMask,
 	KEY_ShiftR,	ShiftMask,
 	KEY_CapsLock,	LockMask,
@@ -57,10 +51,5 @@ static AlphaModmapRec xf86modmap[] = {
 };
 
 AlphaModmapRec *alphaModMaps[] = {
-    NULL,
-    lk201modmap,
-    lk201modmap,
-    xf86modmap,
-    xf86modmap,
-    xf86modmap,
+    modmap,
 };

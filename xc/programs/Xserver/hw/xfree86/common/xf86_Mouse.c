@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/common/xf86_Mouse.c,v 3.21.2.26 2001/02/05 23:10:04 herrb Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/common/xf86_Mouse.c,v 3.21.2.24 1999/12/11 19:00:42 hohndel Exp $ */
 /*
  *
  * Copyright 1990,91 by Thomas Roell, Dinkelscherben, Germany.
@@ -50,8 +50,12 @@
 #include "xf86_UsbMse.h"
 #endif
 
-#ifdef WSCONS_SUPPORT
+#if defined(__NetBSD__)
+#undef MAXHOSTNAMELEN		/* avoid duplication from param.h */
+#include <sys/param.h>		/* pull in __NetBSD_Version__ */
+#if __NetBSD_Version__ >= 103060000
 #include <dev/wscons/wsconsio.h>
+#endif
 #endif
 
 #ifdef XINPUT
@@ -131,7 +135,7 @@ Bool xf86SupportedMouseTypes[] =
 	FALSE,	/* auto */
 #endif
 	TRUE,	/* ACECAD */
-#ifdef WSCONS_SUPPORT
+#if defined(__NetBSD__) && __NetBSD_Version__ >= 103060000
 	TRUE,	/* wsmouse */
 #else
 	FALSE,	/* wsmouse */
@@ -234,7 +238,7 @@ static unsigned char proto[][7] = {
   {  0xf8,   0x80, 0x00,   0x00, 5,    0x00,   0xff },  /* sysmouse */
   {  0xf8,   0x80, 0x00,   0x00, 5,    0x00,   0xff },  /* dummy entry for auto - used only to fill space */
   {  0x80,   0x80, 0x80,   0x00, 3,    0x00,   0xff },  /* ACECAD */
-#ifdef WSCONS_SUPPORT
+#if defined(__NetBSD__) && __NetBSD_Version__ >= 103060000
   {  0x00,   0x00, 0x00,   0x00, sizeof(struct wscons_event),
      				       0x00,   0x00 },  /* wsmouse */
 #else
@@ -587,23 +591,13 @@ MouseDevPtr mouse;
 	}
 	break;
 
-#ifdef WSCONS_SUPPORT
+#if defined(__NetBSD__)
       case P_WSMOUSE:
-	if (mouse->resolution > 0) {
-	    /* For wsmouse the resolution is in 0-100, while it's 0-300 for 
-	       XF86Config */
-	    static int res;
-	    res = mouse->resolution/3;
-	    if (ioctl(mouse->mseFd, WSMOUSEIO_SRES, &res) < 0) {
-		ErrorF("ioctl(WSMOUSEIO_SRES) failed (%s)\n",
-		       strerror(errno));
-	    }
-	}
 	break;
-#endif
-#if defined(__NetBSD__) && defined(__atari__)
+#if defined(__atari__)
       case P_SUN:
 	break;
+#endif
 #endif
 
 #ifdef USB_MOUSE
@@ -737,11 +731,11 @@ xf86MouseProtocol(device, rBuf, nBytes)
 #if !defined(__NetBSD__)
 	mouse->mseType != P_PS2 &&
 #endif
-#ifdef WSCONS_SUPPORT
+#if defined(__NetBSD__)
 	mouse->mseType != P_WSMOUSE &&
-#endif
-#if defined(__NetBSD__) && defined(__atari__)
+#if defined(__atari__)
 	mouse->mseType != P_SUN &&
+#endif
 #endif
 #ifdef USB_MOUSE
 	mouse->mseType != P_USB &&
@@ -1003,7 +997,7 @@ xf86MouseProtocol(device, rBuf, nBytes)
 	}
       break;
 
-#ifdef WSCONS_SUPPORT
+#if defined(__NetBSD__) && __NetBSD_Version__ >= 103060000
     case P_WSMOUSE: {
       struct wscons_event ev;
 
@@ -1043,8 +1037,7 @@ xf86MouseProtocol(device, rBuf, nBytes)
       }
       break;
     }
-#endif /* WSCONS_SUPPORT */
-#if defined(__NetBSD__) && defined(__atari__)
+#ifdef __atari__
     case P_SUN: {
       Firm_event fe;
 
@@ -1073,7 +1066,8 @@ xf86MouseProtocol(device, rBuf, nBytes)
       }
       break;
     }
-#endif /* __NETBSD__ && __atari__ */
+#endif /* __atari__ */
+#endif /* defined(__NetBSD__) && __NetBSD_Version__ >= 103060000 */
 
 #ifdef USB_MOUSE
     case P_USB:

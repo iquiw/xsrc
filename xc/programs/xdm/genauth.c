@@ -74,7 +74,7 @@ longtochars (l, c)
 
 # define FILE_LIMIT	1024	/* no more than this many buffers */
 
-#if !defined(ARC4_RANDOM) && !defined(DEV_RANDOM)
+#ifndef ARC4_RANDOM
 static
 sumFile (name, sum)
 char	*name;
@@ -126,7 +126,7 @@ InitXdmcpWrapper ()
 
     _XdmcpWrapperToOddParity(sum, key);
 
-#elif defined(DEV_RANDOM)
+#elif DEV_RANDOM
     int fd;
     unsigned char   tmpkey[8];
     

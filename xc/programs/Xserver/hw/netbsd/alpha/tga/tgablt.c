@@ -1,4 +1,4 @@
-/* $NetBSD: tgablt.c,v 1.3 2000/12/19 01:34:06 perseant Exp $ */
+/* $NetBSD: tgablt.c,v 1.2 2000/07/03 21:06:31 elric Exp $ */
 
 /*
  * tga copy area
@@ -113,7 +113,8 @@ MROP_NAME(alphaTgaDoBitblt)(pSrc, pDst, alu, prgnDst, pptSrc, planemask)
 
     fbFd *inf = &alphaFbs[pSrc->pScreen->myNum];
     unsigned char *fb = inf->fb;
-    tga_reg_t **regs = inf->regs.tgaregs;
+    tga_reg_t *regs[4] = { inf->tgaregs0, inf->tgaregs1,
+        inf->tgaregs2, inf->tgaregs3 };
     int creg = 0;
 
     if (pSrc != pDst)

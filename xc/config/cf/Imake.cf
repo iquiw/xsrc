@@ -131,9 +131,6 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.34.2.14 1999/07/29 09:22:23 hohndel Ex
 # if defined(__sparc__) || defined(sparc)
 #  define SparcArchitecture
 #  undef sparc
-#  if defined(__sparc_v9__) || defined(__arch64__)
-#    define Sparc64Architecture
-#  endif
 # endif
 # if defined(__mips__) || defined(mips)
 #   define MipsArchitecture
@@ -164,22 +161,9 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.34.2.14 1999/07/29 09:22:23 hohndel Ex
 #  define amigaArchitecture
 #  undef amiga
 # endif
-# if defined(__arm__) || defined(arm) || defined(__arm32__) || defined(arm32)
-#  define armArchitecture
-#  undef arm
+# if defined(__arm32__) || defined(arm32)
+#  define arm32Architecture
 #  undef arm32
-# endif
-# if defined(__acorn32__) || defined(acorn32)
-#  define acorn32Architecture
-#  undef acorn32
-# endif
-# if defined(__cats__) || defined(cats)
-#  define catsArchitecture
-#  undef cats
-# endif
-# if defined(__shark__) || defined(shark)
-#  define sharkArchitecture
-#  undef shark
 # endif
 # if defined(__atari__) || defined(atari)
 #  define atariArchitecture
@@ -209,14 +193,6 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.34.2.14 1999/07/29 09:22:23 hohndel Ex
 #  define hpcmipsArchitecture
 #  undef hpcmips
 # endif
-# if defined(__hpcarm__) || defined(hpcarm)
-#  define hpcarmArchitecture
-#  undef hpcarm
-# endif
-# if defined(__mvme68k__) || defined(mvme68k)
-#  define mvme68kArchitecture
-#  undef mvme68k
-# endif
 # if defined(__next68k__) || defined(next68k)
 #  define next68kArchitecture
 #  undef next68k
@@ -240,18 +216,6 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.34.2.14 1999/07/29 09:22:23 hohndel Ex
 # if defined(__luna68k__) || defined(luna68k)
 #  define luna68kArchitecture
 #  undef luna68k
-# endif
-# if defined(__mipsco__) || defined(mipsco)
-#  define mipscoArchitecture
-#  undef mipsco
-# endif
-# if defined(__algor__) || defined(algor)
-#  define algorArchitecture
-#  undef algor
-# endif
-# if defined(__playstation2__) || defined(playstation2)
-#  define playstation2Architecture
-#  undef playstation2
 # endif
 #endif /* NetBSD */
 

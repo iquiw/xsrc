@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/vga256/drivers/tdfx/vb_driver.c,v 1.1.2.10 2000/01/24 21:07:02 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/vga256/drivers/tdfx/vb_driver.c,v 1.1.2.9 1999/11/21 18:45:06 robin Exp $ */
 /*
    Voodoo Banshee driver version 1.0.2
 
@@ -815,8 +815,7 @@ VBFbInit()
     pVB->CursorData=TDFX.ChipLinearSize-
       ((1024+pVB->stride-1)/pVB->stride)*pVB->stride;
   }
-  if (!OFLG_ISSET(OPTION_SW_CURSOR, &vga256InfoRec.options) &&
-      vga256InfoRec.displayWidth < HW_CURSOR_MAX_DISPLAYWIDTH)
+  if (!OFLG_ISSET(OPTION_SW_CURSOR, &vga256InfoRec.options))
     VBHwCursorInit();
   if (!OFLG_ISSET(OPTION_NOACCEL, &vga256InfoRec.options))
     VBAccelInit();

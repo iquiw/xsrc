@@ -1,4 +1,4 @@
-/* $NetBSD: hpcMouse.c,v 1.4 2003/06/29 08:17:48 shin Exp $	*/
+/* $NetBSD: hpcMouse.c,v 1.2 2000/07/29 14:23:58 takemura Exp $	*/
 /* $XConsortium: sunMouse.c,v 5.21 94/04/17 20:29:47 kaleb Exp $ */
 /*-
  * Copyright (c) 1987 by the Regents of the University of California
@@ -106,13 +106,13 @@ hpcMouseProc(device, what)
     DevicePtr	  pMouse = (DevicePtr) device;
     int	    	  format;
     static int	  oformat;
-    BYTE    	  map[6];
+    BYTE    	  map[4];
     char	  *dev;
 
     switch (what) {
 	case DEVICE_INIT:
 	    if (pMouse != LookupPointerDevice()) {
-		hpcErrorF (("Cannot open non-system mouse"));
+		ErrorF ("Cannot open non-system mouse");
 		return !Success;
 	    }
 	    if (hpcPtrPriv.fd == -1)
@@ -122,8 +122,6 @@ hpcMouseProc(device, what)
 	    map[1] = 1;
 	    map[2] = 2;
 	    map[3] = 3;
-	    map[4] = 4;
-	    map[5] = 5;
 	    InitPointerDeviceStruct(
 		pMouse, map, 5, miPointerGetMotionEvents,
  		hpcMouseCtrl, miPointerGetMotionBufferSize());
@@ -132,12 +130,12 @@ hpcMouseProc(device, what)
 	case DEVICE_ON:
 #if 0
 	    if (ioctl (hpcPtrPriv.fd, VUIDGFORMAT, &oformat) == -1) {
-		hpcError ("hpcMouseProc ioctl VUIDGFORMAT");
+		Error ("hpcMouseProc ioctl VUIDGFORMAT");
 		return !Success;
 	    }
 	    format = VUID_FIRM_EVENT;
 	    if (ioctl (hpcPtrPriv.fd, VUIDSFORMAT, &format) == -1) {
-		hpcError ("hpcMouseProc ioctl VUIDSFORMAT");
+		Error ("hpcMouseProc ioctl VUIDSFORMAT");
 		return !Success;
 	    }
 #endif
@@ -160,7 +158,7 @@ hpcMouseProc(device, what)
 	case DEVICE_CLOSE:
 #if 0
 	    if (ioctl (hpcPtrPriv.fd, VUIDSFORMAT, &oformat) == -1)
-		hpcError ("hpcMouseProc ioctl VUIDSFORMAT");
+		Error ("hpcMouseProc ioctl VUIDSFORMAT");
 #endif
 	    break;
 
@@ -200,8 +198,8 @@ hpcMouseGetEvents (pPriv, pNumEvents, pAgain)
 	    *pNumEvents = 0;
 	    *pAgain = FALSE;
 	} else {
-	    hpcError ("hpcMouseGetEvents read");
-	    hpcFatalError (("Could not read from mouse"));
+	    Error ("hpcMouseGetEvents read");
+	    FatalError ("Could not read from mouse");
 	}
     } else {
 	*pNumEvents = nBytes / sizeof (hpcEvent);
@@ -383,7 +381,7 @@ hpcMouseEnqueueEvent (device, fe)
     case WSCONS_EVENT_MOUSE_ABSOLUTE_Z:
 	break;
     default:
-	hpcFatalError (("hpcMouseEnqueueEvent: unrecognized id\n"));
+	FatalError ("hpcMouseEnqueueEvent: unrecognized id\n");
 	break;
     }
 }
