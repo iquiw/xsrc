@@ -188,6 +188,7 @@ static SymTabRec DriverTab[] = {
 #define ACECAD		1039
 #define XQUE      	1040
 #define OSMOUSE   	1041
+#define WSMOUSE   	1042
 
 #ifdef INIT_CONFIG
 static SymTabRec MouseTab[] = {
@@ -213,6 +214,7 @@ static SymTabRec MouseTab[] = {
   { ACECAD,	"acecad" },
   { XQUE,	"xqueue" },
   { OSMOUSE,	"osmouse" },
+  { WSMOUSE,	"wsmouse" },
   { -1,		"" },
 };
 #endif /* INIT_CONFIG */
@@ -554,6 +556,9 @@ static SymTabRec KeyboardTab[] = {
 #define P_SYSMOUSE	17		/* SysMouse */
 #define P_AUTO		18		/* automatic */
 #define P_ACECAD	19		/* ACECAD protocol */
+#define P_XQUE		20		/* xque */
+#define P_OSMOUSE	21		/* osmouse */
+#define P_WSMOUSE	22		/* NetBSD wsmouse */
 
 #define EMULATE3	50
 #define BAUDRATE	51

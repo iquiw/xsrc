@@ -870,7 +870,6 @@ trim_version(p)
 }
 #endif
 
-
 #ifdef linux
 const char *libc_c=
 "#include <stdio.h>\n"

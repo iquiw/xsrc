@@ -63,7 +63,6 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.34.2.9 1998/11/12 10:34:47 dawes Exp $
 # undef __OpenBSD__
 # undef __NetBSD__
 # define OpenBSDArchitecture
-# define MacroIncludeFile <OpenBSD.cf>
 # define MacroFile OpenBSD.cf
 # ifdef __i386__
 #  define i386BsdArchitecture
@@ -135,18 +134,47 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.34.2.9 1998/11/12 10:34:47 dawes Exp $
 #   define ArcArchitecture
 #   undef mips
 # endif
-# ifdef __alpha__
-#   define AlphaArchitecture
-#   undef __alpha__
-# endif
 # ifdef mc68000
 #   define Mc68020Architecture
-#   undef mc68000
 # endif
-# if defined(arm32) || defined(__arm32__)
-#   define Arm32Architecture
-#   undef arm32
-#   undef __arm32__
+# if defined(__alpha__)
+#  define AlphaArchitecture
+# endif
+# if defined(__m68k__) || defined(m68k)
+#  define m68kArchitecture
+#  undef m68k
+# endif
+# if defined(__sun3__) || defined(sun3)
+#  define Sun3Architecture
+#  undef sun3
+# endif
+# if defined(__hp300__) || defined(hp300)
+#  define hp300Architecture
+#  undef hp300
+# endif
+# if defined(__mac68k__) || defined(mac68k)
+#  define mac68kArchitecture
+#  undef mac68k
+# endif
+# if defined(__amiga__) || defined(amiga)
+#  define amigaArchitecture
+#  undef amiga
+# endif
+# if defined(__arm32__) || defined(arm32)
+#  define arm32Architecture
+#  undef arm32
+# endif
+# if defined(__vax__) || defined(vax)
+#  define VaxArchitecture
+#  undef vax
+# endif
+# if defined(__pc532__) || defined(pc532)
+#  define pc532Architecture
+#  undef pc532
+# endif
+# if defined(__x68k__) || defined(x68k)
+#  define x68kArchitecture
+#  undef x68k
 # endif
 #endif /* NetBSD */
 
