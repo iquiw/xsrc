@@ -180,6 +180,10 @@ XCOMM math.h uses _REENTRANT in FreeBSD, so we define it here too
  * For FreeBSD 2.2.5 and later don't make any assumptions about the version
  * of Tcl in the base OS.
  *
+ * Don't make any assumptions about the version of Tcl in the base OS.
+ * These settings assume that the tcl-7.6 and tk-4.2 packages have been
+ * installed.
+ *
  * Note the static libs in some versions of the FreeBSD packages are
  * broken.  The symptom of this is unresolved symbols when linking
  * XF86Setup.  If you run into this problem, either build your own

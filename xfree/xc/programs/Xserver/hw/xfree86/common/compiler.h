@@ -134,7 +134,7 @@ extern int testinx(unsigned short, unsigned char);
 
 #ifdef __GNUC__
 
-#if (defined(linux) || defined(__FreeBSD__)) && defined(__alpha__)
+#if (defined(linux) || defined(__FreeBSD__) || defined(__NetBSD__)) && defined(__alpha__)
 
 #ifdef linux
 /* for Linux on Alpha, we use the LIBC _inx/_outx routines */
@@ -199,6 +199,10 @@ extern unsigned short inw(unsigned int port);
 extern unsigned int inl(unsigned int port);
 
 #endif /* __FreeBSD__ && !DO_PROTOTYPES */
+
+#if defined(__NetBSD__)
+#include <machine/pio.h>
+#endif /* __NetBSD__ */
 
 /*
  * inline functions to do unaligned accesses
@@ -885,7 +889,7 @@ static __inline__ unsigned long ldw_u(unsigned short * r11)
 #define write_mem_barrier()	/* NOP */
 #endif /* __arm32__ */
 
-#elif (defined(Lynx) || defined(linux) || defined(__OpenBSD__)) && defined(__powerpc__)
+#elif (defined(Lynx) || defined(linux) || defined(__OpenBSD__) || defined(__NetBSD__)) && defined(__powerpc__)
 
 #ifndef MAP_FAILED
 #define MAP_FAILED ((void *)-1)
