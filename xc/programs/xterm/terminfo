@@ -1,0 +1,706 @@
+# $XConsortium: terminfo,v 1.11 94/10/13 21:24:31 gildea Exp $
+# $XFree86: xc/programs/xterm/terminfo,v 3.22 1998/04/05 00:46:12 robin Exp $
+#
+# XFree86 updates/notes/new entries (including xterm-8bit, xterm-16color)
+# - Thomas E. Dickey <dickey@clark.net>
+#
+# meml locks memory above the cursor; memu unlocks (ala HP terminals)
+# rmcup clears memory before switching to the alternate screen.  The older
+#	(deprecated) \E[?47h did not do this, requiring applications to
+#	embed a \E[2J in the rmcup string.  However, that behavior cannot
+#	be disabled via titeInhibit, making that resource not function as
+#	intended on systems with terminfo.
+#
+# We could have used ich1=\E[@, which works with ncurses, but that is not
+# standard behavior.  If it is set, then SVr4 vi (e.g., Solaris 2.6) emits
+# both smir/rmir and ich1.
+#
+# The xterm-r6 entry does not define acsc, which is probably an error (but
+# it matches the X11R5 to X11R6.3 distributions).
+#
+xterm|xterm-24|xterms|vs100|xterm terminal emulator (X Window System),
+	am,
+	bce,
+	km,
+	mc5i,
+	mir,
+	msgr,
+	xenl,
+	colors#8,
+	cols#80,
+	it#8,
+	lines#24,
+	pairs#64,
+	acsc=``aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~,
+	bel=^G,
+	bold=\E[1m,
+	cbt=\E[Z,
+	civis=\E[?25l,
+	clear=\E[H\E[2J,
+	cnorm=\E[?25h,
+	cr=^M,
+	csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD,
+	cub1=^H,
+	cud=\E[%p1%dB,
+	cud1=^J,
+	cuf=\E[%p1%dC,
+	cuf1=\E[C,
+	cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA,
+	cuu1=\E[A,
+	cvvis=\E[?25h,
+	dch=\E[%p1%dP,
+	dch1=\E[P,
+	dl=\E[%p1%dM,
+	dl1=\E[M,
+	ech=\E[%p1%dX,
+	ed=\E[J,
+	el=\E[K,
+	el1=\E[1K,
+	enacs=\E(B\E)0,
+	flash=\E[?5h\E[?5l,
+	home=\E[H,
+	hpa=\E[%i%p1%dG,
+	ht=^I,
+	hts=\EH,
+	ich=\E[%p1%d@,
+	il=\E[%p1%dL,
+	il1=\E[L,
+	ind=^J,
+	is2=\E7\E[r\E[m\E[?7h\E[?1;3;4;6l\E[4l\E8\E>,
+	ka1=\EOw,
+	ka3=\EOu,
+	kb2=\EOy,
+	kbeg=\EOE,
+	kbs=^H,
+	kc1=\EOq,
+	kc3=\EOs,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	kdch1=\177,
+	kend=\EOF,
+	kent=\EOM,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[25~,
+	kf14=\E[26~,
+	kf15=\E[28~,
+	kf16=\E[29~,
+	kf17=\E[31~,
+	kf18=\E[32~,
+	kf19=\E[33~,
+	kf2=\EOQ,
+	kf20=\E[34~,
+	kf3=\EOR,
+	kf4=\EOS,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+	kfnd=\E[1~,
+	khome=\EOH,
+	kich1=\E[2~,
+	kmous=\E[M,
+	knp=\E[6~,
+	kpp=\E[5~,
+	kslt=\E[4~,
+	mc0=\E[i,
+	mc4=\E[4i,
+	mc5=\E[5i,
+	meml=\El,
+	memu=\Em,
+	op=\E[39;49m,
+	rc=\E8,
+	rev=\E[7m,
+	ri=\EM,
+	rmacs=^O,
+	rmam=\E[?7l,
+	rmcup=\E[?1047l\E[?1048l,
+	rmir=\E[4l,
+	rmkx=\E[?1l\E>,
+	rmso=\E[27m,
+	rmul=\E[24m,
+	rs1=\Ec,
+	rs2=\E7\E[r\E[m\E[?7h\E[?1;3;4;6l\E[4l\E8\E>,
+	sc=\E7,
+	setab=\E[4%p1%dm,
+	setaf=\E[3%p1%dm,
+	setb=\E[4
+		%?%p1%{1}%=
+			%t4
+			%e%p1%{3}%=
+			%t6
+			%e%p1%{4}%=
+			%t1
+			%e%p1%{6}%=
+			%t3
+			%e%p1%d
+		%;m,
+	setf=\E[3
+		%?%p1%{1}%=
+			%t4
+			%e%p1%{3}%=
+			%t6
+			%e%p1%{4}%=
+			%t1
+			%e%p1%{6}%=
+			%t3
+			%e%p1%d
+		%;m,
+	sgr=\E[0
+		%?%p1%p6%|
+			%t;1
+		%;
+		%?%p2
+			%t;4
+		%;
+		%?%p1%p3%|
+			%t;7
+		%;
+		%?%p4
+			%t;5
+		%;m
+		%?%p9
+			%t\016
+			%e\017
+		%;,
+	sgr0=\E[m\017,
+	smacs=^N,
+	smam=\E[?7h,
+	smcup=\E[?1048h\E[?1047h,
+	smir=\E[4h,
+	smkx=\E[?1h\E=,
+	smso=\E[7m,
+	smul=\E[4m,
+	tbc=\E[3g,
+	vpa=\E[%i%p1%dd,
+xterm-65|xterm with tall window 65x80 (X Window System),
+	lines#65,
+	use=xterm,
+xterm-bold|xterm with bold instead of underline (X Window System),
+	rmul=\E[22m,
+	smul=\E[1m,
+	use=xterm,
+xtermm|monochrome xterm (X Window System),
+	colors@,
+	ncv@,
+	pairs@,
+	op@,
+	setab@,
+	setaf@,
+	setb@,
+	setf@,
+	sgr@,
+	use=xterm,
+xterm-boldso|xterm with bold for standout (X Window System),
+	rmso=\E[22m,
+	smso=\E[1m,
+	use=xterm,
+#
+# vi may work better with this entry, because vi
+# doesn't use insert mode much
+xterm-ic|xterm-vi|xterm with insert character instead of insert mode,
+	mir@,
+	ich=\E[%p1%d@,
+	ich1=\E[@,
+	rmir@,
+	smir@,
+	use=xterm,
+#
+xterm-vt220|xterm emulating vt220,
+	kf1=\E[11~,
+	kf2=\E[12~,
+	kf3=\E[13~,
+	kf4=\E[14~,
+	use=xterm,
+#
+# This is used only for testing (it's not relevant to DEC VTxxx terminals, but
+# to ncurses).
+xterm-xmc|xterm with magic-cookie glitch,
+	xmc#1,
+	use=xterm,
+#
+# This one also is primarily for testing ncurses; while the ISO 6429 defines
+# the REP control, none of the DEC VTxxx terminals (VT52 through VT420) support
+# it.
+xterm-rep|xterm with repeat-character control,
+	rep=%p1%c\E[%p2%{1}%-%db,
+	use=xterm,
+#
+# This is mainly for testing xterm; the real VT220 will not let you switch
+# character sets without first altering the keyboard language in the setup
+# screen.  Some emulators allow this anyway.  (Note that these strings are
+# normally used only for printers).  The parameter to csnm and scs is the same
+# in both cases:  the keyboard language parameter returned by CSI ? 2 6 n.
+xterm-nrc|xterm with VT220 national replacement character sets,
+	csnm=
+		%?%p1%{1}%=
+			%tNorth American
+			%e%p1%{2}%=
+			%tBritish
+			%e%p1%{3}%=
+			%tFlemish
+			%e%p1%{4}%=
+			%tFrench Canadian
+			%e%p1%{5}%=
+			%tDanish
+			%e%p1%{6}%=
+			%tFinnish
+			%e%p1%{7}%=
+			%tGerman
+			%e%p1%{8}%=
+			%tDutch
+			%e%p1%{9}%=
+			%tItalian
+			%e%p1%{10}%=
+			%tSwiss (French)
+			%e%p1%{11}%=
+			%tSwiss (German)
+			%e%p1%{12}%=
+			%tSwedish
+			%e%p1%{13}%=
+			%tNorwegian
+			%e%p1%{14}%=
+			%tFrench/Belgian
+			%e%p1%{15}%=
+			%tSpanish
+		%;,
+	scs=
+		%?%p1%{1}%=
+			%t\E(B
+			%e%p1%{2}%=
+			%t\E(A
+			%e%p1%{3}%=
+			%t\E(R
+			%e%p1%{4}%=
+			%t\E(9
+			%e%p1%{5}%=
+			%t\E(E
+			%e%p1%{6}%=
+			%t\E(5
+			%e%p1%{7}%=
+			%t\E(K
+			%e%p1%{8}%=
+			%t\E(4
+			%e%p1%{9}%=
+			%t\E(Y
+			%e%p1%{10}%=
+			%t\E(=
+			%e%p1%{11}%=
+			%t\E(=
+			%e%p1%{12}%=
+			%t\E(7
+			%e%p1%{13}%=
+			%t\E(E
+			%e%p1%{14}%=
+			%t\E(R
+			%e%p1%{15}%=
+			%t\E(Z
+		%;,
+	use=xterm,
+#
+# Foreground 0-15 maps (with toggles) into 30-37 & 90-97
+# Background 0-15 maps (with toggles) into 40-47 & 100-107
+#
+# Originally I suppressed setaf/setab, since ANSI specifies only 8 colors, but
+# Stephen Marley persuaded me to allow the "ANSI" color controls to extend to
+# 16 colors.  (Note that ncurses 4.2 uses setf/setb from this description;
+# however 4.3 will select either according to their availability).  - T.Dickey
+#
+# SVr4 curses does not use more than 8 colors anyway, so using 16 colors is
+# either for terminfo-level applications or via ncurses.
+xterm-16color|xterm with 16 colors,
+	colors#16,
+	ncv#32,
+	pairs#256,
+	setab=\E[
+		%?%p1%{8}%<
+			%t%p1%{40}%+
+			%e%p1%{92}%+
+		%;%dm,
+	setaf=\E[
+		%?%p1%{8}%<
+			%t%p1%{30}%+
+			%e%p1%{82}%+
+		%;%dm,
+	setb=%p1%{8}%/%{6}%*%{4}%+\E[%d%p1%{8}%m%Pa
+		%?%ga%{1}%=
+			%t4
+			%e%ga%{3}%=
+			%t6
+			%e%ga%{4}%=
+			%t1
+			%e%ga%{6}%=
+			%t3
+			%e%ga%d
+		%;m,
+	setf=%p1%{8}%/%{6}%*%{3}%+\E[%d%p1%{8}%m%Pa
+		%?%ga%{1}%=
+			%t4
+			%e%ga%{3}%=
+			%t6
+			%e%ga%{4}%=
+			%t1
+			%e%ga%{6}%=
+			%t3
+			%e%ga%d
+		%;m,
+	use=xterm,
+# This is an 8-bit version of xterm, which emulates DEC vt220 with ANSI color.
+# To use it, your decTerminalID resource must be set to 200 or above.
+#
+#	HTS	\E H	\210
+#	RI	\E M	\215
+#	SS3	\E O	\217
+#	CSI	\E [	\233
+#
+xterm-8bit|xterm terminal emulator with 8-bit controls (X Window System),
+	am,
+	bce,
+	km,
+	mc5i,
+	mir,
+	msgr,
+	xenl,
+	colors#8,
+	cols#80,
+	it#8,
+	lines#24,
+	pairs#64,
+	acsc=``aaffggjjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~,
+	bel=^G,
+	bold=\2331m,
+	cbt=\233Z,
+	civis=\233?25l,
+	clear=\233H\2332J,
+	cnorm=\233?25h,
+	cr=^M,
+	csr=\233%i%p1%d;%p2%dr,
+	cub=\233%p1%dD,
+	cub1=^H,
+	cud=\233%p1%dB,
+	cud1=^J,
+	cuf=\233%p1%dC,
+	cuf1=\233C,
+	cup=\233%i%p1%d;%p2%dH,
+	cuu=\233%p1%dA,
+	cuu1=\233A,
+	cvvis=\233?25h,
+	dch=\233%p1%dP,
+	dch1=\233P,
+	dl=\233%p1%dM,
+	dl1=\233M,
+	ech=\233%p1%dX,
+	ed=\233J,
+	el=\233K,
+	el1=\2331K,
+	enacs=\E(B\E)0,
+	flash=\233?5h\233?5l,
+	home=\233H,
+	hpa=\233%i%p1%dG,
+	ht=^I,
+	hts=\210,
+	ich=\233%p1%d@,
+	il=\233%p1%dL,
+	il1=\233L,
+	ind=^J,
+	is2=\E7\E G\233r\233m\233?7h\233?1;3;4;6l\2334l\E8\E>,
+	ka1=\217w,
+	ka3=\217u,
+	kb2=\217y,
+	kbeg=\217E,
+	kbs=^H,
+	kc1=\217q,
+	kc3=\217s,
+	kcub1=\217D,
+	kcud1=\217B,
+	kcuf1=\217C,
+	kcuu1=\217A,
+	kdch1=\2333~,
+	kend=\217F,
+	kent=\217M,
+	kf1=\23311~,
+	kf10=\23321~,
+	kf11=\23323~,
+	kf12=\23324~,
+	kf13=\23325~,
+	kf14=\23326~,
+	kf15=\23328~,
+	kf16=\23329~,
+	kf17=\23331~,
+	kf18=\23332~,
+	kf19=\23333~,
+	kf2=\23312~,
+	kf20=\23334~,
+	kf3=\23313~,
+	kf4=\23314~,
+	kf5=\23315~,
+	kf6=\23317~,
+	kf7=\23318~,
+	kf8=\23319~,
+	kf9=\23320~,
+	kfnd=\2331~,
+	khome=\217H,
+	kich1=\2332~,
+	kmous=\233M,
+	knp=\2336~,
+	kpp=\2335~,
+	kslt=\2334~,
+	mc0=\233i,
+	mc4=\2334i,
+	mc5=\2335i,
+	meml=\El,
+	memu=\Em,
+	op=\23339;49m,
+	rc=\E8,
+	rev=\2337m,
+	ri=\215,
+	rmacs=^O,
+	rmam=\233?7l,
+	rmcup=\233?1047l\233?1048l,
+	rmir=\2334l,
+	rmkx=\233?1l\E>,
+	rmso=\23327m,
+	rmul=\23324m,
+	rs1=\Ec,
+	rs2=\E7\E[62"p\E G\233r\233m\233?7h\233?1;3;4;6l\2334l\E8\E>,
+	sc=\E7,
+	setab=\2334%p1%dm,
+	setaf=\2333%p1%dm,
+	setb=\2334
+		%?%p1%{1}%=
+			%t4
+			%e%p1%{3}%=
+			%t6
+			%e%p1%{4}%=
+			%t1
+			%e%p1%{6}%=
+			%t3
+			%e%p1%d
+		%;m,
+	setf=\2333
+		%?%p1%{1}%=
+			%t4
+			%e%p1%{3}%=
+			%t6
+			%e%p1%{4}%=
+			%t1
+			%e%p1%{6}%=
+			%t3
+			%e%p1%d
+		%;m,
+	sgr=\2330
+		%?%p1%p6%|
+			%t;1
+		%;
+		%?%p2
+			%t;4
+		%;
+		%?%p1%p3%|
+			%t;7
+		%;
+		%?%p4
+			%t;5
+		%;m
+		%?%p9
+			%t\016
+			%e\017
+		%;,
+	sgr0=\233m^O,
+	smacs=^N,
+	smam=\233?7h,
+	smcup=\233?1048h\233?1047h,
+	smir=\2334h,
+	smkx=\233?1h\E=,
+	smso=\2337m,
+	smul=\2334m,
+	tbc=\2333g,
+	vpa=\233%i%p1%dd,
+#
+# Compatible with the R6 xterm
+xterm-r6|xterm-old|xterm X11R6 version,
+	am,
+	km,
+	mir,
+	msgr,
+	xenl,
+	cols#80,
+	lines#24,
+	bel=^G,
+	blink@,
+	bold=\E[1m,
+	clear=\E[H\E[2J,
+	cr=^M,
+	csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD,
+	cub1=^H,
+	cud=\E[%p1%dB,
+	cud1=^J,
+	cuf=\E[%p1%dC,
+	cuf1=\E[C,
+	cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA,
+	cuu1=\E[A,
+	dch=\E[%p1%dP,
+	dch1=\E[P,
+	dl=\E[%p1%dM,
+	dl1=\E[M,
+	ed=\E[J,
+	el=\E[K,
+	enacs=\E)0,
+	home=\E[H,
+	ht=^I,
+	il=\E[%p1%dL,
+	il1=\E[L,
+	ind=^J,
+	is2=\E7\E[r\E[m\E[?7h\E[?1;3;4;6l\E[4l\E8\E>,
+	kbs=^H,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	kdch1=\E[3~,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf13=\E[25~,
+	kf14=\E[26~,
+	kf15=\E[28~,
+	kf16=\E[29~,
+	kf17=\E[31~,
+	kf18=\E[32~,
+	kf19=\E[33~,
+	kf2=\EOQ,
+	kf20=\E[34~,
+	kf3=\EOR,
+	kf4=\EOS,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+	kfnd=\E[1~,
+	kich1=\E[2~,
+	knp=\E[6~,
+	kpp=\E[5~,
+	kslt=\E[4~,
+	meml=\El,
+	memu=\Em,
+	rc=\E8,
+	rev=\E[7m,
+	ri=\EM,
+	rmacs=^O,
+	rmcup=\E[2J\E[?47l\E8,
+	rmir=\E[4l,
+	rmkx=\E[?1l\E>,
+	rmso=\E[m,
+	rmul=\E[m,
+	rs2=\E7\E[r\E[m\E[?7h\E[?1;3;4;6l\E[4l\E8\E>,
+	sc=\E7,
+	sgr0=\E[m,
+	smacs=^N,
+	smcup=\E7\E[?47h,
+	smir=\E[4h,
+	smkx=\E[?1h\E=,
+	smso=\E[7m,
+	smul=\E[4m,
+	tbc=\E[3g,
+#
+# Compatible with the R5 xterm
+xterm-r5|xterm R5 version,
+	am,
+	km,
+	msgr,
+	xenl,
+	cols#80,
+	it#8,
+	lines#24,
+	bel=^G,
+	blink=@,
+	bold=\E[1m,
+	clear=\E[H\E[2J,
+	cr=^M,
+	csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD,
+	cub1=^H,
+	cud=\E[%p1%dB,
+	cud1=^J,
+	cuf=\E[%p1%dC,
+	cuf1=\E[C,
+	cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA,
+	cuu1=\E[A,
+	dch=\E[%p1%dP,
+	dch1=\E[P,
+	dl=\E[%p1%dM,
+	dl1=\E[M,
+	ed=\E[J,
+	el=\E[K,
+	home=\E[H,
+	ht=^I,
+	hts=\EH,
+	ich=\E[%p1%d@,
+	ich1=\E[@,
+	il=\E[%p1%dL,
+	il1=\E[L,
+	ind=^J,
+	kbs=^H,
+	kcub1=\EOD,
+	kcud1=\EOB,
+	kcuf1=\EOC,
+	kcuu1=\EOA,
+	kdch1=\E[3~,
+	kdl1=\E[31~,
+	kel=\E[8~,
+	kf0=\EOq,
+	kf1=\EOP,
+	kf10=\E[21~,
+	kf11=\E[23~,
+	kf12=\E[24~,
+	kf2=\EOQ,
+	kf3=\EOR,
+	kf4=\EOS,
+	kf5=\E[15~,
+	kf6=\E[17~,
+	kf7=\E[18~,
+	kf8=\E[19~,
+	kf9=\E[20~,
+	khome=\E[7~,
+	kich1=\E[2~,
+	kil1=\E[30~,
+	knp=\E[6~,
+	kpp=\E[5~,
+	rc=\E8,
+	rev=\E[7m,
+	ri=\EM,
+	rmkx=\E[?1l\E>,
+	rmso=\E[m,
+	rs1=\E>\E[1;3;4;5;6l\E[?7h\E[m\E[r\E[2J\E[H,
+	sc=\E7,
+	sgr=\E[
+		%?%p1
+			%t;7
+		%;
+		%?%p2
+			%t;4
+		%;
+		%?%p3
+			%t;7
+		%;
+		%?%p4
+			%t;5
+		%;
+		%?%p6
+			%t;1
+		%;m,
+	sgr0=\E[m,
+	smkx=\E[?1h\E=,
+	smso=\E[7m,
+	tbc=\E[3g,
