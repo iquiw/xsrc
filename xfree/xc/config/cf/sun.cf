@@ -296,6 +296,9 @@ XCOMM SunPro C++ CplusplusCompilerMajorVersion./**/CplusplusCompilerMinorVersion
 #define HasSecureRPC	  YES
 #define SetTtyGroup	  YES
 #define HasPutenv	  YES
+#if (OSMajorVersion > 5) || ((OSMajorVersion == 5) && (OSMinorVersion >= 9))
+# define HasIssetugid	  YES
+#endif
 #ifndef i386Architecture
 # ifndef Xsun24Server
 #  define Xsun24Server	  NO		/* color, mono, multiple depths */
@@ -490,3 +493,23 @@ man_keywords::								@@\
 	-DMULTIBYTE -DNLS16 -DMESSAGE_CAT -D_XOPEN_VERSION=4 \
 	-D_XOPEN_SOURCE -D__EXTENSIONS__ \
 	-DOSMAJORVERSION=OSMajorVersion -DOSMINORVERSION=OSMinorVersion
+
+/*
+ * Turn of HTML manpages like we do under NetBSD.
+ */
+#ifndef	BuildHtmlManPages
+#define	BuildHtmlManPages NO
+#endif
+
+/*
+ * NetBSD's X11 sources include the XFree86 contrib distribution.
+ */
+#undef	XF86Contrib
+#define	XF86Contrib		YES
+
+/*
+ * Turn of seperate configuration directories.
+ */
+#ifndef	UseSeparateConfDir
+#define	UseSeparateConfDir	NO
+#endif

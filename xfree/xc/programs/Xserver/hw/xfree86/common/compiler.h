@@ -132,7 +132,7 @@ extern int testinx(unsigned short, unsigned char);
 
 #ifdef __GNUC__
 
-#if (defined(linux) || defined(__FreeBSD__)) && defined(__alpha__)
+#if (defined(linux) || defined(__FreeBSD__) || defined(__NetBSD__)) && defined(__alpha__)
 
 #ifdef linux
 /* for Linux on Alpha, we use the LIBC _inx/_outx routines */
@@ -197,6 +197,10 @@ extern unsigned short inw(unsigned int port);
 extern unsigned int inl(unsigned int port);
 
 #endif /* __FreeBSD__ && !DO_PROTOTYPES */
+
+#if defined(__NetBSD__)
+#include <machine/pio.h>
+#endif /* __NetBSD__ */
 
 /*
  * inline functions to do unaligned accesses
@@ -782,7 +786,7 @@ static __inline__ void stw_u(unsigned long val, unsigned short *p)
 #define mem_barrier()         /* XXX: nop for now */
 #define write_mem_barrier()   /* XXX: nop for now */
 
-#elif defined(__mips__) || defined(__arm32__)
+#elif defined(__mips__) || defined(__arm32__) || defined(__arm__)
 
 unsigned int IOPortBase;  /* Memory mapped I/O port area */
 
@@ -934,7 +938,7 @@ __asm__ __volatile__(					\
 #endif /* !linux */
 #endif /* __mips__ */
 
-#if defined(__arm32__)
+#if defined(__arm32__) || defined(__arm__)
 #define ldq_u(p)	(*((unsigned long  *)(p)))
 #define ldl_u(p)	(*((unsigned int   *)(p)))
 #define ldw_u(p)	(*((unsigned short *)(p)))
@@ -945,7 +949,7 @@ __asm__ __volatile__(					\
 #define write_mem_barrier()	/* NOP */
 #endif /* __arm32__ */
 
-#elif (defined(Lynx) || defined(linux) || defined(__OpenBSD__)) && defined(__powerpc__)
+#elif (defined(Lynx) || defined(linux) || defined(__OpenBSD__) || defined(__NetBSD__)) && defined(__powerpc__)
 
 #ifndef MAP_FAILED
 #define MAP_FAILED ((void *)-1)
