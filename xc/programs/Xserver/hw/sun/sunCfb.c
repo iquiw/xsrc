@@ -286,16 +286,18 @@ Bool sunTCXInit (screen, pScreen, argc, argv)
 #if !defined(i386) && !defined(__bsdi__) /* { */
 
 #ifdef SVR4
-#include <sys/cg2reg.h>
+# include <sys/cg2reg.h>
 #else
-#ifndef CSRG_BASED
-#include <pixrect/cg2reg.h>
-#else
-#if defined(__sparc__) || defined(__sparc)
-#include <machine/cgtworeg.h>
-#else
-#include <machine/cg2reg.h>
-#endif
+# ifndef CSRG_BASED
+#  include <pixrect/cg2reg.h>
+# else
+#  ifdef __sparc__
+/*  Everyone calls it "cg2reg.h" except *BSD/sparc (sigh). */
+#   include <machine/cgtworeg.h>
+#  else
+#   include <machine/cg2reg.h>
+#  endif
+# endif
 #endif
 
 typedef struct {

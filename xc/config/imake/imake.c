@@ -285,6 +285,10 @@ extern int sys_nerr;
 # endif
 #endif
 
+#if defined(__NetBSD__)		/* see code clock in init() below */
+#include <sys/utsname.h>
+#endif
+
 #define	TRUE		1
 #define	FALSE		0
 
@@ -466,6 +470,27 @@ init()
 	while (cpp_argv[ cpp_argindex ] != NULL)
 		cpp_argindex++;
 
+#if defined(__NetBSD__)
+	{
+		struct utsname uts;
+		static char argument[512];
+
+		/*
+		 * Sharable imake configurations require a
+		 * machine identifier.
+		 */
+		if (uname(&uts) != 0)
+			LogFatal("uname(3) failed; can't tell what %s",
+			    "kind of machine you have.");
+
+		memset(argument, 0, sizeof(argument));
+		(void)snprintf(argument, sizeof(argument) - 1,
+		    "-D__%s__", uts.machine);
+
+		AddCppArg(argument);
+	}
+#endif /* __NetBSD__ */
+
 	/*
 	 * See if the standard include directory is different than
 	 * the default.  Or if cpp is not the default.  Or if the make
@@ -533,6 +558,8 @@ SetOpts(argc, argv)
 		if (argv[0][1] == 'D') {
 		    AddCppArg(argv[0]);
 		} else if (argv[0][1] == 'I') {
+		    AddCppArg(argv[0]);
+		} else if (argv[0][1] == 'U') {
 		    AddCppArg(argv[0]);
 		} else if (argv[0][1] == 'f') {
 		    if (argv[0][2])

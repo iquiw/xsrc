@@ -5,23 +5,39 @@ XCOMM platform:  $XConsortium: NetBSD.cf /main/16 1996/10/31 14:47:14 kaleb $
 XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.49.2.9 1997/07/26 06:30:39 dawes Exp $
 
 
+  
+XCOMM
+XCOMM This file currently contains support for:
+XCOMM
+XCOMM 		NetBSD/i386	client/server
+XCOMM 		NetBSD/sparc	client/server
+XCOMM 		NetBSD/sun3	client/server
+XCOMM 		NetBSD/hp300	client
+XCOMM 		NetBSD/mac68k	client/server
+XCOMM 		NetBSD/pmax	client
+XCOMM		NetBSD/amiga	client/server
+XCOMM		NetBSD/alpha	client/server
+XCOMM		NetBSD/arm32	client
+XCOMM
+
 #ifndef OSName
-#define OSName			DefaultOSName OSBinaryType
+#define OSName		NetBSD 1.3
+#endif
+#ifndef OSVendor
+#define	OSVendor	The NetBSD Foundation, Inc.
 #endif
 #ifndef OSMajorVersion
-#define OSMajorVersion		DefaultOSMajorVersion
+#define OSMajorVersion		1
 #endif
 #ifndef OSMinorVersion
-#define OSMinorVersion		DefaultOSMinorVersion
+#define OSMinorVersion		3
 #endif
+/* XXX this does not deal with patches, but, patches should not affect it */
+/* 1 = A, 2 = B, 3 = C, 4 = D, 5 = E, ... */
 #ifndef OSTeenyVersion
-#define OSTeenyVersion		DefaultOSTeenyVersion
+#define OSTeenyVersion	  0
 #endif
 
-
-#ifndef OSVendor
-#define	OSVendor	/**/
-#endif
 XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVersion)
 
 /*
@@ -30,8 +46,9 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #if ((OSMajorVersion > 1) || \
      (OSMajorVersion == 1 && OSMinorVersion > 2) || \
      (OSMajorVersion == 1 && OSMinorVersion == 2 && OSTeenyVersion > 1))
-#  define HasPoll			YES
+# define HasPoll			YES
 #endif
+
 #define HasNdbm         	YES
 #define HasPutenv       	YES
 #define HasSnprintf		YES
@@ -61,7 +78,11 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
      (OSMajorVersion == 1 && OSMinorVersion == 2 && OSTeenyVersion < 2))
 #  define HasDlsymBug		YES
 #endif
-/* Mkstemp is there since 1.2 (at least) */
+  
+#if OSMajorVersion >= 1
+# define LexCmd			lex -l
+#endif
+
 #if (!(OSMajorVersion == 0 || \
        (OSMajorVersion == 1 && OSMinorVersion < 2))) 
 #define HasMkstemp		YES
@@ -102,7 +123,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 
 #define GccGasOption 		-DGCCUSESGAS
 #define AsmDefines 		-DUSE_GAS
-
+  
 /* UseElfFormat defaults to YES if __ELF__ set */
 #ifndef UseElfFormat
 # ifdef __ELF__
@@ -110,6 +131,16 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  define UseElfFormat YES
 # else
 #  define UseElfFormat NO
+# endif
+#endif
+
+/*
+ * Make sure the binaries know where to look for the shared libaries.
+ * NOTE: This is done in bsdLib.rules for ELF libraries!
+ */
+#if (OSMajorVersion == 1 && OSMinorVersion >= 2) || OSMajorVersion > 1
+# ifndef UseElfFormat
+#  define ExtraLoadFlags	-R$(USRLIBDIR)
 # endif
 #endif
 
@@ -124,14 +155,17 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
      !defined(AlphaArchitecture) && !defined(MipsArchitecture)) || \
     UseElfFormat
 # ifndef BuildDynamicLoading
-# define BuildDynamicLoading	YES
+#  define BuildDynamicLoading	YES
+# endif
+# ifndef ForceNormalLib
+#  define ForceNormalLib	YES
 # endif
 #endif
 
 #if UseElfFormat
-#define DlLibrary		-rdynamic /* no -ldl yet */
+# define DlLibrary		-rdynamic /* no -ldl yet */
 #else
-#define DlLibrary		/**/
+# define DlLibrary		/**/
 #endif
 
 #ifdef i386Architecture
@@ -141,33 +175,82 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # else
 #  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
 # endif
-# if OSMajorVersion == 1 && OSMinorVersion >= 1 || OSMajorVersion >= 2
-#  define ServerExtraSysLibs	-li386 DlLibrary
-# endif
-#else
-# define OptimizedCDebugFlags 	-O2
-# if defined(SparcArchitecture) || defined(AlphaArchitecture)
-#  define ServerOSDefines 	-DDDXOSINIT
-# else
-#  define ServerOSDefines 	/**/
-# endif
 # if BuildDynamicLoading
-#  define ServerExtraSysLibs	DlLibrary
+#  define ServerExtraSysLibs	-li386 DlLibrary
 # else
 #  define ServerExtraSysLibs	/**/
 # endif
-#endif
-#ifdef i386Architecture
 # define ServerExtraDefines GccGasOption XFree86ServerDefines
 # ifndef XFree86ConsoleDefines
 #  define XFree86ConsoleDefines -DPCCONS_SUPPORT -DPCVT_SUPPORT
 # endif
 #else
-# if defined(AlphaArchitecture)
-#  define ServerExtraDefines GccGasOption -D_XSERVER64
-# else
-#  define ServerExtraDefines GccGasOption
-# endif
+# define OptimizedCDebugFlags 	-O2
+#endif
+
+/*
+ * XXX always build XKBuilib, override xfree86.cf
+ */
+#if defined(i386Architecture)
+# define BuildXKBuilib		YES
+#endif
+
+#if defined(SparcArchitecture)
+# define ServerOSDefines	-DDDXOSINIT
+# define ServerExtraDefines	GccGasOption
+# define PexDynamicModule	NO
+# define XieDynamicModule	NO
+#endif
+
+#if defined(Sun3Architecture)
+# define ServerOSDefines	-DDDXOSINIT
+# define ServerExtraDefines	GccGasOption -D__sun3__
+# define PexDynamicModule	NO
+# define XieDynamicModule	NO
+#endif
+
+#if defined(hp300Architecture)
+# define BuildServer		NO		/* XXX */
+# define ServerOSDefines	-DDDXOSINIT
+# define ServerExtraDefines	GccGasOption
+# define PexDynamicModule	NO
+# define XieDynamicModule	NO
+#endif
+
+#if defined(mac68kArchitecture)
+# define ServerOSDefines	-DDDXOSINIT
+# define ServerExtraDefines	GccGasOption -D__mac68k__
+# define PexDynamicModule	NO
+# define XieDynamicModule	NO
+#endif
+
+#if defined(AlphaArchitecture)
+# define ServerOSDefines	-DDDXOSINIT
+# define ServerExtraDefines	GccGasOption -D_XSERVER64
+# define PexDynamicModule	NO
+# define XieDynamicModule	NO
+# undef OptimizedCDebugFlags			/* XXX ??? */
+# define OptimizedCDebugFlags			/* XXX ??? */
+#endif
+
+#if defined(amigaArchitecture)
+# define ServerOSDefines	-DDDXOSINIT
+# define ServerExtraDefines	GccGasOption -D__amiga__
+# define PexDynamicModule	NO
+# define XieDynamicModule	NO
+#endif
+
+#if defined(arm32Architecture)
+# define BuildServer		NO		/* XXX */
+# define ServerOSDefines	-DDDXOSINIT
+# define ServerExtraDefines	GccGasOption
+# define PexDynamicModule	NO
+# define XieDynamicModule	NO
+#endif
+
+
+#ifndef OptimizedCDebugFlags
+# define OptimizedCDebugFlags 	-O2
 #endif
 
 #define StandardDefines	-DCSRG_BASED
@@ -177,7 +260,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #define ExtraLibraries		/**/
 #endif
 #ifndef UseGnuMalloc
-#  define UseGnuMalloc		YES
+# define UseGnuMalloc		YES
 #endif
 #ifndef GnuMallocLibrary
 #define GnuMallocLibrary	-lgnumalloc
@@ -202,6 +285,15 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #define GzipFontCompression	YES
 #define DefaultUserPath		/bin:/usr/bin:/usr/local/bin:$(BINDIR)
 #define DefaultSystemPath	/sbin:/usr/sbin:/bin:/usr/bin:$(BINDIR)
+
+#define InstPgmFlags		-s -m 0555 -o bin -g bin
+#define InstBinFlags		-m 0555 -o bin -g bin
+#define InstUidFlags		-m 4511 -o root -g bin
+#define InstLibFlags		-m 0444 -o bin -g bin
+#define InstIncFlags		-m 0444 -o bin -g bin
+#define InstManFlags		-m 0444 -o bin -g bin
+#define InstDatFlags		-m 0444 -o bin -g bin
+#define InstKmemFlags		-m 2555 -o bin -g kmem
 
 #ifdef  InstallCmd
 # undef  InstallCmd
@@ -264,7 +356,10 @@ install.man::                                                           @@\
 	-@if [ -f file.0 ]; \						@@\
 	then \								@@\
 	$(INSTALL) -c $(INSTMANFLAGS) file.0 $(DESTDIR)destdir/dest.0; \@@\
-	fi
+	fi								@@\
+									@@\
+clean::									@@\
+	$(RM) file.o
 
 #define InstallGenManPageLong(file,destdir,dest,suffix)			@@\
 	InstallManPageLong(file,destdir,dest)
@@ -295,6 +390,34 @@ install.man:: 								@@\
 
 #define InstallGenManPageAliases(file,destdir,suffix,aliases)		@@\
 	InstallManPageAliases(file,destdir,aliases)
+
+/*
+ * Definition for compiling on MIPS machines
+ */
+#ifdef MipsArchitecture
+#if 0 /* As distributed */
+#define PositionIndependentCFlags
+#define SharedLibraryLoadFlags -x -shared --whole-archive -soname `echo $@ | sed 's/\.[0-9]*$$//'`
+#define SharedXtReqs	$(XLIBONLY) $(SMLIB) $(ICELIB)
+#define SharedXmuReqs	$(LDPRELIB) $(XTOOLONLYLIB) $(XONLYLIB) $(EXTENSIONLIB)
+#endif /* As distributed */
+
+#ifdef XdecServer
+#undef XdecServer
+#endif
+#define XdecServer NO
+
+#ifdef BuildServer
+#undef BuildServer
+#endif
+#define BuildServer NO
+
+#ifdef UseElfFormat
+#undef UseElfFormat
+#endif
+#define UseElfFormat YES
+
+#endif
 
 /*
  * Shared libraries supported starting in 1.0 on a.out platforms,
@@ -328,15 +451,25 @@ install.man:: 								@@\
 #endif /* HasSharedLibraries */
 
 #ifdef i386Architecture
-# include <xfree86.cf>
+#include <xfree86.cf>
 #endif
 
 /*
- * Definitions for the SUN server on NetBSD/sparc
+ * NetBSD always uses the XFree86 contrib distribution.
  */
-#ifdef SparcArchitecture
+#undef	XF86Contrib
+#define	XF86Contrib	YES
+
+/*
+ * Definitions for the SUN server on NetBSD/sparc or NetBSD/sun3
+ */
+#if defined(SparcArchitecture) || defined(Sun3Architecture)
 #ifndef Xsun24Server
+#if defined(SparcArchitecture)
+#define Xsun24Server	YES
+#else
 #define Xsun24Server	NO
+#endif
 #endif
 #ifndef XsunServer
 #define XsunServer	YES
@@ -344,9 +477,73 @@ install.man:: 								@@\
 #ifndef XsunMonoServer
 #define XsunMonoServer	YES
 #endif
+#endif
+  
+/*
+ * Definitions for the NetBSD/mac68k server.
+ */
+#ifdef mac68kArchitecture
+# ifndef Xmac68kServer
+#  define Xmac68kServer		YES
+# endif
+#endif
+
+/*
+ * Definitions for the NetBSD/amiga server.
+ */
+#ifdef amigaArchitecture
+# ifndef XamigaCCmono
+#  define XamigaCCmono		NO
+# endif
+# ifndef XamigaCCcolor
+#  define XamigaCCcolor		YES
+# endif
+# ifndef XamigaGfxCardSupport
+#  define XamigaGfxCardSupport	YES
+# endif
+# ifndef XamigaRetinaZ3Support
+#  define XamigaRetinaZ3Support	YES
+# endif
+# ifndef XamigaCl5426Server
+#  define XamigaCl5426Server	YES
+# endif
+# ifndef XamigaCV64Support
+#  define XamigaCV64Support	YES
+# endif
+/*
+ * You need XamigaGfxCardSupport if you enable XamigaCl5426Server,
+ * XamigaRetinaZ3Support or XamigaCV64Support and you can't use XamigaCCmono
+ * if you enable XamigaCCcolor.
+ * Don't change the next 10 lines !!!!!!!!!
+ */
+# if (XamigaCl5426Server || XamigaCV64Support || XamigaRetinaZ3Support) \
+	&& !XamigaGfxCardSupport
+#  undef XamigaGfxCardSupport
+#  define XamigaGfxCardSupport	YES
+# endif
+# if XamigaCCcolor
+#  undef XamigaCCmono
+#  define XamigaCCmono		NO
+# endif
+#endif
+
+/*
+ * Definitions for the NetBSD/alpha X server.
+ */
+#if defined(AlphaArchitecture)
+# define XalphaNetBSDServer	YES
+#endif
+
 #ifndef BuildScreenSaverLibrary
 #define BuildScreenSaverLibrary	YES
 #endif
+#ifndef DfltDisableXKB
+#define DfltDisableXKB		YES
+#endif
+#ifndef XkbServerDefines
+#define XkbServerDefines	-DXKB_ALWAYS_USES_SOFT_REPEAT
+#endif
+
 /*
  * XFree86 uses its own (more portable) database routines to speed up 
  * the RGB database lookups
@@ -354,24 +551,5 @@ install.man:: 								@@\
  * site.def
  */
 #ifndef UseRgbTxt
-#define UseRgbTxt	YES
-#endif
-#endif
-
-/*
- * Definition for compiling on MIPS machines
- */
-#ifdef MipsArchitecture
-#define PositionIndependentCFlags
-#define SharedLibraryLoadFlags -x -shared --whole-archive -soname `echo $@ |
-sed 's/\.[0-9]*$$//'`
-#define SharedXtReqs $(XLIBONLY) $(SMLIB) $(ICELIB)
-#define SharedXmuReqs $(LDPRELIB) $(XTOOLONLYLIB) $(XONLYLIB) $(EXTENSIONLIB)
-#endif
-
-/*
- * Definition for compiling on Alpha machines
- */
-#ifdef AlphaArchitecture
-#define	BuildServer	NO
+#define UseRgbTxt	NO
 #endif
