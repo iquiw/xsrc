@@ -203,6 +203,10 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.81 2003/02/18 16:51:45 tsi Exp $
 #   define Arm32Architecture
 #   undef __arm32__
 # endif
+# ifdef __cats__
+#   define CatsArchitecture
+#   undef __cats__
+# endif
 # ifdef __vax__
 #   define VaxArchitecture
 #   undef __vax__
@@ -210,6 +214,10 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.81 2003/02/18 16:51:45 tsi Exp $
 # ifdef __powerpc__
 #   define PpcArchitecture
 #   undef __powerpc__
+# endif
+# ifdef __x86_64__
+#  define x86_64Architecture
+#  undef __x86_64__
 # endif
 #endif /* NetBSD */
 

@@ -514,7 +514,7 @@ inl(unsigned short port)
    return ret;
 }
 
-#   elif (defined(linux) || defined(Lynx) || defined(sun) || defined(__OpenBSD__)) && defined(__sparc__)
+#   elif (defined(linux) || defined(Lynx) || defined(sun) || defined(__OpenBSD__) || defined(__NetBSD__)) && defined(__sparc__)
 
 #    if !defined(Lynx)
 #     ifndef ASI_PL
@@ -848,7 +848,7 @@ static __inline__ void stw_u(unsigned long val, unsigned short *p)
 #    define mem_barrier()         /* XXX: nop for now */
 #    define write_mem_barrier()   /* XXX: nop for now */
 
-#   elif defined(__mips__) || defined(__arm32__)
+#   elif defined(__mips__) || defined(__arm32__) || defined(__arm__)
 #ifdef __arm32__
 #define PORT_SIZE long
 #else

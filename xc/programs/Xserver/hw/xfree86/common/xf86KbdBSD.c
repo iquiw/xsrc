@@ -453,6 +453,10 @@ xf86KbdGetMapping (pKeySyms, pModMap)
   break;
 #endif
 
+/*
+ * XXX Need to find a way to make this work with wscons.
+ * XXX --thorpej@netbsd.org, 2-26-2000
+ */
 #if (defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT)) && defined(GIO_KEYMAP)
   case SYSCONS:
   case PCVT:

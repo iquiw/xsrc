@@ -31,10 +31,10 @@
 ** published by SGI, but has not been independently verified as being
 ** compliant with the OpenGL(R) version 1.2.1 Specification.
 **
-** Date Revision
+** $Date: 2003/02/28 21:49:19 $ $Revision: 1.4 $
 */
 /*
-** Header: //depot/main/gfx/lib/glu/libnurbs/nurbtess/quicksort.cc#3 
+** $Header: /garbage/cvs-mirror/xsrc/xfree/xc/extras/ogl-sample/main/gfx/lib/glu/libnurbs/nurbtess/Attic/quicksort.cc,v 1.4 2003/02/28 21:49:19 tron Exp $
 */
 
 

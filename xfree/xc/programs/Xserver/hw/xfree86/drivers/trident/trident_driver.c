@@ -3111,10 +3111,14 @@ TRIDENTEnterVT(int scrnIndex, int flags)
 {
     ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
     TRIDENTPtr pTrident = TRIDENTPTR(pScrn);
+    vgaHWPtr hwp = VGAHWPTR(pScrn);
 
     if (IsPciCard && UseMMIO) TRIDENTEnableMMIO(pScrn);
 
     /* Should we re-save the text mode on each VT enter? */
+    vgaHWUnlock(hwp);
+    TRIDENTSave(pScrn);
+
     if (!TRIDENTModeInit(pScrn, pScrn->currentMode))
 	return FALSE;
 

@@ -26,7 +26,7 @@
 .\" from the X Consortium.
 .\"
 .nr )S 12
-.TH XSECURITY 1 "Release 6.3" "X Version 11"
+.TH XSECURITY 7 "Release 6.3" "X Version 11"
 .SH NAME
 Xsecurity \- X display access control
 .SH SYNOPSIS
@@ -230,4 +230,4 @@ this form is \fInot\fP used by clients.
 .SH FILES
 \&.Xauthority
 .SH "SEE ALSO"
-X(1), xdm(1), xauth(1), xhost(1), xinit(1), Xserver(1)
+X(7), xdm(1), xauth(1), xhost(1), xinit(1), Xserver(1)

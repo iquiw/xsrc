@@ -211,6 +211,60 @@ void vmwareSendSVGACmdUpdate(
 /* vmwarecurs.c */
 Bool vmwareCursorInit(
 #if NeedFunctionPrototypes
+    ScreenPtr pScr
+#endif
+    );
+
+/* BEGIN Screen functions that draw */
+
+void vmwareCopyWindow(
+#if NeedFunctionPrototypes
+    WindowPtr pWindow, DDXPointRec ptOldOrg, RegionPtr prgnSrc
+#endif
+    );
+
+void vmwarePaintWindow(
+#if NeedFunctionPrototypes
+    WindowPtr pWindow, RegionPtr pRegion, int what
+#endif
+    );
+
+void vmwareGetSpans(
+#if NeedFunctionPrototypes
+    DrawablePtr pDrawable,
+    int wMax, DDXPointPtr pPoints, int *pWidths, int nSpans, char *pDst
+#endif
+    );
+
+void vmwareGetImage(
+#if NeedFunctionPrototypes
+    DrawablePtr src,
+    int x,
+    int y,
+    int w,
+    int h, unsigned int format, unsigned long planeMask, char *pBinImage
+#endif
+    );
+
+void vmwareSaveDoomedAreas(
+#if NeedFunctionPrototypes
+    WindowPtr pWin, RegionPtr prgnSave, int xorg, int yorg
+#endif
+    );
+
+RegionPtr vmwareRestoreAreas(
+#if NeedFunctionPrototypes
+    WindowPtr pWin,
+    RegionPtr prgnRestore
+#endif
+    );
+
+/* END Screen functions that draw */
+
+/* BEGIN GCOps */
+
+void vmwareFillSpans(
+#if NeedFunctionPrototypes
    ScreenPtr pScr
 #endif
    );

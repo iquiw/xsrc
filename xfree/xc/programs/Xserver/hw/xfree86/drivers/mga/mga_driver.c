@@ -2965,6 +2965,10 @@ MGARestore(ScrnInfoPtr pScrn)
 
     if (pScrn->pScreen != NULL)
 	MGAStormSync(pScrn);
+    if(pMga->SecondCrtc) {
+        MGARestoreSecondCrtc(pScrn);
+        return;
+    }
 
     /*
      * Restore the second crtc if:
@@ -3692,6 +3696,8 @@ MGAEnterVT(int scrnIndex, int flags)
         DRIUnlock(screenInfo.screens[scrnIndex]);
     }
 #endif
+
+    MGASave(pScrn);
 
     if (!MGAModeInit(pScrn, pScrn->currentMode))
 	return FALSE;

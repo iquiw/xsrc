@@ -85,6 +85,8 @@ in this Software without prior written authorization from the X Consortium.
 extern int  errno;		/* Internal system error number. */
 #endif
 
+#include <limits.h>
+
 extern int (*_FSIOErrorFunction) ();
 extern int (*_FSErrorFunction) ();
 

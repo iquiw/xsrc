@@ -48,11 +48,15 @@ extern char *getenv();
 #  include <signal.h>
 #  undef _POSIX_SOURCE
 # endif
+#else
+# ifdef CSRG_BASED
+#  include <signal.h>
+# endif
 #endif
 
 #include <fcntl.h>
 
-#ifndef __bsdi_
+#ifndef __bsdi__
 # ifndef CSRG_BASED
 #  ifndef i386
 #   include <poll.h>
@@ -101,7 +105,11 @@ extern int setrlimit();
 extern int getpagesize();
 # else
 #  ifdef CSRG_BASED
-#   include <machine/fbio.h>
+#   ifdef __NetBSD__
+#    include <dev/sun/fbio.h>
+#   else
+#    include <machine/fbio.h>
+#   endif
 #   include <machine/kbd.h>
 #   include <machine/kbio.h>
 #   include <machine/vuid_event.h>
@@ -330,6 +338,13 @@ extern void sunEnqueueEvents(
 );
 
 extern int sunGXInit(
+#if NeedFunctionPrototypes
+    ScreenPtr /* pScreen */,
+    fbFd* /* fb */
+#endif
+);
+
+extern int sunZXInit(
 #if NeedFunctionPrototypes
     ScreenPtr /* pScreen */,
     fbFd* /* fb */

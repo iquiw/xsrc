@@ -1,32 +1,3 @@
-/*
- * Copyright (C) 1994-2002 The XFree86 Project, Inc.  All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use, copy,
- * modify, merge, publish, distribute, sublicense, and/or sell copies
- * of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT.  IN NO EVENT SHALL THE XFREE86 PROJECT BE LIABLE
- * FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
- * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * Except as contained in this notice, the name of the XFree86 Project
- * shall not be used in advertising or otherwise to promote the sale,
- * use or other dealings in this Software without prior written
- * authorization from the XFree86 Project.
- */
-/* $XFree86: xc/programs/Xserver/hw/xfree86/os-support/bus/netbsdPci.c,v 1.2 2002/08/27 22:07:07 tsi Exp $ */
-
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
@@ -60,10 +31,6 @@ static pciBusInfo_t netbsdPci0 = {
 /* numDevices  */	32,
 /* secondary   */	FALSE,
 /* primary_bus */	0,
-#ifdef PowerMAX_OS
-/* io_base */		0,
-/* io_size */		0,
-#endif
 /* funcs       */	&netbsdFuncs0,
 /* pciBusPriv  */	NULL,
 /* bridge      */	NULL
@@ -72,15 +39,22 @@ static pciBusInfo_t netbsdPci0 = {
 void
 netbsdPciInit()
 {
+    	struct pciio_businfo pci_businfo;
 
 	devpci = open("/dev/pci0", O_RDWR);
-	if (devpci == -1)
-		FatalError("netbsdPciInit: can't open /dev/pci0\n");
+	if (devpci == -1) {
+		ErrorF("netbsdPciInit: can't open /dev/pci0\n");
+		return;
+	}
 
 	pciNumBuses    = 1;
 	pciBusInfo[0]  = &netbsdPci0;
 	pciFindFirstFP = pciGenFindFirst;
 	pciFindNextFP  = pciGenFindNext;
+	/* use businfo to get the number of devs */
+	if (ioctl(devpci, PCI_IOC_BUSINFO, &pci_businfo) != 0)
+	    FatalError("netbsdPciInit: not a PCI bus device");
+	netbsdPci0.numDevices = pci_businfo.maxdevs;
 }
 
 static CARD32

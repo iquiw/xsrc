@@ -35,7 +35,12 @@
 #elif defined(__OpenBSD__) && defined(__sparc64__)
 /* XXX */
 #elif defined(CSRG_BASED)
-#include <machine/fbio.h>
+# if defined(__NetBSD__)
+#  include <dev/sun/fbio.h>
+#  include <dev/ofw/openfirmio.h>
+# else
+#  include <machine/fbio.h>
+# endif
 #else
 #include <sun/fbio.h>
 #endif

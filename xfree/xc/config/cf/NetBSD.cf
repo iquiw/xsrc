@@ -25,6 +25,13 @@ XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.108 2002/12/14 22:36:03 da
 XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVersion)
 
 /*
+ * Enable support for "xdmauth" authentification.
+ */
+#ifndef HasXdmAuth
+#define HasXdmAuth YES
+#endif
+
+/*
  * C library features
  */
 #if ((OSMajorVersion > 1) || \
@@ -90,21 +97,37 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #define HasVarRun		YES
 #define HasVarDb		YES
 
+#define HasShadowPasswd		NO
+
 #define InstallXloadSetGID	NO
 
-/* Defines for using the GNU pth thread library -- experimental */
+/*
+ * NetBSD 1.6M and newer supports POSIX Threads.
+ */
 
-#ifdef NetBSDPth
-#define PthreadHLocation	-I/usr/local/include /* where is pthread.h? */
-#define LibPthreadLocation	-L/usr/local/lib /* where is libpthread? */
-#define HasThreadSafeAPI	NO
-#define	HasPosixThreads		YES
-#define SystemMTDefines		-D_REENTRANT PthreadHLocation
-#define ThreadsLibraries	LibPthreadLocation -Wl,-rpath,/usr/local/lib -lpthread
-#define SharedX11Reqs		ThreadsLibraries
-#else 
-#define HasPosixThreads		NO
-#define ThreadedX		NO
+#ifndef NetBSDThreads
+# define NetBSDThreads		YES
+#endif
+
+#if NetBSDThreads && \
+    ((OSMajorVersion > 1) || \
+     (OSMajorVersion == 1 && OSMinorVersion > 6) || \
+     (OSMajorVersion == 1 && OSMinorVersion == 6 && OSTeenyVersion >= 13))
+
+# define HasPosixThreads	YES
+# define ThreadedX		YES
+# define HasThreadSafeAPI	YES
+# define ThreadsLibraries	-lpthread
+# define LibraryMTDefines	-DUSE_NBSD_THREADLIB
+# define SystemMTDefines	-D_REENTRANT
+# define MTSafeAPIDefines	-DXUSE_MTSAFE_API -DXNO_MTSAFE_PWDAPI
+#else
+# define ThreadedX		NO
+#endif
+
+#if (OSMajorVersion >= 2 || \
+      (OSMajorVersion == 1 && OSMinorVersion == 6 && OSTeenyVersion >= 2))
+# define HasArc4random
 #endif
 
 /*
@@ -128,19 +151,15 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #if defined(UseInstalled)
 #define DefaultCCOptions 	/**/
 #else
-#ifdef Arm32Architecture
+#if defined(Arm32Architecture) || defined(CatsArchitecture)
 #define DefaultCCOptions 	-ansi -Dasm=__asm -fsigned-char \
 				-fomit-frame-pointer
 #elif defined(PpcArchitecture)
 # define DefaultCCOptions	-ansi -Dasm=__asm -fsigned-char
 #else
-#define DefaultCCOptions 	-ansi -Dasm=__asm GccWarningOptions
+# define DefaultCCOptions 	-ansi -Dasm=__asm
 #endif
 #endif
-#endif
-
-#ifndef UseGccMakeDepend
-#define UseGccMakeDepend	YES
 #endif
 
 #define CppCmd			cpp
@@ -162,6 +181,15 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # endif
 #endif
 
+#if 0
+/* one day we should enable this, but support is needed in the Xserver */
+#if UseElfFormat
+# ifndef DoLoadableServer
+#  define DoLoadableServer	YES
+# endif
+#endif
+#endif
+
 /*
  * Dynamic loading supported starting in 1.0 on a.out platforms,
  * and on all ELF platforms.
@@ -171,7 +199,8 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
  *
  * Disabled for NetBSD/vax until I figure out the scheme. --CS 
  */
-#if (OSMajorVersion > 0) && defined(i386Architecture)
+#if ((OSMajorVersion > 0) && defined(i386Architecture)) || \
+    defined(PpcArchitecture)
 #  ifndef DoLoadableServer
 #  define DoLoadableServer	YES
 #  endif
@@ -186,6 +215,9 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #else
 #define DlLibrary		/**/
 #endif
+
+/* All ELF NetBSD systems support Weak symbols */
+#define HasWeakSymbols		UseElfFormat 
 
 #ifdef i386Architecture
 # ifndef DefaultGcc2i386Opt
@@ -211,13 +243,21 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  define ServerOSDefines 	XFree86ServerOSDefines
 # elif defined(Arm32Architecture)
 #   define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
+# elif defined(CatsArchitecture)
+#   define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME 
 # elif defined(PpcArchitecture)
 #  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME -DDDXOSINIT
+# elif defined(x86_64Architecture)
+#  undef OptimizedCDebugFlags
+#  define OptimizedCDebugFlags	-O2
+#  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
 # else
 #  define ServerOSDefines 	/**/
 # endif
 # if defined(AlphaArchitecture)
 #  define ServerExtraSysLibs	-lalpha
+# elif defined(x86_64Architecture)
+#  define ServerExtraSysLibs	-lx86_64
 # else
 #  define ServerExtraSysLibs	/**/
 # endif
@@ -252,10 +292,20 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  ifndef XFree86ConsoleDefines
 #    define XFree86ConsoleDefines -DPCCONS_SUPPORT
 #  endif
+#elif defined(CatsArchitecture)
+#  define ServerExtraDefines GccGasOption XFree86ServerDefines
+#  ifndef XFree86ConsoleDefines
+#    define XFree86ConsoleDefines	-DPCCONS_SUPPORT -DPCVT_SUPPORT -DWSCONS_SUPPORT
+#  endif
 #elif defined(PpcArchitecture)
 #  define ServerExtraDefines	GccGasOption XFree86ServerDefines
 #  ifndef XFree86ConsoleDefines
 #    define XFree86ConsoleDefines	-DWSCONS_SUPPORT
+#  endif
+#elif defined(x86_64Architecture)
+# define ServerExtraDefines	GccGasOption XFree86ServerDefines -D_XSERVER64
+#  ifndef XFree86ConsoleDefines
+#    define XFree86ConsoleDefines -DWSCONS_SUPPORT
 #  endif
 #else
 #  define ServerExtraDefines GccGasOption
@@ -336,6 +386,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # undef  InstallCmd
 # define InstallCmd 		/usr/bin/install
 #endif
+#define StripInstalledPrograms	YES
 
 #ifndef ExtraFilesToClean
 # define ExtraFilesToClean 	*.core
@@ -377,6 +428,11 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # endif /* MTRRBuiltin */
 #endif /* i386Architecture */
 
+#if defined(x86_64Architecture)
+# define HasMTRRBuiltin       YES
+# define XF86AFB              YES
+#endif
+
 /*
  * agpgart support (NetBSD 1.5Y and up)
  */
@@ -416,7 +472,6 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  define HasCookieMaker	NO
 # endif
 #endif
-
 
 /*
  * ForceSubdirs - force make to build subdirectories
@@ -555,14 +610,21 @@ InstallManPageAliasesBase(file,destdir,aliases)
 /* Always build the XInput library, regardless of server support on this plattform */
 #define BuildXInputLib          YES
 
-#if defined(i386Architecture) || defined(Arm32Architecture) || defined(AlphaArchitecture) || defined(PpcArchitecture)
+#if defined(i386Architecture) || defined(Arm32Architecture) || defined(AlphaArchitecture) || defined(PpcArchitecture) || defined(CatsArchitecture) || defined(x86_64Architecture)
 # include <xfree86.cf>
 #endif
 
 /*
+ * NetBSD always uses the XFree86 contrib distribution.
+ */
+#undef	XF86Contrib
+#define	XF86Contrib	YES
+
+/*
  * Definitions for the SUN server on NetBSD/sparc
  */
-#ifdef SparcArchitecture
+#ifdef	SparcArchitecture
+
 #ifndef Xsun24Server
 #define Xsun24Server	YES
 #endif
@@ -570,7 +632,7 @@ InstallManPageAliasesBase(file,destdir,aliases)
 #define XsunServer	YES
 #endif
 #ifndef XsunMonoServer
-#define XsunMonoServer	NO	/* XXX: does not link */
+#define XsunMonoServer	YES
 #endif
 #ifndef BuildScreenSaverLibrary
 #define BuildScreenSaverLibrary	YES
@@ -585,10 +647,40 @@ InstallManPageAliasesBase(file,destdir,aliases)
 #ifndef UseRgbTxt
 #define UseRgbTxt	YES
 #endif
+
 #define BuildXF86VidModeExt	NO
+
+#if !defined(Sparc64Architecture)
+
 #define BuildXF86DGA		NO
 #define BuildXInputExt		NO
 #include <xfree86.cf>
+
+#else /* Sparc64Architecture */
+# define OptimizedCDebugFlags	-O2
+
+# ifndef XF86Server
+#  define XF86Server		YES
+# endif
+
+/* # define XkbServerDefines  -DXKB_ALWAYS_USES_SOFT_REPEAT */
+
+# if XF86Server
+#   ifndef DoLoadableServer
+#     define DoLoadableServer	NO
+#   endif
+#   define XF86OSCardDrivers	/* wsfb sunffb */
+#   define AsOutputArchSize	64
+#   define AsVISOption		-Av9a
+#   define XFree86ConsoleDefines -DWSCONS_SUPPORT
+# endif
+
+#define BuildXF86DGA		YES
+#define BuildXInputExt		YES
+#include <xfree86.cf>
+
+#endif
+
 #endif
 
 /*
@@ -625,6 +717,13 @@ sed 's/\.[0-9]*$$//'`
 
 # define UseElfFormat		YES
 
+#endif
+
+/*
+ * Definition for compiling on cats machines
+ */
+#ifdef CatsArchitecture
+/* nothing is needed */
 #endif
 
 /*

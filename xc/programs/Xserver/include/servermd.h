@@ -122,7 +122,15 @@ SOFTWARE.
  *	Currently defined for SPARC.
  */
 
-#ifdef vax
+#if defined(__mc68000__) && !defined(mc68000)
+#define mc68000
+#endif
+
+#if defined(__mc68020__) && !defined(mc68020)
+#define mc68020
+#endif
+
+#if defined(vax) || defined(__vax__)
 
 #define IMAGE_BYTE_ORDER	LSBFirst        /* Values for the VAX only */
 #define BITMAP_BIT_ORDER	LSBFirst
@@ -132,7 +140,28 @@ SOFTWARE.
 
 #endif /* vax */
 
-#if (defined(Lynx) && defined(__powerpc__))
+#if defined(__arm__) || defined(__arm32__)
+
+#define IMAGE_BYTE_ORDER        LSBFirst
+
+# if defined(XF86MONOVGA) || defined(XF86VGA16) || defined(XF86MONO)
+#  define BITMAP_BIT_ORDER      MSBFirst
+# else
+#  define BITMAP_BIT_ORDER      LSBFirst
+# endif
+
+# if defined(XF86MONOVGA) || defined(XF86VGA16)
+#  define BITMAP_SCANLINE_UNIT  8
+# endif
+
+#define GLYPHPADBYTES           4
+#define GETLEFTBITS_ALIGNMENT   1
+#define LARGE_INSTRUCTION_CACHE
+#define AVOID_MEMORY_READ
+
+#endif /* __arm__ || __arm32__ */
+
+#if (defined(Lynx) || defined(__NetBSD__)) && defined(__powerpc__)
 
 /* For now this is for Xvfb only */
 #define IMAGE_BYTE_ORDER        MSBFirst
@@ -154,7 +183,8 @@ SOFTWARE.
     (defined(__uxp__) && (defined(sparc) || defined(mc68000))) || \
     (defined(Lynx) && defined(__sparc__)) || \
     ((defined(__NetBSD__) || defined(__OpenBSD__)) && \
-     (defined(__sparc__) || defined(__mc68000__)))
+     (defined(__sparc__) || defined(__sparc_v9__) || defined(__mc68000__) \
+      || defined(__m68k__)))
 
 #if defined(sun386) || defined(sun5)
 # define IMAGE_BYTE_ORDER	LSBFirst        /* Values for the SUN only */
@@ -164,11 +194,33 @@ SOFTWARE.
 # define BITMAP_BIT_ORDER	MSBFirst
 #endif
 
-#ifdef sparc
+#if defined(sparc) || defined(__sparc__) || defined(__sparc_v9__)
 # define AVOID_MEMORY_READ
 # define LARGE_INSTRUCTION_CACHE
 # define FAST_CONSTANT_OFFSET_MODE
-# define SHARED_IDCACHE
+# if !defined(__sparc_v9__) && !defined(__arch64__)
+#  define SHARED_IDCACHE
+# else
+#  define LARGE_INSTRUCTION_CACHE
+#  define PLENTIFUL_REGISTERS
+# endif
+#endif
+
+#if defined(__sparc_v9__) || ((defined(__sparc__) || defined(sparc)) && defined(__arch64__))
+/* pad scanline to a longword */
+#define BITMAP_SCANLINE_UNIT			64
+
+#define BITMAP_SCANLINE_PAD 			64
+#define LOG2_BITMAP_PAD				6
+#define LOG2_BYTES_PER_SCANLINE_PAD		3
+
+/* Add for handling protocol XPutImage and XGetImage; see comment below */
+#define INTERNAL_VS_EXTERNAL_PADDING
+#define BITMAP_SCANLINE_UNIT_PROTO		32
+
+#define BITMAP_SCANLINE_PAD_PROTO 	 	32
+#define LOG2_BITMAP_PAD_PROTO			5
+#define LOG2_BYTES_PER_SCANLINE_PAD_PROTO	2
 #endif
 
 #ifdef mc68020
@@ -179,6 +231,18 @@ SOFTWARE.
 #define GETLEFTBITS_ALIGNMENT	1
 
 #endif /* sun && !(i386 && SVR4) */
+
+
+#if defined(__NetBSD__) && defined(__mac68k__)
+# define IMAGE_BYTE_ORDER	MSBFirst        /* Values for mac68k only */
+# define BITMAP_BIT_ORDER	MSBFirst
+# define GLYPHPADBYTES		4
+# define GETLEFTBITS_ALIGNMENT	1
+
+# ifdef mc68020
+#  define FAST_UNALIGNED_READS
+# endif
+#endif
 
 
 #if defined(AIXV3)

@@ -1431,7 +1431,7 @@ XtPointer closure;		/* TextWidget */
 XtPointer callData;		/* #pixels */
 {
   TextWidget ctx = (TextWidget)closure;
-  int height, lines = (long) callData;
+  int height, lines = (int)(long) callData;
 
   height = ctx->core.height - VMargins(ctx);
   if (height < 1)

@@ -75,7 +75,7 @@ MTRRDEFINES = -DHAS_MTRR_SUPPORT
 MTRRDEFINES = -DHAS_MTRR_BUILTIN
 #endif
 
-#if defined(FreeBSDArchitecture)
+#if defined(FreeBSDArchitecture) || defined(NetBSDArchitecture)
 SYSVIPCDEFINES = -DHAVE_SYSV_IPC
 #endif
 
@@ -114,7 +114,7 @@ KMODSRC = kmod_noop.c
 KMODOBJ = kmod_noop.o
 #endif
 
-#if defined(i386Architecture) || defined(ia64Architecture)
+#if defined(i386Architecture) || defined(ia64Architecture) || defined(x86_64Architecture)
 RES_SRC=stdResource.c
 RES_OBJ=stdResource.o
 #else
@@ -122,9 +122,13 @@ RES_SRC=bsdResource.c
 RES_OBJ=bsdResource.o
 #endif
 
-#if defined(AlphaArchitecture)
+#if defined(AlphaArchitecture) && defined(FreeBSDArchitecture)
 AXP_SRC=bsd_ev56.c xf86Axp.c bsd_axp.c
 AXP_OBJ=bsd_ev56.o xf86Axp.o bsd_axp.o
+#endif
+#if defined(AlphaArchitecture) && defined(NetBSDArchitecture)
+AXP_SRC=bsd_ev56.c
+AXP_OBJ=bsd_ev56.o
 #endif
 
 #if (defined(FreeBSDArchitecture) || defined(NetBSDArchitecture)) && HasAgpGart
@@ -135,7 +139,7 @@ AGP_SRC=agp_noop.c
 AGP_OBJ=agp_noop.o
 #endif
 
-#if defined(i386Architecture)
+#if defined(i386Architecture) || defined(x86_64Architecture)
 VIDEO_SRC = i386_video.c
 VIDEO_OBJ = i386_video.o
 #elif defined(AlphaArchitecture)
