@@ -579,6 +579,13 @@ _LoaderFileToMem(int fd, unsigned long offset, int size, char *label)
 	ppc_flush_icache(ptr + size - 1);
     }
 # endif
+#if defined(__NetBSD__)
+#if defined(__powerpc__)
+    __syncicache(ptr,size);
+#elif defined(__arm__)
+    arm_sync_icache(ptr, size);
+#endif
+#endif
 
 # ifdef DEBUGMEM
     ErrorF("=%lx\n", ptr);

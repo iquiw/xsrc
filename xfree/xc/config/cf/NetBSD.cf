@@ -25,6 +25,13 @@ XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.123 2003/11/20 16:18:18 da
 XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVersion)
 
 /*
+ * Enable support for "xdmauth" authentification.
+ */
+#ifndef HasXdmAuth
+#define HasXdmAuth YES
+#endif
+
+/*
  * C library features
  */
 #if ((OSMajorVersion > 1) || \
@@ -148,13 +155,13 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #if defined(UseInstalled)
 #define DefaultCCOptions 	/**/
 #else
-#ifdef Arm32Architecture
+#if defined(Arm32Architecture) || defined(CatsArchitecture)
 #define DefaultCCOptions 	-ansi -Dasm=__asm -fsigned-char \
 				-fomit-frame-pointer
 #elif defined(PpcArchitecture)
 # define DefaultCCOptions	-ansi -Dasm=__asm -fsigned-char
 #else
-#define DefaultCCOptions 	-ansi -Dasm=__asm GccWarningOptions
+# define DefaultCCOptions 	-ansi -Dasm=__asm
 #endif
 #endif
 #endif
@@ -176,6 +183,15 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # else
 #  define UseElfFormat NO
 # endif
+#endif
+
+#if 0
+/* one day we should enable this, but support is needed in the Xserver */
+#if UseElfFormat
+# ifndef DoLoadableServer
+#  define DoLoadableServer	YES
+# endif
+#endif
 #endif
 
 /*
@@ -231,13 +247,22 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  define ServerOSDefines 	XFree86ServerOSDefines
 # elif defined(Arm32Architecture)
 #   define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
+# elif defined(CatsArchitecture)
+#   define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME 
 # elif defined(PpcArchitecture)
 #  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME -DDDXOSINIT
+# elif defined(AMD64Architecture)
+#  undef OptimizedCDebugFlags
+#  define OptimizedCDebugFlags	-O2
+#  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
+#  define NetBSDMachineDefines	-D__AMD64__
 # else
 #  define ServerOSDefines 	/**/
 # endif
 # if defined(AlphaArchitecture)
 #  define ServerExtraSysLibs	-lalpha
+# elif defined(AMD64Architecture)
+#  define ServerExtraSysLibs	-lx86_64
 # else
 #  define ServerExtraSysLibs	/**/
 # endif
@@ -272,16 +297,36 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  ifndef XFree86ConsoleDefines
 #    define XFree86ConsoleDefines -DPCCONS_SUPPORT
 #  endif
+#elif defined(CatsArchitecture)
+#  define ServerExtraDefines GccGasOption XFree86ServerDefines
+#  ifndef XFree86ConsoleDefines
+#    define XFree86ConsoleDefines	-DPCCONS_SUPPORT -DPCVT_SUPPORT -DWSCONS_SUPPORT
+#  endif
 #elif defined(PpcArchitecture)
 #  define ServerExtraDefines	GccGasOption XFree86ServerDefines
 #  ifndef XFree86ConsoleDefines
 #    define XFree86ConsoleDefines	-DWSCONS_SUPPORT
 #  endif
+#elif defined(AMD64Architecture)
+# define ServerExtraDefines	GccGasOption XFree86ServerDefines -D_XSERVER64
+#  ifndef XFree86ConsoleDefines
+#    define XFree86ConsoleDefines -DWSCONS_SUPPORT -DPCVT_SUPPORT
+#  endif
+#elif defined(SGIMipsArchitecture)
+#    define XFree86ConsoleDefines -DWSCONS_SUPPORT
+#  define ServerExtraDefines    GccGasOption XFree86ServerDefines
+#elif defined(atariArchitecture)
+#   define ServerExtraDefines GccGasOption -D__atari__ -D__mc68000__ -Dmc68020
 #else
 #  define ServerExtraDefines GccGasOption
 #endif
 
-#define StandardDefines	-DCSRG_BASED
+#ifndef NetBSDMachineDefines
+#define NetBSDMachineDefines /**/
+#endif
+
+#define StandardDefines	-DCSRG_BASED NetBSDMachineDefines
+
 /* Citrus mb locale were added in 1.5P */
 #if ((OSMajorVersion > 1) || \
      (OSMajorVersion == 1 && OSMinorVersion > 5) || \
@@ -356,6 +401,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # undef  InstallCmd
 # define InstallCmd 		/usr/bin/install
 #endif
+#define StripInstalledPrograms	YES
 
 #ifndef ExtraFilesToClean
 # define ExtraFilesToClean 	*.core
@@ -397,6 +443,11 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # endif /* MTRRBuiltin */
 #endif /* i386Architecture */
 
+#if defined(AMD64Architecture)
+# define HasMTRRBuiltin       YES
+# define XF86AFB              YES
+#endif
+
 /*
  * agpgart support (NetBSD 1.5Y and up)
  */
@@ -436,7 +487,6 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  define HasCookieMaker	NO
 # endif
 #endif
-
 
 /*
  * ForceSubdirs - force make to build subdirectories
@@ -585,14 +635,21 @@ InstallManPageAliasesBase(file,destdir,aliases)
 # define BuildXInputLib          YES
 #endif
 
-#if defined(i386Architecture) || defined(Arm32Architecture) || defined(AlphaArchitecture) || defined(PpcArchitecture)
+#if defined(i386Architecture) || defined(Arm32Architecture) || defined(AlphaArchitecture) || defined(PpcArchitecture) || defined(CatsArchitecture) || defined(AMD64Architecture) || defined(SGIMipsArchitecture)
 # include <xfree86.cf>
 #endif
 
 /*
+ * NetBSD always uses the XFree86 contrib distribution.
+ */
+#undef	XF86Contrib
+#define	XF86Contrib	YES
+
+/*
  * Definitions for the SUN server on NetBSD/sparc
  */
-#ifdef SparcArchitecture
+#ifdef	SparcArchitecture
+
 #ifndef Xsun24Server
 #define Xsun24Server	YES
 #endif
@@ -600,7 +657,7 @@ InstallManPageAliasesBase(file,destdir,aliases)
 #define XsunServer	YES
 #endif
 #ifndef XsunMonoServer
-#define XsunMonoServer	NO	/* XXX: does not link */
+#define XsunMonoServer	YES
 #endif
 #ifndef BuildScreenSaverLibrary
 #define BuildScreenSaverLibrary	YES
@@ -615,36 +672,64 @@ InstallManPageAliasesBase(file,destdir,aliases)
 #ifndef UseRgbTxt
 #define UseRgbTxt	YES
 #endif
+
 #define BuildXF86VidModeExt	NO
+
+#if !defined(Sparc64Architecture)
+
 #define BuildXF86DGA		NO
 #define BuildXInputExt		NO
 #include <xfree86.cf>
+
+#else /* Sparc64Architecture */
+# define OptimizedCDebugFlags	-O2
+
+# ifndef XF86Server
+#  define XF86Server		YES
+# endif
+
+/* # define XkbServerDefines  -DXKB_ALWAYS_USES_SOFT_REPEAT */
+
+# if XF86Server
+#   ifndef DoLoadableServer
+#     define DoLoadableServer	NO
+#   endif
+#   define XF86OSCardDrivers	/* wsfb sunffb */
+#   define AsOutputArchSize	64
+#   define AsVISOption		-Av9a
+#   define XFree86ConsoleDefines -DWSCONS_SUPPORT
+# endif
+
+#define BuildXF86DGA		YES
+#define BuildXInputExt		YES
+#include <xfree86.cf>
+
+#endif
+
 #endif
 
 /*
  * Definition for compiling on MIPS machines
  */
-#ifdef MipsArchitecture
+#if defined(MipsArchitecture) && !defined(SGIMipsArchitecture)
 #define PositionIndependentCFlags
-#define SharedLibraryLoadFlags -x -shared --whole-archive -soname `echo $@ |
-sed 's/\.[0-9]*$$//'`
+#define SharedLibraryLoadFlags -x -shared --whole-archive -soname `echo $@ | sed 's/\.[0-9]*$$//'`
 #define SharedXtReqs $(XONLYLIB) $(SMLIB) $(ICELIB)
 #define SharedXmuReqs $(LDPRELIB) $(XTOOLONLYLIB) $(XLIB)
 #endif
 
 /*
- * Definition for compiling on Alpha machines
+ * Definition for compiling on SGI MIPS machines
  */
-#ifdef AlphaArchitecture
-
-/* Build the shared XDM greeter on Alpha if it supports shared libs */
-#define SharedLibXdmGreet HasSharedLibraries
+#ifdef SGIMipsArchitecture
+#undef XF86CardDrivers
+#define XF86CardDrivers               newport
 #endif
 
 /*
  * Definition for compile on macppc machines
  */
-#ifdef PpcArchitecture
+#ifdef macppcArchitecture
 
 # define OptimizedCDebugFlags 	-O2
 # define XkbServerDefines	-DXKB_ALWAYS_USES_SOFT_REPEAT
@@ -655,6 +740,15 @@ sed 's/\.[0-9]*$$//'`
 
 # define UseElfFormat		YES
 
+# define XmacppcServer		YES
+
+#endif
+
+/*
+ * Definition for compiling on cats machines
+ */
+#ifdef CatsArchitecture
+/* nothing is needed */
 #endif
 
 /*
@@ -679,9 +773,15 @@ sed 's/\.[0-9]*$$//'`
 #define UseSeparateConfDir NO	/* We don't want appdefs in "/etc/X11". */
 #endif
 
-#if defined(NetBSDArchitecture) && \
-     ((OSMajorVersion > 1) || \
-      (OSMajorVersion == 1 && OSMinorVersion > 3))
-#define HasDevRandom		YES
-#define RandomDeviceFile	/dev/urandom
+/*
+ * Use rnd(4) under NetBSD from 1.4 to 1.6A and arc4random(3) under 1.6B
+ * and above.
+ */
+#if (OSMajorVersion > 1 || \
+     (OSMajorVersion == 1 && OSMinorVersion == 6 && OSTeenyVersion >= 2))
+# define HasArc4Random		YES
+#elif ((OSMajorVersion > 1) || \
+       (OSMajorVersion == 1 && OSMinorVersion > 3))
+# define HasDevRandom		YES
+# define RandomDeviceFile	/dev/urandom
 #endif

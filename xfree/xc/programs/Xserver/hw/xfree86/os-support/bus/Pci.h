@@ -263,6 +263,10 @@
 #  define ARCH_PCI_INIT linuxPciInit
 #  define INCLUDE_XF86_MAP_PCI_MEM
 #  define INCLUDE_XF86_NO_DOMAIN
+# elif defined(__NetBSD__)
+#  define ARCH_PCI_INIT netbsdPciInit
+#  define INCLUDE_XF86_MAP_PCI_MEM
+#  define INCLUDE_XF86_NO_DOMAIN
 # endif
 #elif defined(__hppa__)
 # if defined(linux)
@@ -297,6 +301,10 @@
 #elif defined(__mips__)
 # if defined(linux)
 #  define ARCH_PCI_INIT linuxPciInit
+#  define INCLUDE_XF86_MAP_PCI_MEM
+#  define INCLUDE_XF86_NO_DOMAIN
+# elif defined(__NetBSD__)
+#  define ARCH_PCI_INIT netbsdPciInit
 #  define INCLUDE_XF86_MAP_PCI_MEM
 #  define INCLUDE_XF86_NO_DOMAIN
 # endif
@@ -336,18 +344,25 @@
 # if defined(linux)
 #  define ARCH_PCI_INIT linuxPciInit
 #  define INCLUDE_XF86_MAP_PCI_MEM
+#  define ARCH_PCI_PCI_BRIDGE sparcPciPciBridge
 # elif defined(sun)
 #  define ARCH_PCI_INIT sparcPciInit
 #  define INCLUDE_XF86_MAP_PCI_MEM
+#  define ARCH_PCI_PCI_BRIDGE sparcPciPciBridge
 # elif (defined(__OpenBSD__) || defined(__FreeBSD__)) && defined(__sparc64__)
 #  define  ARCH_PCI_INIT freebsdPciInit
 #  define INCLUDE_XF86_MAP_PCI_MEM
 #  define INCLUDE_XF86_NO_DOMAIN
+#  define ARCH_PCI_PCI_BRIDGE sparcPciPciBridge
+# elif defined(__NetBSD__) && defined(__sparc64__)
+#  define ARCH_PCI_INIT netbsdPciInit
+#  define INCLUDE_XF86_MAP_PCI_MEM
+#  define INCLUDE_XF86_NO_DOMAIN
 # endif
-# if !defined(__FreeBSD__)
+# if !defined(__FreeBSD__) && !defined(__NetBSD__)
 #  define ARCH_PCI_PCI_BRIDGE sparcPciPciBridge
 # endif
-#elif defined(__AMD64__)
+#elif defined(__AMD64__) || defined(__amd64__)
 # if defined(__FreeBSD__)
 #  define ARCH_PCI_INIT freebsdPciInit
 # else

@@ -5,6 +5,8 @@
 #endif
 
 #ifdef SPARC_64BIT_ADDR
+.register	%g2,#scratch
+.register	%g3,#scratch
 #define LDPTR		ldx
 #define V4F_DATA	0x00
 #define V4F_START	0x08
