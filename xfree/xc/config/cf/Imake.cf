@@ -187,6 +187,7 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.74 2001/11/16 16:47:50 dawes Exp $
 # endif
 # ifdef __alpha__
 #   define AlphaArchitecture
+#   define AlphaBsdArchitecture
 #   undef __alpha__
 # endif
 # ifdef mc68000
@@ -195,6 +196,10 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.74 2001/11/16 16:47:50 dawes Exp $
 # ifdef __arm32__
 #   define Arm32Architecture
 #   undef __arm32__
+# endif
+# ifdef __cats__
+#   define CatsArchitecture
+#   undef __cats__
 # endif
 # ifdef __vax__
 #   define VaxArchitecture

@@ -133,9 +133,17 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
  * are supported on this platform.
  */
 #ifdef Mc68020Architecture
-#ifndef XF68FBDevServer
-#define XF68FBDevServer		YES
-#endif
+# ifndef XF68FBDevServer
+#  define XF68FBDevServer		YES
+# endif
+# if defined(NetBSDArchitecture) && defined(atariArchitecture)
+#  ifndef XF68SVGAServer
+#   define XF68SVGAServer		YES
+#  endif
+#  ifndef XF68W32Server
+#   define XF68W32Server		YES
+#  endif
+# endif
 #endif
 
 /* 
@@ -145,6 +153,31 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #ifdef ArcArchitecture
 #ifndef XF86S3Server
 #define XF86S3Server          YES
+#endif
+#endif
+
+/*
+ * For SHARK platforms, the default is to build all X servers which
+ * are supported on this platform.
+ */
+#ifdef sharkArchitecture
+#ifndef XF86SVGAServer
+#define XF86SVGAServer		YES
+#endif
+#ifndef XF86VGA16Server
+#define XF86VGA16Server		YES
+#endif
+#ifndef XF86MonoServer
+#define XF86MonoServer		YES
+#endif
+#ifndef XF86SvgaDrivers
+#define XF86SvgaDrivers		chips igs generic
+#endif
+#ifndef XF86Vga16Drivers
+#define XF86Vga16Drivers	igs generic
+#endif
+#ifndef XF86Vga2Drivers
+#define XF86Vga2Drivers		igs generic
 #endif
 #endif
 
@@ -178,6 +211,7 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #define XF68FBDevIMSTT		YES
 #endif
 #endif
+
 /*
  * The following disables all X servers not already enabled above
  */
@@ -241,6 +275,14 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 
 #ifndef XF86TGAServer
 # define XF86TGAServer		NO
+#endif
+
+#ifndef XF68SVGAServer
+# define XF68SVGAServer		NO
+#endif
+
+#ifndef XF68W32Server
+# define XF68W32Server		NO
 #endif
 
 #if XF86S3Server
@@ -313,6 +355,12 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 # define XF86TGADir		tga
 #else
 # define XF86TGADir		/**/
+#endif
+
+#if XF68W32Server
+# define XF68W32Dir		et4000w32
+#else
+# define XF68W32Dir		/**/
 #endif
 
 #ifndef BuildPC98Servers
@@ -415,6 +463,16 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 # define XF86AccelServer	NO
 #endif
 
+#undef XF68AccelServerDirs
+#define XF68AccelServerDirs	XF68W32Dir
+
+#undef XF68AccelServer
+#if XF68W32Server
+# define XF68AccelServer	YES
+#else
+# define XF68AccelServer	NO
+#endif
+
 #undef XF98AccelServerDirs
 #define XF98AccelServerDirs   XF98NECS3Dir XF98PWSKBDir XF98PWLBDir XF98GA968Dir
 
@@ -431,21 +489,27 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #ifndef XF86SvgaDrivers
 # ifdef AlphaArchitecture
 #  define XF86SvgaDrivers	mga tvga8900 s3v
+# elifdef sharkArchitecture
+#  define XF86SvgaDrivers	chips igs generic
 # else
 #  if defined(LinuxArchitecture) || defined(FreeBSDArchitecture)
 #   define XF86SvgaDrivers	nv et4000 et3000 pvga1 gvga r128 ati sis tvga8900 \
 				cirrus ncr77c22 compaq mga oak al2101 \
 				ali cl64xx video7 ark mx realtek s3_savage s3v apm \
-				s3_svga neo chips cyrix rendition p9x00 \
+				s3_savage s3_svga neo chips cyrix rendition p9x00 \
 				spc8110 i740 tdfx smi generic
 #  else
 #   define XF86SvgaDrivers	nv et4000 et3000 pvga1 gvga r128 ati sis tvga8900 \
 				cirrus ncr77c22 compaq mga oak al2101 \
 				ali cl64xx video7 ark mx realtek s3v apm \
-				s3_svga neo chips cyrix rendition p9x00 \
+				s3_savage s3_svga neo chips cyrix rendition p9x00 \
 				spc8110 i740 tdfx smi generic
 #  endif
 # endif
+#endif
+
+#ifndef XF68SvgaDrivers
+# define XF68SvgaDrivers	et4000
 #endif
 
 #ifndef XF98SvgaDrivers
@@ -453,8 +517,12 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #endif
 
 #ifndef XF86Vga16Drivers
-# define XF86Vga16Drivers	et4000 et3000 ncr77c22 ati sis tvga8900 \
+# ifdef sharkArchitecture
+#  define XF86Vga16Drivers	igs generic
+# else
+#  define XF86Vga16Drivers	et4000 et3000 ncr77c22 ati sis tvga8900 \
 				oak cl64xx generic
+# endif
 #endif
 
 #ifndef XF98Vga16Drivers
@@ -464,6 +532,8 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #ifndef XF86Vga2Drivers
 # ifdef AlphaArchitecture
 #  define XF86Vga2Drivers	generic
+# elifdef sharkArchitecture
+#  define XF86Vga2Drivers	igs generic
 # else
 #  define XF86Vga2Drivers	et4000 et3000 pvga1 gvga ati sis tvga8900 \
 				cirrus ncr77c22 /*compaq*/ oak cl64xx generic
@@ -495,37 +565,80 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 # define XF86W32Drivers		et4000w32
 #endif
 
+#ifndef XF68W32Drivers
+# define XF68W32Drivers		et4000w32
+#endif
+
 #if XF68FBDevServer || XF86FBDevServer
-# ifndef XF68FBDevIPLAN2p2
-#  define XF68FBDevIPLAN2p2	YES
-# endif
-# ifndef XF68FBDevIPLAN2p4
-#  define XF68FBDevIPLAN2p4	YES
-# endif
-# ifndef XF68FBDevIPLAN2p8
-#  define XF68FBDevIPLAN2p8	YES
-# endif
-# ifndef XF68FBDevILBM
-#  define XF68FBDevILBM		YES
-# endif
-# ifndef XF68FBDevAFB
-#  define XF68FBDevAFB		YES
-# endif
-# ifndef XF68FBDevCFB8
-#  define XF68FBDevCFB8		YES
-# endif
-# ifndef XF68FBDevCFB16
-#  define XF68FBDevCFB16	YES
-# endif
-# ifndef XF68FBDevCFB24
-#  ifdef i386Architecture
-#   define XF68FBDevCFB24	YES
-#  else
+# if defined(NetBSDArchitecture) && defined(atariArchitecture)
+#  ifndef XF68FBDevIPLAN2p2
+#   define XF68FBDevIPLAN2p2	NO
+#  endif
+#  ifndef XF68FBDevIPLAN2p4
+#   define XF68FBDevIPLAN2p4	YES
+#  endif
+#  ifndef XF68FBDevIPLAN2p8
+#   define XF68FBDevIPLAN2p8	YES
+#  endif
+#  ifndef XF68FBDevILBM
+#   define XF68FBDevILBM	NO
+#  endif
+#  ifndef XF68FBDevAFB
+#   define XF68FBDevAFB		NO
+#  endif
+#  ifndef XF68FBDevCFB8
+#   define XF68FBDevCFB8	NO
+#  endif
+#  ifndef XF68FBDevCFB16
+#   define XF68FBDevCFB16	NO
+#  endif
+#  ifndef XF68FBDevCFB24
 #   define XF68FBDevCFB24	NO
 #  endif
-# endif
-# ifndef XF68FBDevCFB32
-#  define XF68FBDevCFB32	YES
+#  ifndef XF68FBDevCFB32
+#   define XF68FBDevCFB32	NO
+#  endif
+#  ifndef XF68FBDev77C32
+#   define XF68FBDev77C32	NO
+#  endif
+#  ifndef XF68FBDevMach64
+#   define XF68FBDevMach64	NO
+#  endif
+#  ifndef XF68FBDevIMSTT
+#   define XF68FBDevIMSTT	NO
+#  endif
+# else
+#  ifndef XF68FBDevIPLAN2p2
+#   define XF68FBDevIPLAN2p2	YES
+#  endif
+#  ifndef XF68FBDevIPLAN2p4
+#   define XF68FBDevIPLAN2p4	YES
+#  endif
+#  ifndef XF68FBDevIPLAN2p8
+#   define XF68FBDevIPLAN2p8	YES
+#  endif
+#  ifndef XF68FBDevILBM
+#   define XF68FBDevILBM	YES
+#  endif
+#  ifndef XF68FBDevAFB
+#   define XF68FBDevAFB		YES
+#  endif
+#  ifndef XF68FBDevCFB8
+#   define XF68FBDevCFB8	YES
+#  endif
+#  ifndef XF68FBDevCFB16
+#   define XF68FBDevCFB16	YES
+#  endif
+#  ifndef XF68FBDevCFB24
+#   ifdef i386Architecture
+#    define XF68FBDevCFB24	YES
+#   else
+#    define XF68FBDevCFB24	NO
+#   endif
+#  endif
+#  ifndef XF68FBDevCFB32
+#   define XF68FBDevCFB32	YES
+#  endif
 # endif
 /* Accelerated stuff */
 # ifndef XF68FBDev77C32
@@ -614,7 +727,8 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #if XF86AccelServer || XF86SVGAServer || XF98AccelServer || \
     XF98GANBWAPServer || XF98NEC480Server || XF98NKVNECServer || \
     XF98WABSServer || XF98WABEPServer || XF98WSNAServer || XF98TGUIServer || \
-    XF98MGAServer || XF98SVGAServer || XF68FBDevServer || XF86FBDevServer
+    XF98MGAServer || XF98SVGAServer || XF68FBDevServer || XF86FBDevServer || \
+    XF68AccelServer || XF68SVGAServer
 #define BuildPexExt		YES
 #else
 #define BuildPexExt		NO
@@ -630,7 +744,8 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #  if XF86AccelServer || XF86SVGAServer || XF98AccelServer || \
       XF98GANBWAPServer || XF98NEC480Server || XF98NKVNECServer || \
       XF98WABSServer || XF98WABEPServer || XF98WSNAServer || XF98TGUIServer || \
-      XF98MGAServer || XF98SVGAServer || XF68FBDevServer || XF86FBDevServer
+      XF98MGAServer || XF98SVGAServer || XF68FBDevServer || XF86FBDevServer || \
+      XF68AccelServer || XF68SVGAServer
 #    define BuildGlxExt             YES
 #  else
 #    define BuildGlxExt             NO
@@ -645,7 +760,8 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #if XF86AccelServer || XF86SVGAServer || XF98AccelServer || \
     XF98GANBWAPServer || XF98NEC480Server || XF98NKVNECServer || \
     XF98WABSServer || XF98WABEPServer || XF98WSNAServer || XF98TGUIServer || \
-    XF98MGAServer || XF98SVGAServer || XF68FBDevServer || XF86FBDevServer
+    XF98MGAServer || XF98SVGAServer || XF68FBDevServer || XF86FBDevServer || \
+    XF68AccelServer || XF68SVGAServer
 #define BuildXIE		YES
 #else
 #define BuildXIE		NO
@@ -710,6 +826,15 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 #ifndef JoystickSupport
 #define JoystickSupport		NO
 #endif
+
+#ifndef USBSupport
+#if HasUsbLib
+#define USBSupport		YES
+#else
+#define USBSupport		NO
+#endif
+#endif
+
 #ifndef CalcompSupport
 #define CalcompSupport		YES
 #endif
@@ -803,6 +928,10 @@ XCOMM $XConsortium: xfree86.cf /main/34 1996/12/06 11:45:18 rws $
 
 #ifndef HasDlsymBug
 #define HasDlsymBug		NO
+#endif
+
+#ifndef HasUsbLib
+#define HasUsbLib		NO
 #endif
 
 /*
@@ -1048,9 +1177,12 @@ VGA16DRIVERSRC = $(XF86SRC)/vga16/drivers
   S3VDRIVERSRC = $(XF86SRC)/accel/s3_virge/drivers
 
        XF68SRC = $(SERVERSRC)/hw/xfree68
+  XF68ACCELSRC = $(XF68SRC)/accel
     XF68COMSRC = $(XF68SRC)/common
+     XF68HWSRC = $(XF68SRC)/common_hw
  XF68CONFIGSRC = $(XF68COMSRC)
      XF68OSSRC = $(XF68SRC)/os-support
+VGA68DRIVERSRC = $(XF68SRC)/vga256/drivers
 
            XF98SRC = $(SERVERSRC)/hw/xfree98
       XF98ACCELSRC = $(XF98SRC)/accel

@@ -150,6 +150,7 @@ in this Software without prior written authorization from the X Consortium.
 # include <sys/param.h>
 # include <sys/types.h>
 # include <sys/sysctl.h>
+# include <sys/stat.h>
 #endif
 #include <stdio.h>
 #include "Xosdefs.h"
@@ -187,7 +188,6 @@ in this Software without prior written authorization from the X Consortium.
 #if !defined(SIGCHLD) && defined(SIGCLD)
 # define SIGCHLD		SIGCLD
 #endif
-#include <sys/stat.h>
 #ifndef X_NOT_POSIX
 # ifdef _POSIX_SOURCE
 #  ifdef SCO325
@@ -391,6 +391,9 @@ main(argc, argv)
 	FILE	*tmpfd;
 	char	makeMacro[ BUFSIZ ];
 	char	makefileMacro[ BUFSIZ ];
+#ifdef HAVE_MKSTEMP
+	int fd;
+#endif
 
 	program = argv[0];
 	init();
@@ -890,7 +893,6 @@ trim_version(p)
 	return (p);
 }
 #endif
-
 
 #ifdef linux
 const char *libc_c=
