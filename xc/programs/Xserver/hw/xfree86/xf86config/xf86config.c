@@ -500,7 +500,7 @@ void mouse_configuration() {
 
 #else /* __EMX__ */
        	/* set some reasonable defaults for OS/2 */
-       	config_mousetype = 10;
+       	config_mousetype = 11;
 	config_chordmiddle = 0;       
 	config_cleardtrrts = 0;
 	config_emulate3buttons = 0;

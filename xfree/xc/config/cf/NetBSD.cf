@@ -25,6 +25,13 @@ XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.87.2.1 2001/01/22 19:49:14
 XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVersion)
 
 /*
+ * Enable support for "xdmauth" authentification.
+ */
+#ifndef HasXdmAuth
+#define HasXdmAuth YES
+#endif
+
+/*
  * C library features
  */
 #if ((OSMajorVersion > 1) || \
@@ -121,8 +128,10 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #else
 #ifdef Arm32Architecture
 #define DefaultCCOptions 	-ansi -Dasm=__asm -fsigned-char -fomit-frame-pointer GccWarningOptions
+#elif defined(PpcArchitecture)
+# define DefaultCCOptions 	-ansi -Dasm=__asm -fsigned-char GccWarningOptions
 #else
-#define DefaultCCOptions 	-ansi -Dasm=__asm GccWarningOptions
+# define DefaultCCOptions 	-ansi -Dasm=__asm GccWarningOptions
 #endif
 #endif
 
@@ -182,16 +191,20 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # endif
 #else
 # define OptimizedCDebugFlags 	-O2
-# if defined(SparcArchitecture) || defined(AlphaArchitecture)
+# if defined(SparcArchitecture)
 #  define ServerOSDefines 	-DDDXOSINIT
+# elif defined(AlphaArchitecture) || defined(PpcArchitecture)
+#  define ServerOSDefines 	XFree86ServerOSDefines -DDDXTIME -DDDXOSINIT
+# elif defined(Arm32Architecture)
+#  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
 # else
-#  ifdef Arm32Architecture
-#   define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
-#  else
 #  define ServerOSDefines 	/**/
 # endif
+# if defined(AlphaArchitecture)
+#  define ServerExtraSysLibs	-lalpha
+# else
+#  define ServerExtraSysLibs	/**/
 # endif
-# define ServerExtraSysLibs	/**/
 #endif
 #ifdef i386Architecture
 # define ServerExtraDefines GccGasOption XFree86ServerDefines
@@ -207,24 +220,37 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #else
 # if defined(SparcArchitecture)
 #  define ServerExtraDefines XFree86ServerDefines
-# else
-#  if defined(AlphaArchitecture)
-#   define ServerExtraDefines GccGasOption -D_XSERVER64
-#  else
-#   ifdef Arm32Architecture
-#    define ServerExtraDefines GccGasOption XFree86ServerDefines
-#    ifndef XFree86ConsoleDefines
-#     define XFree86ConsoleDefines -DPCCONS_SUPPORT
-#    endif
-#   else
-#   define ServerExtraDefines GccGasOption
+# elif defined(AlphaArchitecture)
+	/* XXX for the following */
+#  define ServerExtraDefines GccGasOption XFree86ServerDefines -D_XSERVER64
+#  ifndef XFree86ConsoleDefines
+#   define XFree86ConsoleDefines -DWSCONS_SUPPORT -DPCCONS_SUPPORT -DPCVT_SUPPORT
 #  endif
+# elif defined(Arm32Architecture)
+#  define ServerExtraDefines GccGasOption XFree86ServerDefines
+#  ifndef XFree86ConsoleDefines
+#   define XFree86ConsoleDefines -DPCCONS_SUPPORT
+#  endif
+# elif defined(PpcArchitecture)
+#   define ServerExtraDefines   GccGasOption XFree86ServerDefines
+#   define XkbServerDefines     -DXKB_ALWAYS_USES_SOFT_REPEAT
+#   ifndef XFree86ConsoleDefines
+#    defined XFree86ConsoleDefines	-DWSCONS_SUPPORT
+#   endif
+# else   
+#  define ServerExtraDefines GccGasOption
 # endif
-#endif
 #endif
 
 #define StandardDefines	-DCSRG_BASED
+/* Citrus mb locale were added in 1.5P */
+#if ((OSMajorVersion > 1) || \
+     (OSMajorVersion == 1 && OSMinorVersion > 5) || \
+     (OSMajorVersion == 1 && OSMinorVersion == 5 && OSTeenyVersion >= 15))
+#define XawI18nDefines	-DHAS_WCHAR_H -DHAS_WCTYPE_H -DNO_WIDEC_H
+#else
 #define XawI18nDefines	-DUSE_XWCHAR_STRING -DUSE_XMBTOWC
+#endif
 
 #ifndef ExtraLibraries
 #define ExtraLibraries		/**/
@@ -456,26 +482,33 @@ InstallManPageAliasesBase(file,destdir,aliases)
 #include <bsdLib.rules>
 #endif /* HasSharedLibraries */
 
-#if defined(i386Architecture) || defined(Arm32Architecture)
+#if defined(i386Architecture) || defined(Arm32Architecture) || defined(AlphaArchitecture) || defined(PpcArchitecture)
 # include <xfree86.cf>
 #endif
+
+/*
+ * NetBSD always uses the XFree86 contrib distribution.
+ */
+#undef	XF86Contrib
+#define	XF86Contrib	YES
 
 /*
  * Definitions for the SUN server on NetBSD/sparc
  */
 #ifdef SparcArchitecture
 #ifndef Xsun24Server
-#define Xsun24Server	NO
+#define Xsun24Server	YES
 #endif
 #ifndef XsunServer
 #define XsunServer	YES
 #endif
 #ifndef XsunMonoServer
-#define XsunMonoServer	YES
+#define XsunMonoServer	NO	/* XXX: does not link */
 #endif
 #ifndef BuildScreenSaverLibrary
 #define BuildScreenSaverLibrary	YES
 #endif
+
 /*
  * XFree86 uses its own (more portable) database routines to speed up 
  * the RGB database lookups
@@ -506,8 +539,7 @@ sed 's/\.[0-9]*$$//'`
  * Definition for compiling on Alpha machines
  */
 #ifdef AlphaArchitecture
-#define	BuildServer	NO
-/* Build the shared XDM greeter on Alph if it supports shared libs */
+/* Build the shared XDM greeter on Alpha if it supports shared libs */
 #define SharedLibXdmGreet HasSharedLibraries
 #endif
 
@@ -518,6 +550,18 @@ sed 's/\.[0-9]*$$//'`
 #define BuildServer	NO
 #endif
 
+
+/*
+ * General settings for all platforms
+ */
 #ifndef SharedLibXdmGreet
 #define SharedLibXdmGreet NO
+#endif
+
+#ifndef BuildHtmlManPages
+#define BuildHtmlManPages NO	/* We don't want HTML manpages */
+#endif
+
+#ifndef UseSeparateConfDir
+#define UseSeparateConfDir NO	/* We don't want appdefs in "/etc/X11". */
 #endif
