@@ -1,4 +1,4 @@
-/* $NetBSD: alphaTGA.c,v 1.5 2001/10/06 02:25:51 thorpej Exp $ */
+/* $NetBSD: alphaTGA.c,v 1.1 1999/04/27 08:18:24 ross Exp $ */
 
 /* $XConsortium: sunCfb.c,v 1.15.1.2 95/01/12 18:54:42 kaleb Exp $ */
 /* $XFree86: xc/programs/Xserver/hw/sun/sunCfb.c,v 3.2 1995/02/12 02:36:22 dawes Exp $ */
@@ -123,7 +123,7 @@ static void CGUpdateColormap(pScreen, dex, count, rmap, gmap, bmap)
 #endif
 }
 
-void alphaTgaInstallColormap(cmap)
+void alphaInstallColormap(cmap)
     ColormapPtr	cmap;
 {
     SetupScreen(cmap->pScreen);
@@ -177,7 +177,7 @@ void alphaTgaInstallColormap(cmap)
     WalkTree(cmap->pScreen, TellGainedMap, (pointer) &(cmap->mid));
 }
 
-void alphaTgaUninstallColormap(cmap)
+void alphaUninstallColormap(cmap)
     ColormapPtr	cmap;
 {
     SetupScreen(cmap->pScreen);
@@ -196,7 +196,7 @@ void alphaTgaUninstallColormap(cmap)
     }
 }
 
-int alphaTgaListInstalledColormaps(pScreen, pCmapList)
+int alphaListInstalledColormaps(pScreen, pCmapList)
     ScreenPtr	pScreen;
     Colormap	*pCmapList;
 {
@@ -236,9 +236,9 @@ static void CGScreenInit (pScreen)
 {
 #ifndef STATIC_COLOR /* { */
     SetupScreen (pScreen);
-    pScreen->InstallColormap = alphaTgaInstallColormap;
-    pScreen->UninstallColormap = alphaTgaUninstallColormap;
-    pScreen->ListInstalledColormaps = alphaTgaListInstalledColormaps;
+    pScreen->InstallColormap = alphaInstallColormap;
+    pScreen->UninstallColormap = alphaUninstallColormap;
+    pScreen->ListInstalledColormaps = alphaListInstalledColormaps;
     pScreen->StoreColors = CGStoreColors;
     pPrivate->UpdateColormap = CGUpdateColormap;
     if (/*alphaFlipPixels ||*/ 1) {			/* XXX */
@@ -265,7 +265,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
     	if (!alphaScreenAllocate(pScreen))
 		return FALSE;
 	if (!fb) {
-		if ((fb = alphaMemoryMap ((size_t)alphaFbs[screen].size,
+		if ((fb = alphaMemoryMap ((size_t)alphaFbs[screen].info.fb_size,
 		    0, alphaFbs[screen].fd)) == NULL)
 			return FALSE;
 	        alphaFbs[screen].fb = fb;
@@ -281,7 +281,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 	 * things out, we have to look at the TGA registers.
 	 */ 
 	tgaregs = (tga_reg_t *)(fb + (1 * 1024 * 1024));
-	fb_off = (int)alphaFbs[screen].size / 2;
+	fb_off = (int)alphaFbs[screen].info.fb_size / 2;
 	fbr = fb + ( 1 * 1024 * 1024 );
 	alphaFbs[screen].tgaregs0 = (tga_reg_t *)(fbr + 0 * 64 * 1024);
 	alphaFbs[screen].tgaregs1 = (tga_reg_t *)(fbr + 1 * 64 * 1024);
@@ -308,7 +308,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 	 * where the displayed frame buffer actually starts.
 	 */
 	rowsize = 2 * 1024;			/* 2k for 128K VRAMs, 8BPP */
-	if (alphaFbs[screen].info.depth == 32)
+	if (alphaFbs[screen].info.fb_depth == 32)
 		rowsize *= 4;			/* increase by 4x for 32BPP */
 	if ((tgaregs[TGA_REG_GDER] & 0x200) == 0) /* 256K VRAMs */
 		rowsize *= 2;			/* increase by 2x */
@@ -323,20 +323,16 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 #endif
 
 	if (!alphaTgaScreenInit(pScreen, fb + fb_off,
-	    alphaFbs[screen].info.width,
-	    alphaFbs[screen].info.height,
+	    alphaFbs[screen].info.fb_width,
+	    alphaFbs[screen].info.fb_height,
 	    monitorResolution, monitorResolution,
 	    realwidth,
-	    alphaFbs[screen].info.depth)) {
-fprintf(stderr, "alphaTgaScreenInit failed\n");
+	    alphaFbs[screen].info.fb_depth))
             return FALSE;
-	}
 
 	CGScreenInit(pScreen);
-	if (!alphaScreenInit(pScreen)) {
-fprintf(stderr, "alphaScreenInit failed\n");
+	if (!alphaScreenInit(pScreen))
 		return FALSE;
-	}
 	(void) alphaSaveScreen(pScreen, SCREEN_SAVER_OFF);
 	return cfbCreateDefColormap(pScreen);
 }
@@ -350,25 +346,12 @@ alphaTgaSetupScreen(pScreen, pbits, xsize, ysize, dpix, dpiy, width, bpp)
     int width;			/* pixel width of frame buffer */
     int	bpp;			/* bits per pixel of root */
 {
-    switch (bpp) {
-    case 32:
-	if (!cfb32SetupScreen(pScreen, pbits, xsize, ysize, dpix, dpiy,
-	  width))
-	    return FALSE;
-	return cfbSetVisualTypes(24, 1 << TrueColor, 8);
-    case 8:
-	if (!cfbSetupScreen(pScreen, pbits, xsize, ysize, dpix, dpiy,
-	  width))
-	    return FALSE;
-	if (alphaTgaAccelerate) {
-	    pScreen->CopyWindow = alphaTgaCopyWindow;
-	    pScreen->CreateGC = alphaTgaCreateGC;
-	}
-	return TRUE;
-    default:
-	fprintf(stderr, "alphaTgaSetupScreen:  unsupported bpp = %d\n", bpp);
+    if (!cfbSetupScreen(pScreen, pbits, xsize, ysize, dpix, dpiy,
+      width))
 	return FALSE;
-    }
+    pScreen->CopyWindow = alphaTgaCopyWindow;
+    pScreen->CreateGC = alphaTgaCreateGC;
+    return TRUE;
 }
 
 Bool
@@ -380,32 +363,8 @@ alphaTgaFinishScreenInit(pScreen, pbits, xsize, ysize, dpix, dpiy, width, bpp)
     int width;			/* pixel width of frame buffer */
     int bpp;			/* bits per pixel of root */
 {
-    Bool retval;
-
-    switch (bpp) {
-    case 32:
-	retval = cfb32FinishScreenInit(pScreen, pbits, xsize, ysize,
-		    dpix, dpiy, width);
-
-	/* XXXNJW cfb doesn't provide a way to tweak these, so cheat. */
-	pScreen->visuals[0].redMask = 0xff0000;
-	pScreen->visuals[0].greenMask = 0xff00;
-	pScreen->visuals[0].blueMask = 0xff;
-
-	pScreen->visuals[0].offsetRed = 16;
-	pScreen->visuals[0].offsetGreen = 8;
-	pScreen->visuals[0].offsetBlue = 0;
-
-	break;
-    case 8:
-	retval = cfbFinishScreenInit(pScreen, pbits, xsize, ysize,
-		    dpix, dpiy, width);
-	break;
-    default:
-	retval = FALSE;
-    }
-
-    return retval;
+    return cfbFinishScreenInit(pScreen, pbits, xsize, ysize, dpix, dpiy,
+			       width);
 }
 
 Bool
@@ -418,8 +377,8 @@ alphaTgaScreenInit(pScreen, pbits, xsize, ysize, dpix, dpiy, width, bpp)
     int bpp;			/* bits per pixel of root */
 {
     if (!alphaTgaSetupScreen(pScreen, pbits, xsize, ysize, dpix,
-	dpiy, width, bpp))
-	    return FALSE;
+      dpiy, width, bpp))
+	return FALSE;
     return alphaTgaFinishScreenInit(pScreen, pbits, xsize, ysize, dpix,
-	  dpiy, width, bpp);
+      dpiy, width, bpp);
 }

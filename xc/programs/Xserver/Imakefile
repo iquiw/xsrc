@@ -2,7 +2,7 @@ XCOMM $TOG: Imakefile /main/235 1997/05/25 15:12:21 kaleb $
 /*
  * Server Master Makefile
  */
-XCOMM $XFree86: xc/programs/Xserver/Imakefile,v 3.85.2.20 2000/06/21 00:50:41 dawes Exp $
+XCOMM $XFree86: xc/programs/Xserver/Imakefile,v 3.85.2.18 1999/12/01 14:53:58 hohndel Exp $
 
 #include <Server.tmpl>
 
@@ -171,13 +171,8 @@ XPFBLIBS = dix/LibraryTargetName(xpstubs)
 	$(USB) $(EXTRASYSLIBS)
 #endif
 #if HasPam
-#if defined(LinuxArchitecture)
-	PAMLIBS = $(PAMLIBRARY) -lpam_misc DlLibrary
-#else
-	PAMLIBS = $(PAMLIBRARY)
+	PAMLIBS = -lpam -lpam_misc -ldl
 #endif
-#endif
-
            CBRT = mi/LibraryTargetName(cbrt)
         STDDIRS = include dix os mi $(XPDDXDIR) $(EXTDIRS)
 
@@ -244,23 +239,6 @@ ServerTarget(Xpmax,$(PMAXDIRS),$(PMAXOBJS),$(PMAXLIBS),$(SYSLIBS))
 #define ServerToInstall Xpmax
 #endif
 #endif /* XpmaxServer */
-
-#if XhpcServer
-XCOMM
-XCOMM NetBSD/hpcmips server
-XCOMM
-MFBDIR  = mfb
-CFB8DIR = cfb
-CFB16DIR = cfb16
-DDXDIR1 = hw/netbsd/hpc
-HPCDIRS = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB16DIR) $(DDXDIR1) $(DEPDIRS)
-HPCOBJS = hw/netbsd/hpc/hpcInit.o
-HPCLIBS = hw/netbsd/hpc/libhpc.a CFB8Libs CFB16Libs
-ServerTarget(Xhpc,$(HPCDIRS),$(HPCOBJS),$(HPCLIBS),$(SYSLIBS))
-#ifndef ServerToInstall
-#define ServerToInstall Xhpc
-#endif
-#endif /* XhpcServer */
 
 #if XdecServer
 XCOMM
@@ -555,37 +533,15 @@ XCOMM NetBSD/Alpha server
 XCOMM
 MFBDIR   = mfb
 CFB8DIR  = cfb
-CFB32DIR = cfb32
 DDXDIR1  = hw/netbsd/alpha
-ANBDIRS1 = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB32DIR) $(DDXDIR1) $(DEPDIRS)
+ANBDIRS1 = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(DDXDIR1) $(DEPDIRS)
 ANBOBJS1 = hw/netbsd/alpha/alphaInit.o
-ANBLIBS1 = hw/netbsd/alpha/tga/libalphaTga.a hw/netbsd/alpha/sfb/libalphaSfb.a hw/netbsd/alpha/libalpha.a CFB32Libs CFB8Libs
+ANBLIBS1 = hw/netbsd/alpha/tga/libalphaTga.a hw/netbsd/alpha/libalpha.a CFB8Libs
 SetUIDServerTarget(XalphaNetBSD,$(ANBDIRS1),$(ANBOBJS1),$(ANBLIBS1),$(SYSLIBS))
 #ifndef ServerToInstall
 #define ServerToInstall XalphaNetBSD
 #endif
 #endif /* XalphaNetBSDServer */
-
-#if XdecNetBSDServer
-XCOMM
-XCOMM NetBSD/alpha and NetBSD/pmax server
-XCOMM
-MFBDIR   = mfb
-CFB8DIR  = cfb
-CFB32DIR = cfb32
-DDXDIR1  = hw/netbsd/dec
-DNBDIRS1 = $(STDDIRS) $(MFBDIR) $(CFB8DIR) $(CFB32DIR) $(DDXDIR1) $(DEPDIRS)
-DNBOBJS1 = hw/netbsd/dec/decInit.o
-DNBLIBS1 = hw/netbsd/dec/sfb/libdecSfb.a hw/netbsd/dec/px/libdecPX.a hw/netbsd/dec/cfb/libdecCfb.a hw/netbsd/dec/mfb/libdecMfb.a
-#if defined(AlphaArchitecture)
-DNBLIBS1 += hw/netbsd/dec/tga/libdecTga.a
-#endif
-DNBLIBS1 += hw/netbsd/dec/libdec.a CFB32Libs CFB8Libs
-SetUIDServerTarget(XdecNetBSD,$(DNBDIRS1),$(DNBOBJS1),$(DNBLIBS1),$(SYSLIBS))
-#ifndef ServerToInstall
-#define ServerToInstall XdecNetBSD
-#endif
-#endif /* XdecNetBSDServer */
 
 
 #if X68kServer
@@ -2090,7 +2046,11 @@ ServerTarget(Xvfb,$(XVFBDIRS),$(XVFBOBJS),$(XVFBLIBS),$(XVFBSYSLIBS))
 
 
 #if UseXserverWrapper
+#if HasPam
 SetUIDProgramTarget(Xwrapper,os/wrapper.o,NullParameter,$(PAMLIBS),NullParameter)
+#else
+SetUIDProgramTarget(Xwrapper,os/wrapper.o,NullParameter,NullParameter,NullParameter)
+#endif
 InstallProgramWithFlags(Xwrapper,$(BINDIR),$(INSTUIDFLAGS))
 #endif
 

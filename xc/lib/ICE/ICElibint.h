@@ -288,21 +288,20 @@ typedef struct {
 }
 
 
-#define SKIP_STRING(_pBuf, _swap, _end, _bail) \
+#define SKIP_STRING(_pBuf, _swap) \
 { \
     CARD16 _len; \
     EXTRACT_CARD16 (_pBuf, _swap, _len); \
-    _pBuf += _len + PAD32(2+_len); \
-    if (_pBuf > _end) { \
-	_bail; \
-    } \
-} 
+    _pBuf += _len; \
+    if (PAD32 (2 + _len)) \
+        _pBuf += PAD32 (2 + _len); \
+}
 
-#define SKIP_LISTOF_STRING(_pBuf, _swap, _count, _end, _bail) \
+#define SKIP_LISTOF_STRING(_pBuf, _swap, _count) \
 { \
     int _i; \
     for (_i = 0; _i < _count; _i++) \
-        SKIP_STRING (_pBuf, _swap, _end, _bail); \
+        SKIP_STRING (_pBuf, _swap); \
 }
 
 

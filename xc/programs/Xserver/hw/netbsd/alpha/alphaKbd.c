@@ -137,47 +137,33 @@ static void SwapLKeys(keysyms)
 	    keysyms->map[i] = k;
 	}
 }
-#endif /* 0 XXX */
 
 static void SetLights (ctrl, fd)
     KeybdCtrl*	ctrl;
     int fd;
 {
-#if 0 /* XXX */
+#ifdef KIOCSLED
     static unsigned char led_tab[16] = {
 	0,
-	WSKBD_LED_NUM,
-	WSKBD_LED_SCROLL,
-	WSKBD_LED_SCROLL | WSKBD_LED_NUM,
-	WSKBD_LED_COMPOSE,
-	WSKBD_LED_COMPOSE | WSKBD_LED_NUM,
-	WSKBD_LED_COMPOSE | WSKBD_LED_SCROLL,
-	WSKBD_LED_COMPOSE | WSKBD_LED_SCROLL | WSKBD_LED_NUM,
-	WSKBD_LED_CAPS,
-	WSKBD_LED_CAPS | WSKBD_LED_NUM,
-	WSKBD_LED_CAPS | WSKBD_LED_SCROLL,
-	WSKBD_LED_CAPS | WSKBD_LED_SCROLL | WSKBD_LED_NUM,
-	WSKBD_LED_CAPS | WSKBD_LED_COMPOSE,
-	WSKBD_LED_CAPS | WSKBD_LED_COMPOSE | WSKBD_LED_NUM,
-	WSKBD_LED_CAPS | WSKBD_LED_COMPOSE | WSKBD_LED_SCROLL,
-	WSKBD_LED_CAPS | WSKBD_LED_COMPOSE | WSKBD_LED_SCROLL | WSKBD_LED_NUM
+	LED_NUM_LOCK,
+	LED_SCROLL_LOCK,
+	LED_SCROLL_LOCK | LED_NUM_LOCK,
+	LED_COMPOSE,
+	LED_COMPOSE | LED_NUM_LOCK,
+	LED_COMPOSE | LED_SCROLL_LOCK,
+	LED_COMPOSE | LED_SCROLL_LOCK | LED_NUM_LOCK,
+	LED_CAPS_LOCK,
+	LED_CAPS_LOCK | LED_NUM_LOCK,
+	LED_CAPS_LOCK | LED_SCROLL_LOCK,
+	LED_CAPS_LOCK | LED_SCROLL_LOCK | LED_NUM_LOCK,
+	LED_CAPS_LOCK | LED_COMPOSE,
+	LED_CAPS_LOCK | LED_COMPOSE | LED_NUM_LOCK,
+	LED_CAPS_LOCK | LED_COMPOSE | LED_SCROLL_LOCK,
+	LED_CAPS_LOCK | LED_COMPOSE | LED_SCROLL_LOCK | LED_NUM_LOCK
     };
-    if (ioctl (fd, WSKBDIO_SETLEDS, (caddr_t)&led_tab[ctrl->leds & 0x0f]) == -1)
+    if (ioctl (fd, KIOCSLED, (caddr_t)&led_tab[ctrl->leds & 0x0f]) == -1)
 	Error("Failed to set keyboard lights");
-#else  /* ! 0 XXX */
-    /*
-     * XXX The above ought to work, except that we don't initialize
-     * XXX properly for XKBD, so we don't have an info structure which
-     * XXX decodes into useful values.  Since this code is only ever
-     * XXX being called for LK401 keyboards, which don't have num
-     * XXX lock, I interpret all leds as being caps lock. --KS
-     */
-    int lockled;
-
-    lockled = (ctrl->leds != 0) * WSKBD_LED_CAPS;
-    if (ioctl (fd, WSKBDIO_SETLEDS, (caddr_t)&lockled) == -1)
-	Error("Failed to set keyboard lights");
-#endif /* ! 0 XXX */
+#endif
 }
 
 
@@ -187,7 +173,7 @@ static void ModLight (device, on, led)
     int		led;
 {
     KeybdCtrl*	ctrl = &device->kbdfeed->ctrl;
-    alphaKbdPrivPtr pPriv = (alphaKbdPrivPtr) device->public.devicePrivate;
+    sunKbdPrivPtr pPriv = (sunKbdPrivPtr) device->public.devicePrivate;
 
     if(on) {
 	ctrl->leds |= led;
@@ -198,6 +184,7 @@ static void ModLight (device, on, led)
     }
     SetLights (ctrl, pPriv->fd);
 }
+#endif /* 0 XXX */
 
 /*-
  *-----------------------------------------------------------------------
@@ -273,6 +260,7 @@ static void localEnqueueEvent (xEp, dip, count)
 }
 #endif
 
+#if 0 /* XXX */
 #define XLED_NUM_LOCK    0x1
 #define XLED_COMPOSE     0x4
 #define XLED_SCROLL_LOCK 0x2
@@ -336,11 +324,11 @@ static void pseudoKey(device, down, keycode)
 static void DoLEDs(device, ctrl, pPriv)
     DeviceIntPtr    device;	    /* Keyboard to alter */
     KeybdCtrl* ctrl;
-    alphaKbdPrivPtr pPriv; 
+    sunKbdPrivPtr pPriv; 
 {
 #ifdef XKB
     if (noXkbExtension) {
-#endif /* XKB */
+#endif
     if ((ctrl->leds & XLED_CAPS_LOCK) && !(pPriv->leds & XLED_CAPS_LOCK))
 	    pseudoKey(device, TRUE,
 		LookupKeyCode(XK_Caps_Lock, &device->key->curKeySyms));
@@ -364,7 +352,7 @@ static void DoLEDs(device, ctrl, pPriv)
     if (!(ctrl->leds & XLED_SCROLL_LOCK) && (pPriv->leds & XLED_SCROLL_LOCK))
 	    pseudoKey(device, FALSE,
 		LookupKeyCode(XK_Scroll_Lock, &device->key->curKeySyms));
-#if 0
+
     if ((ctrl->leds & XLED_COMPOSE) && !(pPriv->leds & XLED_COMPOSE))
 	    pseudoKey(device, TRUE,
 		LookupKeyCode(SunXK_Compose, &device->key->curKeySyms));
@@ -372,13 +360,13 @@ static void DoLEDs(device, ctrl, pPriv)
     if (!(ctrl->leds & XLED_COMPOSE) && (pPriv->leds & XLED_COMPOSE))
 	    pseudoKey(device, FALSE,
 		LookupKeyCode(SunXK_Compose, &device->key->curKeySyms));
-#endif /* 0 */
 #ifdef XKB
     }
-#endif /* XKB */
+#endif
     pPriv->leds = ctrl->leds & 0x0f;
     SetLights (ctrl, pPriv->fd);
 }
+#endif /* 0 XXX */
 
 /*-
  *-----------------------------------------------------------------------
@@ -417,9 +405,9 @@ static void alphaKbdCtrl (device, ctrl)
     	if (ioctl (pPriv->fd, KIOCCMD, &kbdClickCmd) == -1)
  	    Error("Failed to set keyclick");
     }
+    if (pPriv->type == KB_SUN4 && pPriv->leds != ctrl->leds & 0x0f)
+	DoLEDs(device, ctrl, pPriv);
 #endif /* 0 XXX */
-    if (pPriv->type <= WSKBD_TYPE_LK401 && pPriv->leds != ctrl->leds & 0x0f)
-        DoLEDs(device, ctrl, pPriv);
 
     /* Bell info change needs nothing done here. */
 }
@@ -462,7 +450,7 @@ int alphaKbdProc (device, what)
 	}
 	    
 	if (!workingKeySyms) {
-	    workingKeySyms = &alphaKeySyms[alphaKbdPriv.type];
+	    workingKeySyms = &alphaKeySyms[0/*alphaKbdPriv.type XXX*/];
 
 #if 0
 	    if (alphaKbdPriv.type == KB_SUN4 && alphaSwapLkeys)
@@ -475,18 +463,16 @@ int alphaKbdProc (device, what)
 		workingKeySyms->maxKeyCode += MIN_KEYCODE;
 	    }
 #endif
-	    if (workingKeySyms->maxKeyCode > MAX_KEYCODE ||
-		workingKeySyms->maxKeyCode < workingKeySyms->minKeyCode)
+	    if (workingKeySyms->maxKeyCode > MAX_KEYCODE)
 		workingKeySyms->maxKeyCode = MAX_KEYCODE;
 	}
 
 	if (!workingModMap) {
 	    workingModMap=(CARD8 *)xalloc(MAP_LENGTH);
 	    (void) memset(workingModMap, 0, MAP_LENGTH);
-	    for(i=0; alphaModMaps[alphaKbdPriv.type][i].key != 0; i++)
-		workingModMap[alphaModMaps[alphaKbdPriv.type][i].key +
-			      MIN_KEYCODE] = 
-		alphaModMaps[alphaKbdPriv.type][i].modifiers;
+	    for(i=0; alphaModMaps[0 /*alphaKbdPriv.type XXX*/][i].key != 0; i++)
+		workingModMap[alphaModMaps[0/*alphaKbdPriv.type XXX*/][i].key + MIN_KEYCODE] = 
+		alphaModMaps[0 /*alphaKbdPriv.type XXX*/][i].modifiers;
 	}
 
 	(void) memset ((void *) defaultKeyboardControl.autoRepeats,
@@ -571,19 +557,31 @@ int alphaKbdProc (device, what)
  */
 
 #if NeedFunctionPrototypes
+#ifdef USE_WSCONS
 struct wscons_event* alphaKbdGetEvents (
+#else
+Firm_event* alphaKbdGetEvents (
+#endif
     int		fd,
     int*	pNumEvents,
     Bool*	pAgain)
 #else
+#ifdef USE_WSCONS
 struct wscons_event* alphaKbdGetEvents (fd, pNumEvents, pAgain)
+#else
+Firm_event* alphaKbdGetEvents (fd, pNumEvents, pAgain)
+#endif
     int		fd;
     int*	pNumEvents;
     Bool*	pAgain;
 #endif
 {
     int	    	  nBytes;	    /* number of bytes of events available. */
+#ifdef USE_WSCONS
     static struct wscons_event	evBuf[MAXEVENTS];   /* Buffer for wscons_events */
+#else
+    static Firm_event	evBuf[MAXEVENTS];   /* Buffer for Firm_events */
+#endif
 
     if ((nBytes = read (fd, evBuf, sizeof(evBuf))) == -1) {
 	if (errno == EWOULDBLOCK) {
@@ -594,7 +592,11 @@ struct wscons_event* alphaKbdGetEvents (fd, pNumEvents, pAgain)
 	    FatalError ("Could not read the keyboard");
 	}
     } else {
+#ifdef USE_WSCONS
 	*pNumEvents = nBytes / sizeof (struct wscons_event);
+#else
+	*pNumEvents = nBytes / sizeof (Firm_event);
+#endif
 	*pAgain = (nBytes == sizeof (evBuf));
     }
     return evBuf;
@@ -606,13 +608,14 @@ struct wscons_event* alphaKbdGetEvents (fd, pNumEvents, pAgain)
  *
  *-----------------------------------------------------------------------
  */
+#if 0 /* XXX */
 static xEvent	autoRepeatEvent;
 static int	composeCount;
 
 static Bool DoSpecialKeys(device, xE, fe)
     DeviceIntPtr  device;
     xEvent*       xE;
-    struct wscons_event   *fe;
+    Firm_event* fe;
 {
     int	shift_index, map_index, bit;
     KeySym ksym;
@@ -627,7 +630,11 @@ static Bool DoSpecialKeys(device, xE, fe)
 	shift_index ^= 1;
     if (device->key->state & LockMask) 
 	shift_index ^= 1;
+#ifdef USE_WSCONS
     map_index = (fe->value - 1) * device->key->curKeySyms.mapWidth;
+#else
+    map_index = (fe->id - 1) * device->key->curKeySyms.mapWidth;
+#endif
     ksym = device->key->curKeySyms.map[shift_index + map_index];
     if (ksym == NoSymbol)
 	ksym = device->key->curKeySyms.map[map_index];
@@ -688,26 +695,35 @@ static Bool DoSpecialKeys(device, xE, fe)
 #endif /* XXX */
     return FALSE;
 }
+#endif /* 0 XXX */
 
 #if NeedFunctionPrototypes
 void alphaKbdEnqueueEvent (
     DeviceIntPtr  device,
+#ifdef USE_WSCONS
     struct wscons_event	  *fe)
+#else
+    Firm_event	  *fe)
+#endif
 #else
 void alphaKbdEnqueueEvent (device, fe)
     DeviceIntPtr  device;
+#ifdef USE_WSCONS
     struct wscons_event	  *fe;
+#else
+    Firm_event	  *fe;
+#endif
 #endif
 {
     xEvent		xE;
     BYTE		keycode;
     CARD8		keyModifiers;
-    int			i;
 
-    if (alphaKbdPriv.type <= WSKBD_TYPE_LK401)
-	    keycode = (fe->value) + MIN_KEYCODE;
-    else
-	    keycode = (fe->value & 0x7f) + MIN_KEYCODE;
+#ifdef USE_WSCONS
+    keycode = (fe->value & 0x7f) + MIN_KEYCODE;
+#else
+    keycode = (fe->id & 0x7f) + MIN_KEYCODE;
+#endif
 
     keyModifiers = device->key->modifierMap[keycode];
 #if 0 /* XXX */
@@ -715,7 +731,11 @@ void alphaKbdEnqueueEvent (device, fe)
     if (noXkbExtension) {
 #endif
     if (autoRepeatKeyDown && (keyModifiers == 0) &&
+#ifdef USE_WSCONS
 	((fe->type == WSCONS_EVENT_KEY_DOWN) || (keycode == autoRepeatEvent.u.u.detail))) {
+#else
+	((fe->value == VKEY_DOWN) || (keycode == autoRepeatEvent.u.u.detail))) {
+#endif
 	/*
 	 * Kill AutoRepeater on any real non-modifier key down, or auto key up
 	 */
@@ -725,38 +745,13 @@ void alphaKbdEnqueueEvent (device, fe)
     }
 #endif
 #endif /* 0 XXX */
-    /*
-     * For lk201, we need to keep track of which keys are down so we can
-     * process "all keys up" events.
-     */
-    if (alphaKbdPriv.type <= WSKBD_TYPE_LK401) {
-	    if (fe->type == WSCONS_EVENT_KEY_DOWN) {
-		    for (i = 0; i < LK_KLL; i++)
-			    if (alphaKbdPriv.keys_down[i] == (KeyCode)-1) {
-				    alphaKbdPriv.keys_down[i] = keycode;
-				    break;
-			    }
-	    } else if (fe->type == WSCONS_EVENT_KEY_UP) {
-		    for (i = 0; i < LK_KLL; i++)
-			    if (alphaKbdPriv.keys_down[i] == keycode) {
-				    alphaKbdPriv.keys_down[i] = (KeyCode)-1;
-				    break;
-			    }
-	    } else if (fe->type == WSCONS_EVENT_ALL_KEYS_UP) {
-		    /* Recursively send all key up events */
-		    fe->type = WSCONS_EVENT_KEY_UP;
-		    for (i = 0; i < LK_KLL; i++) {
-			    if (alphaKbdPriv.keys_down[i] != (KeyCode)-1) {
-				    fe->value = alphaKbdPriv.keys_down[i] -
-					    MIN_KEYCODE;
-				    alphaKbdEnqueueEvent(device, fe);
-			    }
-		    }
-		    return;
-	    }
-    }
+#ifdef USE_WSCONS
     xE.u.keyButtonPointer.time = TSTOMILLI(fe->time);
     xE.u.u.type = ((fe->type == WSCONS_EVENT_KEY_UP) ? KeyRelease : KeyPress);
+#else
+    xE.u.keyButtonPointer.time = TVTOMILLI(fe->time);
+    xE.u.u.type = ((fe->value == VKEY_UP) ? KeyRelease : KeyPress);
+#endif
     xE.u.u.detail = keycode;
 #if 0 /* XXX */
 #ifdef XKB
@@ -767,7 +762,6 @@ void alphaKbdEnqueueEvent (device, fe)
 #ifdef XKB
     }
 #endif /* ! XKB */
-#else /* ! 0 XXX */
 #endif /* 0 XXX */
     mieqEnqueue (&xE);
 }

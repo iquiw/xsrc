@@ -47,7 +47,7 @@ AuthCheckSitePolicy(data_lengthP, dataP, client, reason)
     ClientPtr	client;
     char	**reason;
 {
-    CARD8	*policy = *(CARD8 **)dataP;
+    char	*policy = *dataP;
     int		length;
     Bool	permit;
     int		nPolicies;
@@ -61,13 +61,13 @@ AuthCheckSitePolicy(data_lengthP, dataP, client, reason)
     }
 
     permit = (*policy++ == 0);
-    nPolicies = (CARD8) *policy++;
+    nPolicies = *policy++;
 
     length -= 2;
 
     sitePolicies = SecurityGetSitePolicyStrings(&nSitePolicies);
 
-    while (nPolicies > 0) {
+    while (nPolicies) {
 	int strLen, sitePolicy;
 
 	if (length == 0) {
@@ -75,7 +75,7 @@ AuthCheckSitePolicy(data_lengthP, dataP, client, reason)
 	    return FALSE;
 	}
 
-	strLen = (CARD8) *policy++;
+	strLen = *policy++;
 	if (--length < strLen) {
 	    *reason = InvalidPolicyReason;
 	    return FALSE;
@@ -87,7 +87,7 @@ AuthCheckSitePolicy(data_lengthP, dataP, client, reason)
 	    {
 		char *testPolicy = sitePolicies[sitePolicy];
 		if ((strLen == strlen(testPolicy)) &&
-		    (strncmp((char *)policy, testPolicy, strLen) == 0))
+		    (strncmp(policy, testPolicy, strLen) == 0))
 		{
 		    found = TRUE; /* need to continue parsing the policy... */
 		    break;
@@ -107,7 +107,7 @@ AuthCheckSitePolicy(data_lengthP, dataP, client, reason)
     }
 
     *data_lengthP = length;
-    *dataP = (char *)policy;
+    *dataP = policy;
     return TRUE;
 }
 

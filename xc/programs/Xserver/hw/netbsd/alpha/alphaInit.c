@@ -1,4 +1,3 @@
-/* $NetBSD: alphaInit.c,v 1.15 2001/10/06 02:25:50 thorpej Exp $ */
 
 #include    "alpha.h"
 #include    "gcstruct.h"
@@ -9,7 +8,6 @@
 #include <stdio.h>
 
 #define TGASUPPORT
-#define SFBSUPPORT
 
 #ifdef TGASUPPORT
 extern Bool alphaTGAInit(
@@ -23,20 +21,6 @@ extern Bool alphaTGAInit(
 #define TGAI alphaTGAInit
 #else /* }{ */
 #define TGAI NULL
-#endif /* } */
-
-#ifdef SFBSUPPORT
-extern Bool alphaSFBInit(
-#if NeedFunctionPrototypes
-    int /* screen */,
-    ScreenPtr /* pScreen */,
-    int /* argc */,
-    char** /* argv */
-#endif
-);
-#define SFBI alphaSFBInit
-#else /* }{ */
-#define SFBI NULL
 #endif /* } */
 
 #if 0 /* XXX */
@@ -64,7 +48,6 @@ alphaKbdPrivRec alphaKbdPriv = {
     -1,		/* layout */
     0,		/* click */
     (Leds)0,	/* leds */
-    { -1, -1, -1, -1, -1, -1, -1, -1 }, /* keys_down */
 };
 
 alphaPtrPrivRec alphaPtrPriv = {
@@ -74,22 +57,19 @@ alphaPtrPrivRec alphaPtrPriv = {
 
 /*
  * The name member in the following table corresponds to the 
- * WSDISPLAY_TYPE_* macros defined in <dev/wscons/wsconsio.h>.
+ * FBTYPE_* macros defined in /usr/include/machine/fbio.h file
  */
-alphaFbDataRec alphaFbData[] = {
-  { NULL, "unknown        " },
+alphaFbDataRec alphaFbData[FBTYPE_LASTPLUSONE] = {
   { NULL, "PMAX monochrome" },
   { NULL, "PMAX color     " },
   { NULL, "CFB            " },
   { NULL, "XCFB           " },
   { NULL, "MFB            " },
-  { SFBI, "SFB            " },
+  { NULL, "SFB            " },
   { NULL, "VGA            " },
   { NULL, "PCIVGA         " },
   { TGAI, "TGA            " },
 };
-
-int NalphaFbData = sizeof(alphaFbData) / sizeof(alphaFbData[0]);
 
 /*
  * a list of devices to try if there is no environment or command
@@ -102,21 +82,11 @@ static char *fallbackList[] = {
 #define FALLBACK_LIST_LEN sizeof fallbackList / sizeof fallbackList[0]
 
 fbFd alphaFbs[MAXSCREENS];
-Bool alphaTgaAccelerate = 1;
-Bool alphaSfbAccelerate = 1;
 
 static PixmapFormatRec	formats[] = {
-    { 1, 1, BITMAP_SCANLINE_PAD},
-    { 8, 8, BITMAP_SCANLINE_PAD},	/* 8-bit deep */
-    { 24, 32, BITMAP_SCANLINE_PAD}	/* 32-bit deep */
+    { 8, 8, BITMAP_SCANLINE_PAD}	/* 8-bit deep */
 };
 #define NUMFORMATS	(sizeof formats)/(sizeof formats[0])
-
-static PixmapFormatRec	formats32[] = {
-    { 1, 1, BITMAP_SCANLINE_PAD},
-    { 24, 32, BITMAP_SCANLINE_PAD}	/* 32-bit deep */
-};
-#define NUMFORMATS32	(sizeof formats32)/(sizeof formats32[0])
 
 /*
  * OpenFrameBuffer --
@@ -132,6 +102,10 @@ static int OpenFrameBuffer(device, screen)
     int			screen;    	/* what screen am I going to be */
 {
     int			ret = TRUE;
+#ifdef USE_WSCONS
+    struct		wsdisplay_fbinfo info;
+    int			type;
+#endif
 
     alphaFbs[screen].fd = -1;
     if (access (device, R_OK | W_OK) == -1)
@@ -139,27 +113,38 @@ static int OpenFrameBuffer(device, screen)
     if ((alphaFbs[screen].fd = open(device, O_RDWR, 0)) == -1)
 	ret = FALSE;
     else {
-	if (ioctl(alphaFbs[screen].fd, WSDISPLAYIO_GTYPE,
-	    &alphaFbs[screen].type) == -1) {
+#ifdef USE_WSCONS
+	if (ioctl(alphaFbs[screen].fd, WSDISPLAYIO_GTYPE, &type) == -1) {
 		Error("unable to get frame buffer type");
 		(void) close(alphaFbs[screen].fd);
 		alphaFbs[screen].fd = -1;
 		ret = FALSE; 
 	}
 	if (ioctl(alphaFbs[screen].fd, WSDISPLAYIO_GINFO,
-	    &alphaFbs[screen].info) == -1) {
+	    &info) == -1) {
 		Error("unable to get frame buffer info");
 		(void) close(alphaFbs[screen].fd);
 		alphaFbs[screen].fd = -1;
 		ret = FALSE; 
 	}
-	if (alphaFbs[screen].info.depth == 32)
-		alphaFbs[screen].size = 16*1024*1024; /* XXXNJW */
-	else
-		alphaFbs[screen].size = 4*1024*1024;
+	alphaFbs[screen].info.fb_type = type - 1;
+	alphaFbs[screen].info.fb_height = info.height;
+	alphaFbs[screen].info.fb_width = info.width;
+	alphaFbs[screen].info.fb_depth = info.depth;
+	alphaFbs[screen].info.fb_cmsize = info.cmsize;
+	alphaFbs[screen].info.fb_size = 4*1024*1024;
+#else
+	if (ioctl(alphaFbs[screen].fd, FBIOGTYPE,
+	    &alphaFbs[screen].info) == -1) {
+		Error("unable to get frame buffer type");
+		(void) close(alphaFbs[screen].fd);
+		alphaFbs[screen].fd = -1;
+		ret = FALSE; 
+	}
+#endif
 	if (ret) {
-	    if (alphaFbs[screen].type >= NalphaFbData || 
-		!alphaFbData[alphaFbs[screen].type].init) {
+	    if (alphaFbs[screen].info.fb_type >= FBTYPE_LASTPLUSONE || 
+		!alphaFbData[alphaFbs[screen].info.fb_type].init) {
 		    Error("frame buffer type not supported");
 		    (void) close(alphaFbs[screen].fd);
 		    alphaFbs[screen].fd = -1;
@@ -264,10 +249,8 @@ void OsVendorInit(
 	/* warn(3) isn't X11 API, but we know we are on NetBSD */
 	if((alphaKbdPriv.fd = open (kbd, O_RDWR, 0)) == -1)
 		warn("Keyboard device %s", kbd);
-	else if((alphaPtrPriv.fd = open (ptr, O_RDWR, 0)) == -1)
+	else if((alphaPtrPriv.fd = open ("/dev/wsmouse0", O_RDWR, 0)) == -1)
 		warn("Pointer device %s", ptr);
-	(void) ioctl (alphaKbdPriv.fd, WSKBDIO_GTYPE, &alphaKbdPriv.type);
-
 	inited = 1;
     }
 }
@@ -333,9 +316,9 @@ void InitOutput(pScreenInfo, argc, argv)
 	xfree (devList);
     }
     for (scr = 0; scr < MAXSCREENS; scr++)
-	if (alphaFbs[scr].fd != -1) {
-	    (void) AddScreen (alphaFbData[alphaFbs[scr].type].init, argc, argv);
-	}
+	if (alphaFbs[scr].fd != -1)
+	    (void) AddScreen (alphaFbData[alphaFbs[scr].info.fb_type].init, 
+			      argc, argv);
     (void) OsSignal(SIGWINCH, SIG_IGN);
 }
 

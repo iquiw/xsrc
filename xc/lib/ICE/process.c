@@ -1,5 +1,5 @@
 /* $XConsortium: process.c,v 1.43 94/08/25 15:44:43 mor Exp $ */
-/* $XFree86: xc/lib/ICE/process.c,v 3.1.8.1 2001/02/08 21:13:14 herrb Exp $ */
+/* $XFree86: xc/lib/ICE/process.c,v 3.1 1994/09/17 13:43:45 dawes Exp $ */
 /******************************************************************************
 
 
@@ -63,11 +63,7 @@ Author: Ralph Mor, X Consortium
        return (0); \
     }
 
-#define BAIL_STRING(_iceConn, _opcode, _pStart) {\
-    _IceErrorBadLength (_iceConn, 0, _opcode, IceFatalToConnection);\
-    IceDisposeCompleteMessage (_iceConn, _pStart);\
-    return (0);\
-}
+
 
 /*
  * IceProcessMessages:
@@ -823,7 +819,7 @@ Bool		swap;
     int	 myAuthCount, hisAuthCount;
     int	 found, i, j;
     char *myAuthName, **hisAuthNames;
-    char *pData, *pStart, *pEnd;
+    char *pData, *pStart;
     char *vendor = NULL;
     char *release = NULL;
     int myAuthIndex = 0;
@@ -847,18 +843,10 @@ Bool		swap;
     }
 
     pData = pStart;
-    pEnd = pStart + (length << 3);
-    
-    SKIP_STRING (pData, swap, pEnd, 
-		 BAIL_STRING(iceConn, ICE_ConnectionSetup,
-			     pStart));			       /* vendor */
-    SKIP_STRING (pData, swap, pEnd, 
-		 BAIL_STRING(iceConn, ICE_ConnectionSetup,
-			    pStart));	        	       /* release */
-    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount, pEnd, 
-			BAIL_STRING(iceConn, ICE_ConnectionSetup,
-				   pStart));		       /* auth names */
-    
+
+    SKIP_STRING (pData, swap);				       /* vendor */
+    SKIP_STRING (pData, swap);				       /* release */
+    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount);/* auth names */
     pData += (message->versionCount * 4);		       /* versions */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ConnectionSetup,
@@ -1697,7 +1685,7 @@ IceReplyWaitInfo 	*replyWait;
 
 {
     iceConnectionReplyMsg 	*message;
-    char 			*pData, *pStart, *pEnd;
+    char 			*pData, *pStart;
     Bool			replyReady;
 
     CHECK_AT_LEAST_SIZE (iceConn, ICE_ConnectionReply,
@@ -1713,14 +1701,9 @@ IceReplyWaitInfo 	*replyWait;
     }
 
     pData = pStart;
-    pEnd = pStart + (length << 3);
 
-    SKIP_STRING (pData, swap, pEnd,
-		 BAIL_STRING (iceConn, ICE_ConnectionReply,
-			      pStart));		    	     /* vendor */
-    SKIP_STRING (pData, swap, pEnd,
-		 BAIL_STRING (iceConn, ICE_ConnectionReply,
-			      pStart));			     /* release */
+    SKIP_STRING (pData, swap);				     /* vendor */
+    SKIP_STRING (pData, swap);				     /* release */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ConnectionReply,
 	length, pData - pStart + SIZEOF (iceConnectionReplyMsg),
@@ -1806,7 +1789,7 @@ Bool		swap;
     int	 	      	found, i, j;
     char	      	*myAuthName, **hisAuthNames;
     char 	      	*protocolName;
-    char 		*pData, *pStart, *pEnd;
+    char 		*pData, *pStart;
     char 	      	*vendor = NULL;
     char 	      	*release = NULL;
     int  	      	accept_setup_now = 0;
@@ -1841,20 +1824,11 @@ Bool		swap;
     }
 
     pData = pStart;
-    pEnd = pStart + (length << 3);
 
-    SKIP_STRING (pData, swap, pEnd,
-		 BAIL_STRING(iceConn, ICE_ProtocolSetup, 
-			     pStart));			       /* proto name */
-    SKIP_STRING (pData, swap, pEnd,
-		 BAIL_STRING(iceConn, ICE_ProtocolSetup, 
-			     pStart));			       /* vendor */
-    SKIP_STRING (pData, swap, pEnd,
-		 BAIL_STRING(iceConn, ICE_ProtocolSetup, 
-			     pStart));			       /* release */
-    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount, pEnd,
-			BAIL_STRING(iceConn, ICE_ProtocolSetup, 
-				    pStart));		       /* auth names */
+    SKIP_STRING (pData, swap);				       /* proto name */
+    SKIP_STRING (pData, swap);				       /* vendor */
+    SKIP_STRING (pData, swap);				       /* release */
+    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount);/* auth names */
     pData += (message->versionCount * 4);		       /* versions */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ProtocolSetup,
@@ -2196,7 +2170,7 @@ IceReplyWaitInfo 	*replyWait;
 
 {
     iceProtocolReplyMsg *message;
-    char		*pData, *pStart, *pEnd;
+    char		*pData, *pStart;
     Bool		replyReady;
 
     CHECK_AT_LEAST_SIZE (iceConn, ICE_ProtocolReply,
@@ -2212,14 +2186,9 @@ IceReplyWaitInfo 	*replyWait;
     }
 
     pData = pStart;
-    pEnd = pStart + (length << 3);
 
-    SKIP_STRING (pData, swap, pEnd,
-		 BAIL_STRING(iceConn, ICE_ProtocolReply,
-		             pStart));				/* vendor */
-    SKIP_STRING (pData, swap, pEnd,
-		 BAIL_STRING(iceConn, ICE_ProtocolReply,
-		            pStart));				/* release */
+    SKIP_STRING (pData, swap);				     /* vendor */
+    SKIP_STRING (pData, swap);				     /* release */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ProtocolReply,
 	length, pData - pStart + SIZEOF (iceProtocolReplyMsg),

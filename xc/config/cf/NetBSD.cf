@@ -1,9 +1,9 @@
-XCOMM $NetBSD: NetBSD.cf,v 1.108 2003/10/05 15:53:22 tron Exp $
+XCOMM $NetBSD: NetBSD.cf,v 1.66 2000/03/01 12:12:40 he Exp $
 XCOMM platform:  $XConsortium: NetBSD.cf /main/16 1996/10/31 14:47:14 kaleb $
 
 
 
-XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.49.2.14 2001/02/04 21:44:00 herrb Exp $
+XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.49.2.13 1999/10/12 17:18:20 hohndel Exp $
 
 
   
@@ -12,33 +12,20 @@ XCOMM This file currently contains support for:
 XCOMM
 XCOMM 		NetBSD/i386	client/server
 XCOMM 		NetBSD/sparc	client/server
-XCOMM 		NetBSD/sparc64	client/server
 XCOMM 		NetBSD/sun3	client/server
 XCOMM 		NetBSD/hp300	client
 XCOMM 		NetBSD/mac68k	client/server
 XCOMM 		NetBSD/pmax	client/server
 XCOMM		NetBSD/amiga	client/server
 XCOMM		NetBSD/alpha	client/server
-XCOMM		NetBSD/acorn32	client/server
-XCOMM		NetBSD/cats	client
-XCOMM		NetBSD/shark	client/server
+XCOMM		NetBSD/arm32	client/server
 XCOMM		NetBSD/atari	client/server
 XCOMM		NetBSD/vax	client/server
 XCOMM		NetBSD/pc532	client
 XCOMM		NetBSD/x68k	client/server
 XCOMM		NetBSD/macppc	client/server
-XCOMM		NetBSD/hpcmips	client/server
-XCOMM		NetBSD/hpcarm	client/server
-XCOMM		NetBSD/mvme68k	client
+XCOMM		NetBSD/hpcmips	client
 XCOMM		NetBSD/next68k	client
-XCOMM		NetBSD/prep	client
-XCOMM		NetBSD/news68k	client
-XCOMM		NetBSD/cobalt	client
-XCOMM		NetBSD/sgimips	client
-XCOMM		NetBSD/luna68k	client
-XCOMM		NetBSD/mipsco	client
-XCOMM		NetBSD/algor	client
-XCOMM		NetBSD/playstation2	client
 XCOMM
 
 #ifndef OSName
@@ -61,13 +48,6 @@ XCOMM
 #define	OSVendor		The NetBSD Foundation, Inc.
 #endif
 XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVersion)
-
-/*
- * Enable support for "xdmauth" authentification.
- */
-#ifndef HasXdmAuth
-#define HasXdmAuth YES
-#endif
 
 /*
  * C library features
@@ -116,31 +96,6 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #  define HasUsbLib		YES
 #endif
 
-/*
- * NetBSD 1.6M and newer supports POSIX Threads.
- */
-
-#ifndef NetBSDThreads
-# define NetBSDThreads		YES
-#endif
-
-#if NetBSDThreads && \
-    ((OSMajorVersion > 1) || \
-     (OSMajorVersion == 1 && OSMinorVersion > 6) || \
-     (OSMajorVersion == 1 && OSMinorVersion == 6 && OSTeenyVersion >= 13))
-
-# define HasPosixThreads	YES
-# define ThreadedX		YES
-# define HasThreadSafeAPI	YES
-# define ThreadsLibraries	-lpthread
-# define LibraryMTDefines	-DUSE_NBSD_THREADLIB
-# define SystemMTDefines	-D_REENTRANT
-# define MTSafeAPIDefines	-DXUSE_MTSAFE_API -DXNO_MTSAFE_PWDAPI
-# define SharedThreadReqs	/**/
-#else
-# define ThreadedX		NO
-#endif
-
   
 #if OSMajorVersion >= 1
 # define LexCmd			lex -l
@@ -150,18 +105,6 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
        (OSMajorVersion == 1 && OSMinorVersion < 2))) 
 #define HasMkstemp		YES
 #endif
-
-#ifndef HasIssetugid
-# if (OSMajorVersion > 1 || (OSMajorVersion == 1 && OSMinorVersion >= 5))
-#  define HasIssetugid          YES
-# endif
-#endif
-
-#if (OSMajorVersion >= 2 || \
-      (OSMajorVersion == 1 && OSMinorVersion == 6 && OSTeenyVersion >= 2))
-# define HasArc4random
-#endif
-
 /*
  * Compiler Features
  */
@@ -184,27 +127,20 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #define HasMktemp		NO
 #define MkdirHierCmd		mkdir -p
 
+#define CppCmd          	/usr/libexec/cpp
+#define StandardCppDefines	-traditional
+#define PreProcessCmd   	CppCmd
+#define PreIncDir		/usr/include
+
 #undef CcCmd
 #define CcCmd 			gcc
 #if defined(UseInstalled) && (!defined(XF86LinkKit) || !XF86LinkKit)
 #define DefaultCCOptions 	/**/
-#elif defined(armArchitecture)
+#elif defined(arm32Architecture)
 #define DefaultCCOptions 	-ansi -Dasm=__asm -fsigned-char -fomit-frame-pointer
-#elif defined(Sparc64Architecture)
-#define DefaultCCOptions 	-ansi -Dasm=__asm -ffixed-g4 -mcmodel=medlow
-#define LibraryCCOptions 	-ansi -Dasm=__asm -ffixed-g4 -mcmodel=medany
 #else
 #define DefaultCCOptions 	-ansi -Dasm=__asm
 #endif
-
-#ifndef UseGccMakeDepend
-#define UseGccMakeDepend	YES
-#endif
-
-#define CppCmd          	cpp
-#define StandardCppDefines	-traditional
-#define PreProcessCmd   	CcCmd -E
-#define PostIncDir		/usr/include
 
 #define GccGasOption 		-DGCCUSESGAS
 #define AsmDefines 		-DUSE_GAS
@@ -271,26 +207,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # endif
 # define ServerExtraDefines GccGasOption XFree86ServerDefines
 # ifndef XFree86ConsoleDefines
-#  if OSMajorVersion < 1 || OSMajorVersion == 1 && (OSMinorVersion < 5)
-#   define XFree86ConsoleDefines -DPCCONS_SUPPORT -DPCVT_SUPPORT
-#  else
-#   define XFree86ConsoleDefines -DPCCONS_SUPPORT -DWSCONS_SUPPORT
-#  endif
-# endif
-# if ((OSMajorVersion > 1) || \
-      (OSMajorVersion == 1 && OSMinorVersion > 6) || \
-      (OSMajorVersion == 1 && OSMinorVersion == 6 && OSTeenyVersion > 25))
-#   define XF86SvgaDrivers	nv et4000 et3000 pvga1 gvga r128 ati sis tvga8900 \
-				cirrus ncr77c22 compaq mga oak al2101 \
-				ali cl64xx video7 ark mx realtek s3v apm \
-				s3_svga neo chips cyrix rendition p9x00 \
-				spc8110 i740 tdfx smi generic
-#else
-#   define XF86SvgaDrivers	nv et4000 et3000 pvga1 gvga r128 ati sis tvga8900 \
-				cirrus ncr77c22 compaq mga oak al2101 \
-				ali cl64xx video7 ark mx realtek s3v apm \
-				s3_savage s3_svga neo chips cyrix rendition p9x00 \
-				spc8110 i740 tdfx smi generic
+#  define XFree86ConsoleDefines -DPCCONS_SUPPORT -DPCVT_SUPPORT
 # endif
 #else
 # if defined(m68kArchitecture) && OSMajorVersion == 1 && OSMinorVersion <= 3
@@ -301,28 +218,15 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #endif
 
 /*
- * On mips, all libs are compiled with ABIcalls, not just sharedlibs.
- * Disable MIPS specific code which was not used and tested.
- */
-#if defined(MipsArchitecture)
-# define SeparateSharedCompile NO
-# undef MipsArchitecture
-#endif
-
-/*
  * XXX always build XKBuilib, override xfree86.cf
  */
-#if defined(sharkArchitecture) || defined(i386Architecture) || defined(atariArchitecture)
+#if defined(arm32Architecture) || defined(i386Architecture) || defined(atariArchitecture)
 # define BuildXKBuilib		YES
 #endif
 
 #if defined(SparcArchitecture)
 # define ServerOSDefines	-DDDXOSINIT
-# if defined(Sparc64Architecture)
-#  define ServerExtraDefines	GccGasOption -D_XSERVER64
-# else
-#  define ServerExtraDefines	GccGasOption
-# endif
+# define ServerExtraDefines	GccGasOption
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
 #endif
@@ -355,6 +259,8 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # define ServerExtraDefines	GccGasOption -D_XSERVER64
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
+# undef OptimizedCDebugFlags			/* XXX ??? */
+# define OptimizedCDebugFlags			/* XXX ??? */
 #endif
 
 #if defined(amigaArchitecture)
@@ -365,24 +271,12 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # define XserverNeedsSetUID	YES
 #endif
 
-#if defined(acorn32Architecture)
-# define BuildServer		YES
-# define ServerOSDefines	-DDDXOSINIT
-# define ServerExtraDefines	GccGasOption
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(sharkArchitecture)
+#if defined(arm32Architecture)
 # define BuildServer		YES
 # define ServerOSDefines	-DDDXOSINIT -DDDXTIME
 # define ServerExtraDefines	GccGasOption XFree86ServerDefines
 # ifndef XFree86ConsoleDefines
-#  if OSMajorVersion < 1 || OSMajorVersion == 1 && (OSMinorVersion < 5)
-#   define XFree86ConsoleDefines -DPCCONS_SUPPORT -DPCVT_SUPPORT
-#  else
-#   define XFree86ConsoleDefines -DPCCONS_SUPPORT -DWSCONS_SUPPORT 
-#  endif
+#  define XFree86ConsoleDefines -DPCCONS_SUPPORT
 # endif
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
@@ -391,16 +285,13 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #if defined(atariArchitecture)
 # define BuildServer		YES
 # define ServerOSDefines	-DDDXOSINIT
-# define ServerExtraDefines	GccGasOption XFree86ServerDefines -D__atari__ -D__mc68000__ -Dmc68020
+# define ServerExtraDefines	GccGasOption XFree86ServerDefines -D__atari__
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
-# define XF68FBDevServer	YES
-# define XF68SVGAServer		YES
-# define XF68W32Server		YES
 #endif
 
 #if defined(VaxArchitecture)
-# define BuildServer		NO
+# define BuildServer		YES
 # define ServerExtraDefines	GccGasOption
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
@@ -432,90 +323,17 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #endif
 
 #if defined(pmaxArchitecture)
-# define ServerOSDefines	-DDDXOSINIT
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
 #endif
 
 #if defined(hpcmipsArchitecture)
-# define ServerOSDefines	-DDDXOSINIT
-# define BuildServer		YES
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-# define ServerExtraDefines	-DSTATIC_COLOR
-# define XserverNeedsSetUID	YES
-#endif
-
-#if defined(hpcarmArchitecture)
-# define ServerOSDefines	-DDDXOSINIT
-# define BuildServer		YES
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-# define ServerExtraDefines	-DSTATIC_COLOR
-# define XserverNeedsSetUID	YES
-#endif
-
-#if defined(mvme68kArchitecture)
 # define BuildServer		NO
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
 #endif
 
 #if defined(next68kArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(prepArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(news68kArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(cobaltArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(sgimipsArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(luna68kArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(mipscoArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(algorArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(catsArchitecture)
-# define BuildServer		NO
-# define PexDynamicModule	NO
-# define XieDynamicModule	NO
-#endif
-
-#if defined(playstation2Architecture)
 # define BuildServer		NO
 # define PexDynamicModule	NO
 # define XieDynamicModule	NO
@@ -530,15 +348,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #endif
 
 #define StandardDefines	-DCSRG_BASED
-
-/* Citrus mb locale were added in 1.5P */
-#if ((OSMajorVersion > 1) || \
-     (OSMajorVersion == 1 && OSMinorVersion > 5) || \
-     (OSMajorVersion == 1 && OSMinorVersion == 5 && OSTeenyVersion >= 15))
-#define XawI18nDefines	-DHAS_WCHAR_H -DHAS_WCTYPE_H -DNO_WIDEC_H
-#else
 #define XawI18nDefines	-DUSE_XWCHAR_STRING -DUSE_XMBTOWC
-#endif
 
 #ifndef ExtraLibraries
 #define ExtraLibraries		/**/
@@ -606,7 +416,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # define ExtraFilesToClean 	*.core
 #endif
 
-#ifdef armArchitecture
+#ifdef arm32Architecture
 /*
  * NetBSD's default .SUFFIXES target places .s at a higher priority
  * than .c.  This breaks architectures which use the .c versions of
@@ -719,8 +529,8 @@ install.man:: 								@@\
  * and on all ELF platforms.
  */
 #if ((OSMajorVersion > 0) && \
-     !defined(AlphaArchitecture) && !defined(MipsArchitecture)) \
-     || UseElfFormat
+     !defined(AlphaArchitecture) && !defined(MipsArchitecture) && \
+     !defined(VaxArchitecture)) || UseElfFormat
 # ifndef HasSharedLibraries
 # define HasSharedLibraries	YES
 # endif
@@ -742,7 +552,7 @@ install.man:: 								@@\
 #include <bsdLib.rules>
 #endif /* HasSharedLibraries */
 
-#if defined(i386Architecture) || defined(sharkArchitecture) || \
+#if defined(i386Architecture) || defined(arm32Architecture) || \
     defined(atariArchitecture)
 # include <xfree86.cf>
 
@@ -768,7 +578,7 @@ module: modlist								@@\
 clean::									@@\
 	RemoveFile(module)
 
-#endif /* i386Architecture || sharkArchitecture || atariArchitecture */
+#endif /* i386Architecture || arm32Architecture || atariArchitecture */
 
 /*
  * NetBSD always uses the XFree86 contrib distribution.
@@ -815,7 +625,7 @@ clean::									@@\
 #  define BuildPex        NO      /* compiler runs out of table space */
 #  define BuildXInputLib  NO      /* compiler runs out of table space */
 # endif
-# define HasSaberC NO
+# define HasSaberC YES
 # define UnalignedReferencesAllowed YES         /* if arbitrary deref is okay */
 #endif
 
@@ -862,16 +672,16 @@ clean::									@@\
  * Definitions for the NetBSD/alpha X server.
  */
 #if defined(AlphaArchitecture)
-# define XdecNetBSDServer	YES
+# define XalphaNetBSDServer	YES
 #ifndef XkbServerDefines
 #define XkbServerDefines	-DXKB_ALWAYS_USES_SOFT_REPEAT
 #endif
 #endif
 
 /*
- * Definitions for the NetBSD/acorn32 VIDC20 X server.
+ * Definitions for the NetBSD/arm32 VIDC20 X server.
  */
-#if defined(acorn32Architecture)
+#if defined(arm32Architecture)
 # define Xarm32VIDCServer	YES
 #endif
 
@@ -894,20 +704,6 @@ clean::									@@\
  */
 #if defined(pmaxArchitecture)
 # define XpmaxServer YES
-#endif
-
-/*
- * Definitions for the NetBSD/hpcmips X server.
- */
-#if defined(hpcmipsArchitecture)
-# define XhpcServer		YES
-#endif
-
-/*
- * Definitions for the NetBSD/hpcarm X server.
- */
-#if defined(hpcarmArchitecture)
-# define XhpcServer		YES
 #endif
 
 

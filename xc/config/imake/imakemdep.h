@@ -265,10 +265,10 @@ in this Software without prior written authorization from the X Consortium.
 #ifdef _CRAY
 #define DEFAULT_CPP "/lib/pcpp"
 #endif
-#if defined(__386BSD__) || defined(__OpenBSD__)
+#if defined(__386BSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #define DEFAULT_CPP "/usr/libexec/cpp"
 #endif
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__)
 #define USE_CC_E
 #endif
 #if defined(__sgi) && defined(__ANSI_CPP__)
@@ -719,13 +719,10 @@ char *cpp_argv[ARGUMENTS] = {
 # define DEFAULT_OS_TEENY_REV   "r %*d.%*d%[A-Z]" 
 # define DEFAULT_OS_TEENY_REV_FROB(buf, size)				\
     do {								\
-	int	teeny = 0;						\
-	char	*ptr = (buf);						\
-									\
-	while (*ptr >= 'A' && *ptr <= 'Z') /* sanity check */		\
-	    teeny = teeny * 26 + (int)(*ptr++ - 'A');			\
-									\
-	snprintf((buf), (size), "%d", teeny + 1);			\
+	if (*(buf) >= 'A' && *(buf) <= 'Z') /* sanity check */		\
+		snprintf((buf), (size), "%d", *(buf) - 'A' + 1);	\
+	else								\
+	    *(buf) = '\0';						\
     } while (0)
 # define DEFAULT_OS_NAME        "smr %[^\n]"
 # define DEFAULT_OS_NAME_FROB(buf, size)				\

@@ -441,23 +441,10 @@ typedef struct {
      unsigned char r, g, b;
 } LUTENTRY;
 
-/*
- * mmio reads from GP_STAT
- */
-#if !defined(__alpha__)
-#define mmio_INB_GP_STAT() 	(*(((volatile unsigned char*)s3MmioMem)+GP_STAT) & 0xff)
-#define mmio_INW_GP_STAT() 	(*(((volatile unsigned short*)s3MmioMem)+GP_STAT/2))
-#else
-#define mmio_INB_GP_STAT() 	inb(GP_STAT)
-#define mmio_INW_GP_STAT() 	inw(GP_STAT)
-#endif
 
 #define WaitIdle() 	do {  		\
 	mem_barrier(); 			\
-	if (s3newmmio) 			\
-	    while(mmio_INW_GP_STAT() & GPBUSY); 	\
-	else 				\
-	    while(inw(GP_STAT) & GPBUSY); 	\
+	while(inw(GP_STAT) & GPBUSY); 	\
 } while(0)
 
 
@@ -479,10 +466,7 @@ typedef struct {
 #else
    #define WaitQueue(v)   do {  		\
 	mem_barrier(); 				\
-	if (s3newmmio) 			\
-	   while(mmio_INB_GP_STAT() & (0x0100 >> (v))); 	\
-	else 				\
-	   while(inb(GP_STAT) & (0x0100 >> (v))); 	\
+	while(inb(GP_STAT) & (0x0100 >> (v))); 	\
    } while (0)
 
    #define CMD_REG_WIDTH  0  	/* select 16bit command register */

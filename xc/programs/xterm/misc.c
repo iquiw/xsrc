@@ -238,7 +238,9 @@ static void DoSpecialEnterNotify (register XEnterWindowEvent *ev)
 #ifdef ACTIVEWINDOWINPUTONLY
     if (ev->window == XtWindow(XtParent(CURRENT_EMU(screen))))
 #endif
-      if (((ev->detail) != NotifyInferior) && ev->focus)
+      if (((ev->detail) != NotifyInferior) &&
+	  ev->focus &&
+	  !(screen->select & FOCUS))
 	selectwindow(screen, INWINDOW);
 }
 
@@ -260,7 +262,9 @@ static void DoSpecialLeaveNotify (register XEnterWindowEvent *ev)
 #ifdef ACTIVEWINDOWINPUTONLY
     if (ev->window == XtWindow(XtParent(CURRENT_EMU(screen))))
 #endif
-      if (((ev->detail) != NotifyInferior) && ev->focus)
+      if (((ev->detail) != NotifyInferior) &&
+	  ev->focus &&
+	  !(screen->select & FOCUS))
 	unselectwindow(screen, INWINDOW);
 }
 
@@ -345,9 +349,9 @@ unselectwindow(register TScreen *screen, register int flag)
     } else
 #endif
     {
-	screen->select &= ~flag;
-	if (screen->xic && screen->select == 0)
+	if (screen->xic)
 	    XUnsetICFocus(screen->xic);
+	screen->select &= ~flag;
 	if(screen->cursor_state &&
 	   (screen->cursor_col != screen->cur_col ||
 	    screen->cursor_row != screen->cur_row))
@@ -926,7 +930,6 @@ do_dcs(Char *dcsbuf, size_t dcslen)
 			reset_decudk();
 
 		while (*cp) {
-			char *base = cp;
 			char *str = (char *)malloc(strlen(cp) + 2);
 			int key = 0;
 			int len = 0;
@@ -954,9 +957,6 @@ do_dcs(Char *dcsbuf, size_t dcslen)
 			}
 			if (*cp == ';')
 				cp++;
-			if (cp == base) /* badly formed sequence
-					   - bail out */
-				break;
 		}
 	}
 }

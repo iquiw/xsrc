@@ -1,12 +1,9 @@
-XCOMM $NetBSD: Imakefile,v 1.2 2000/07/03 21:06:31 elric Exp $
+XCOMM $NetBSD: Imakefile,v 1.1 1999/04/27 08:18:24 ross Exp $
 
 #include <Server.tmpl>
 
-SRCS =	alphaTGA.c tgagc.c tgabitblt.c tgablt.c tgawindow.c	\
-	tgasimpleblt.c
-OBJS = 	alphaTGA.o \
-	tgagc.o tgabitblt.o tgablt.o tgawindow.o tgasimpleblt.o \
-	tga32gc.o tga32bitblt.o tga32blt.o tga32window.o
+SRCS =	alphaTGA.c tgagc.c tgabitblt.c tgablt.c tgawindow.c tgasimpleblt.c
+OBJS = 	alphaTGA.o tgagc.o tgabitblt.o tgablt.o tgawindow.o tgasimpleblt.o
 
    INCLUDES = -I. -I.. -I../../../.. -I../../../../mi -I../../../../mfb \
 		-I../../../../cfb -I../../../../include -I/sys/arch/amiga \
@@ -15,17 +12,16 @@ OBJS = 	alphaTGA.o \
 		../../../../mfb/llib-lmfb.ln ../../../../mi/llib-lmi.ln \
 		../../../../cfb/llib-lcfb.ln
 
+DEFINES = -DPSZ=8
+
 NormalLibraryObjectRule()
 
 all:: $(OBJS)
 
 lintlib:
 
-/* 32 bpp */
-ObjectFromSpecialSource(tga32gc,tgagc,-DPSZ=32)
-ObjectFromSpecialSource(tga32bitblt,tgabitblt,-DPSZ=32)
-ObjectFromSpecialSource(tga32blt,tgablt,-DPSZ=32)
-ObjectFromSpecialSource(tga32window,tgawindow,-DPSZ=32)
+/* ObjectFromSpecialSource(clbltC,clblt,-DMROP=Mcopy) */
+/* ObjectFromSpecialSource(clsolidC,clsolid,-DRROP=GXcopy) */
 
 NormalLibraryTarget(alphaTga,$(OBJS))
 NormalLintTarget($(SRCS))

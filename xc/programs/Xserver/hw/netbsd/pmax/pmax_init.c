@@ -1,11 +1,11 @@
-/*	$NetBSD: pmax_init.c,v 1.7 2001/09/19 20:52:27 thorpej Exp $	*/
+/*	$NetBSD: pmax_init.c,v 1.5 2000/01/07 14:41:03 ad Exp $	*/
 
 /*
- * Copyright (c) 1999, 2000, 2001 The NetBSD Foundation, Inc.
+ * Copyright (c) 1999, 2000 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
- * by Andrew Doran.
+ * by Andy Doran <ad@NetBSD.org>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,6 +60,7 @@ SOFTWARE.
 
 ******************************************************************/
 
+/* Um, we don't need all these... */
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/file.h>
@@ -73,7 +74,7 @@ SOFTWARE.
 #include <sys/proc.h>
 
 #include <machine/tc_machdep.h>
-#include <dev/sun/fbio.h>
+#include <machine/fbio.h>
 #include <machine/fbvar.h>
 #include <machine/pmioctl.h>
 #include <dev/dec/lk201.h>
@@ -119,11 +120,13 @@ InitOutput(screenInfo, argc, argv)
     if ((fd = open("/dev/fb0", O_RDWR | O_NDELAY, 0)) < 0)
 	ErrorF("couldn't open /dev/fb0\n");
 
+    /* Damn DEC ioctls() aren't enough. Using the Sun ones too... */
     if (ioctl(fd, FBIOGTYPE, &fb) < 0) {
 	ErrorF("FBIOGTYPE ioctl failed: %s\n", strerror(errno));
 	exit(1);
     }
     
+    /* XXX horrible... */
     close(fd);
     screenInfo->numPixmapFormats = (fb.fb_depth == 8 ? 2 : 1);
 
@@ -149,10 +152,4 @@ InitInput(argc, argv)
 
     RegisterPointerDevice(p);
     RegisterKeyboardDevice(k);
-}
-
-void
-OsVendorInit(void)
-{
-
 }

@@ -56,6 +56,7 @@ struct pci_config_reg {
     } stat_cmd;
 #define _status_command stat_cmd.status_command
 #define _command stat_cmd.sc.command
+#define _status  stat_cmd.sc.status
     union {
         unsigned long class_revision;
 	struct {
@@ -361,12 +362,6 @@ extern struct pci_config_reg *pci_devp[];
 #define PCI_CHIP_SAVAGE3D_M	0x8A21
 #define PCI_CHIP_SAVAGE4	0x8A22
 #define PCI_CHIP_SAVAGE2000	0x9102
-#define PCI_CHIP_SAVAGE_MX_MV	0x8C10
-#define PCI_CHIP_SAVAGE_MX	0x8C11
-#define PCI_CHIP_SAVAGE_IX_MV	0x8C12
-#define PCI_CHIP_SAVAGE_IX	0x8C13
-#define PCI_CHIP_SAVAGE_NB	0x8A25
-#define PCI_CHIP_SAVAGE_MX_MV	0x8C10
 
 /* ARK Logic */
 #define PCI_CHIP_1000PV		0xA091

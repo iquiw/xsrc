@@ -66,7 +66,7 @@ FSListFontsWithXInfo(svr, pattern, maxNames, count, info, pprops, offsets, prop_
     long        nbytes;
     int         i,
                 j;
-    size_t      size = 0;
+    int         size = 0;
     FSXFontInfoHeader **fhdr = (FSXFontInfoHeader **) 0;
     FSPropInfo **pi = (FSPropInfo **) 0;
     FSPropOffset **po = (FSPropOffset **) 0;
@@ -124,13 +124,7 @@ FSListFontsWithXInfo(svr, pattern, maxNames, count, info, pprops, offsets, prop_
 	if (reply.nameLength == 0)	/* got last reply in version 1 */
 	    break;
 	if ((i + reply.nReplies) >= size) {
-
-	    if (reply.nReplies > SIZE_MAX - i - 1) 
-		goto badmem;
 	    size = i + reply.nReplies + 1;
-
-	    if (size > SIZE_MAX / sizeof(char *)) 
-		goto badmem;
 
 	    if (fhdr) {
 		FSXFontInfoHeader **tmp_fhdr = (FSXFontInfoHeader **)
@@ -244,9 +238,6 @@ FSListFontsWithXInfo(svr, pattern, maxNames, count, info, pprops, offsets, prop_
 	pi[i]->num_offsets = local_pi.num_offsets;
 	pi[i]->data_len = local_pi.data_len;
 
-	if (pi[i]->num_offsets > SIZE_MAX / sizeof(FSPropOffset))
-	    goto badmem;
-
 	po[i] = (FSPropOffset *)
 	    FSmalloc(pi[i]->num_offsets * sizeof(FSPropOffset));
 	if (!po[i]) {
@@ -291,10 +282,6 @@ FSListFontsWithXInfo(svr, pattern, maxNames, count, info, pprops, offsets, prop_
 
 	    nbytes = pi[i]->data_len + reply.nameLength;
 	    _FSEatData(svr, (unsigned long) (((nbytes+3)&~3) - nbytes));
-	}
-	/* avoid integer overflow */
-	if (i > INT_MAX - 1) {
-	    goto badmem;
 	}
     }
     *info = fhdr;

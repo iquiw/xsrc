@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/vga256/vga/vgaPCI.h,v 3.22.2.48 2000/11/01 01:52:47 dawes Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/vga256/vga/vgaPCI.h,v 3.22.2.45 2000/01/08 03:25:42 robin Exp $ */
 /*
  * PCI Probe
  *
@@ -45,6 +45,7 @@
 #define PCI_VENDOR_INTEL	0x8086
 #define PCI_VENDOR_ARK		0xEDD8
 
+
 /* Real 3D */
 #define PCI_CHIP_I740_PCI	0x00D1
 
@@ -79,6 +80,10 @@
 #define PCI_CHIP_MACH64LP	0x4C50
 #define PCI_CHIP_MACH64LR	0x4C52
 #define PCI_CHIP_MACH64LS	0x4C53
+#define PCI_CHIP_RAGE128_RE	0x5245
+#define PCI_CHIP_RAGE128_RF	0x5246
+#define PCI_CHIP_RAGE128_RK	0x524B
+#define PCI_CHIP_RAGE128_RL	0x524C
 #define PCI_CHIP_MACH64VT	0x5654
 #define PCI_CHIP_MACH64VU	0x5655
 #define PCI_CHIP_MACH64VV	0x5656
@@ -116,8 +121,7 @@
 #define PCI_CHIP_RAGE128PV	0x5056
 #define PCI_CHIP_RAGE128PW	0x5057
 #define PCI_CHIP_RAGE128PX	0x5058
-#define PCI_CHIP_RAGE128LE	0x4C45
-#define PCI_CHIP_RAGE128LF	0x4C46
+
 
 /* Avance Logic */
 #define PCI_CHIP_ALG2301	0x2301
@@ -243,13 +247,6 @@
 #define PCI_CHIP_GEFORCE256     0x0100
 #define PCI_CHIP_GEFORCEDDR     0x0101
 #define PCI_CHIP_QUADRO         0x0103
-#define PCI_CHIP_GEFORCE2MX     0x0110
-#define PCI_CHIP_GEFORCE2MXDDR  0x0111
-#define PCI_CHIP_QUADRO2MXR     0x0113
-#define PCI_CHIP_GEFORCE2GTS    0x0150
-#define PCI_CHIP_GEFORCE2GTS_1  0x0151
-#define PCI_CHIP_GEFORCE2ULTRA  0x0152
-#define PCI_CHIP_QUADRO2PRO     0x0153
 
 /* NVIDIA & SGS */
 #define PCI_CHIP_RIVA128        0x0018
@@ -291,11 +288,6 @@
 #define PCI_CHIP_SAVAGE3D_M	0x8A21
 #define PCI_CHIP_SAVAGE4	0x8A22
 #define PCI_CHIP_SAVAGE2000	0x9102
-#define PCI_CHIP_SAVAGE_MX_MV	0x8C10
-#define PCI_CHIP_SAVAGE_MX	0x8C11
-#define PCI_CHIP_SAVAGE_IX_MV	0x8C12
-#define PCI_CHIP_SAVAGE_IX	0x8C13
-#define PCI_CHIP_SAVAGE_370	0x8A25
 #define PCI_CHIP_868		0x8880
 #define PCI_CHIP_928		0x88B0
 #define PCI_CHIP_864_0		0x88C0
@@ -303,6 +295,7 @@
 #define PCI_CHIP_964_0		0x88D0
 #define PCI_CHIP_964_1		0x88D1
 #define PCI_CHIP_968		0x88F0
+
 
 /* Intel */
 #define PCI_CHIP_I740_AGP	0x7800
@@ -431,8 +424,6 @@ pciVendorDeviceInfo xf86PCIVendorInfo[] = {
 				{PCI_CHIP_RAGE128PV,    "Rage 128 PV"},
 				{PCI_CHIP_RAGE128PW,    "Rage 128 PW"},
 				{PCI_CHIP_RAGE128PX,    "Rage 128 PX"},
-				{PCI_CHIP_RAGE128LE,	"Rage 128 Mobility LE"},
-				{PCI_CHIP_RAGE128LF,	"Rage 128 Mobility LF"},
 				{0x0000,		NULL}}},
     {PCI_VENDOR_AVANCE,	"Avance Logic",	{
 				{PCI_CHIP_ALG2301,	"ALG2301"},
@@ -598,11 +589,6 @@ pciVendorDeviceInfo xf86PCIVendorInfo[] = {
 				{PCI_CHIP_SAVAGE3D_M,	"Savage3D (Macrovision Support)"},
 				{PCI_CHIP_SAVAGE4,	"Savage4"},
 				{PCI_CHIP_SAVAGE2000,	"Savage2000"},
-				{PCI_CHIP_SAVAGE_MX_MV,	"Savage/MX-MV"},
-				{PCI_CHIP_SAVAGE_MX,	"Savage/MX"},
-				{PCI_CHIP_SAVAGE_IX_MV,	"Savage/IX-MV"},
-				{PCI_CHIP_SAVAGE_IX,	"Savage/IX"},
-				{PCI_CHIP_SAVAGE_370,	"Savage/NB"},
 				{PCI_CHIP_868,		"868"},
 				{PCI_CHIP_928,		"928"},
 				{PCI_CHIP_864_0,	"864"},

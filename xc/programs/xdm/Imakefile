@@ -1,5 +1,5 @@
 XCOMM $XConsortium: Imakefile /main/81 1996/10/22 18:32:26 kaleb $
-XCOMM $XFree86: xc/programs/xdm/Imakefile,v 3.19.2.14 2001/02/26 23:05:19 dawes Exp $
+XCOMM $XFree86: xc/programs/xdm/Imakefile,v 3.19.2.11 1999/12/11 17:20:01 hohndel Exp $
 #define IHaveSubdirs
 #define PassCDebugFlags 'CDEBUGFLAGS=$(CDEBUGFLAGS)'
 
@@ -121,7 +121,7 @@ CRYPT_DEFINES = -DHAS_CRYPT
 #endif
 
 #if HasPam
-PAM_LIBRARIES = $(PAMLIBRARY)
+PAM_LIBRARIES = -lpam DlLibrary
 #endif
 
 SYS_LIBRARIES = $(SYS_LIBRARIES1) $(SYS_LIBRARIES2) $(SYS_LIBRARIES3)
@@ -132,12 +132,6 @@ SOCK_DEFINES = -DBSD44SOCKETS
 
 #ifdef i386Architecture
 FRAGILE_DEFINES = -DFRAGILE_DEV_MEM
-#endif
-
-#if defined(NetBSDArchitecture) && \
-    ((OSMajorVersion > 1) || \
-     (OSMajorVersion == 1 && OSMinorVersion > 3))
-RANDOM_DEFINES = -DDEV_RANDOM=\"/dev/urandom\"
 #endif
 
 #if HasVFork
@@ -216,7 +210,7 @@ LOCAL_LIBRARIES = $(XMULIB) $(XTOOLLIB) $(XLIB) $(XAUTHLIB) $(XDMCPLIB) $(RPCLIB
 		$(SIGNAL_DEFINES) $(CRYPT_DEFINES) \
 		$(XDMAUTH_DEFINES) $(RPC_DEFINES) $(KRB5_DEFINES) \
 		$(PWD_DEFINES) $(CONN_DEFINES) \
-		$(GREET_DEFINES) $(FRAGILE_DEFINES) $(RANDOM_DEFINES) \
+		$(GREET_DEFINES) $(FRAGILE_DEFINES) \
 		-DOSMAJORVERSION=$(OSMAJORVERSION) \
 		-DOSMINORVERSION=$(OSMINORVERSION) \
 		$(XKB_CLIENT_DEFINES) $(USER_CONTEXT_DEFINES)

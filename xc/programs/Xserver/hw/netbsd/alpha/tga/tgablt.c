@@ -1,4 +1,4 @@
-/* $NetBSD: tgablt.c,v 1.3 2000/12/19 01:34:06 perseant Exp $ */
+/* $NetBSD: tgablt.c,v 1.1 1999/04/27 08:18:24 ross Exp $ */
 
 /*
  * tga copy area
@@ -39,10 +39,6 @@ Author: Keith Packard
 
 #define MROP	Mcopy
 
-#ifndef PSZ
-#define PSZ 8
-#endif
-
 #include	"X.h"
 #include	"Xmd.h"
 #include	"Xproto.h"
@@ -62,7 +58,7 @@ Author: Keith Packard
 /*static unsigned char *clregs,*clfb;*/
 
 #include "alpha.h"
-#include "tgamap.h"
+
 #include <dev/pci/tgareg.h>
 
 void
@@ -113,7 +109,8 @@ MROP_NAME(alphaTgaDoBitblt)(pSrc, pDst, alu, prgnDst, pptSrc, planemask)
 
     fbFd *inf = &alphaFbs[pSrc->pScreen->myNum];
     unsigned char *fb = inf->fb;
-    tga_reg_t **regs = inf->regs.tgaregs;
+    tga_reg_t *regs[4] = { inf->tgaregs0, inf->tgaregs1,
+        inf->tgaregs2, inf->tgaregs3 };
     int creg = 0;
 
     if (pSrc != pDst)

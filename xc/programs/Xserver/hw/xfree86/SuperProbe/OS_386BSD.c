@@ -1,4 +1,4 @@
-/* $XFree86: xc/programs/Xserver/hw/xfree86/SuperProbe/OS_386BSD.c,v 3.10.2.5 2001/02/04 19:50:43 herrb Exp $ */
+/* $XFree86: xc/programs/Xserver/hw/xfree86/SuperProbe/OS_386BSD.c,v 3.10.2.4 1999/07/30 11:21:15 hohndel Exp $ */
 /*
  * (c) Copyright 1993,1994 by David Dawes <dawes@xfree86.org>
  *
@@ -73,11 +73,13 @@
     /* This header is part of codrv */
 #   include <machine/ioctl_pc.h>
 #  endif
-#  if defined(WSCONS_SUPPORT)
-#   include <dev/wscons/wsdisplay_usl_io.h>
-#  endif
-#  if defined(PCVT_SUPPORT) && !defined(SYSCONS_SUPPORT) && !defined(WSCONS_SUPPORT)
-#   include <machine/pcvt_ioctl.h>
+#  if defined(PCVT_SUPPORT) && !defined(SYSCONS_SUPPORT)
+    /* NetBSD's wscons has a PCVT compatibility module. */
+#   if defined(__NetBSD__)
+#    include <dev/wscons/wsdisplay_usl_io.h>
+#   else
+#    include <machine/pcvt_ioctl.h>
+#   endif
 #  endif
 #  ifdef SYSCONS_SUPPORT
     /* both, Free and NetBSD have syscons */
@@ -120,10 +122,6 @@
 #  define WSCONS_PCVT_COMPAT_CONSOLE_DEV "/dev/ttyE0"
 #endif
 
-#ifdef USE_ALPHA_PIO
-#include <machine/pio.h>
-#endif
-
 #ifdef USE_ARM32_MMAP
 #define	DEV_MEM_IOBASE	0x43000000
 extern unsigned int IOPortBase;
@@ -134,9 +132,7 @@ static int CONS_fd = -1;
 static int BIOS_fd = -1;
 
 static Bool HasCodrv = FALSE;
-#if defined(SYSCONS_SUPPORT) || defined(PCVT_SUPPORT)
 static Bool HasUslVt = FALSE;
-#endif
 
 /*
  * OpenVideo --
@@ -154,9 +150,6 @@ int OpenVideo()
 			MyName);
 		return(-1);
 	}
-#ifdef USE_ALPHA_PIO
-	return(1);	/* CONS_fd not needed on alpha */
-#endif
 	/*
 	 * Attempt to open /dev/kbd.  If this fails, the driver is either
 	 * pccons, or it is codrv and something else has it open.  errno
@@ -382,7 +375,7 @@ int Len;
 	Byte *Base = Bios_Base + Offset;
 	unsigned long bs = (unsigned long) Base;
 
-#if defined(__arm__) || defined(__arm32__) || defined(__alpha__)
+#ifdef	__arm32__
 	return(-1);
 #endif
 
@@ -439,11 +432,6 @@ CONST Word *Ports;
 	i386_iopl(TRUE);
     }
 #endif
-#ifdef USE_ALPHA_PIO
-    if (IOEnabled++ == 0) {
-	alpha_pci_io_enable(TRUE);
-    }
-#endif
 #ifdef USE_ARM32_MMAP
     if (IOEnabled++ == 0) {
 	if (DEVMEM_fd == -1 && (DEVMEM_fd = open("/dev/mem", O_RDWR, 0)) < 0)
@@ -482,11 +470,6 @@ CONST Word *Port;
 #ifdef USE_I386_IOPL
     if (--IOEnabled == 0) {
 	i386_iopl(FALSE);
-    }
-#endif
-#ifdef USE_ALPHA_PIO
-    if (--IOEnabled == 0) {
-	alpha_pci_io_enable(FALSE);
     }
 #endif
 #ifdef USE_ARM32_MMAP

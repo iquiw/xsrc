@@ -321,8 +321,7 @@ void
 S3VGEReset(int from_timeout, int line, char *file)
 {
     unsigned long gs1, gs2;   /* -- debug info for graphics state -- */
-    /* HK: resetidx doesn't work yet, use read-only register for fake */
-    unsigned char tmp, sr1, resetidx=0x2e;  
+    unsigned char tmp, sr1, resetidx;
     int r;
     int ge_was_on = 0;
     int32  fifo_control, miu_control, streams_timeout, misc_timeout;
@@ -412,7 +411,6 @@ S3VGEReset(int from_timeout, int line, char *file)
 
       if(tmp & 0x01) {
         tmp &= ~0x01;
-	outb(vgaCRIndex,resetidx);
         outb(vgaCRReg, tmp);
         ge_was_on = 1;
         usleep(10000);
@@ -423,7 +421,6 @@ S3VGEReset(int from_timeout, int line, char *file)
       usleep(10000);
 
       VerticalRetraceWait();
-      outb(vgaCRIndex,resetidx);
       outb(vgaCRReg, (tmp & ~0x02));
       usleep(10000);
 

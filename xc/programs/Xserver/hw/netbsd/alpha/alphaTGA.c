@@ -97,7 +97,11 @@ static void CGUpdateColormap(pScreen, dex, count, rmap, gmap, bmap)
     int		dex, count;
     u_char	*rmap, *gmap, *bmap;
 {
+#ifdef USE_WSCONS
     struct wsdisplay_cmap alphaCmap;
+#else
+    struct fbcmap alphaCmap;
+#endif
 
     alphaCmap.index = dex;
     alphaCmap.count = count;
@@ -105,10 +109,17 @@ static void CGUpdateColormap(pScreen, dex, count, rmap, gmap, bmap)
     alphaCmap.green = &gmap[dex];
     alphaCmap.blue = &bmap[dex];
 
+#ifdef USE_WSCONS
     if (ioctl(alphaFbs[pScreen->myNum].fd, WSDISPLAYIO_PUTCMAP, &alphaCmap) < 0) {
 	Error("CGUpdateColormap");
 	FatalError( "CGUpdateColormap: FBIOPUTCMAP failed\n" );
     }
+#else
+    if (ioctl(alphaFbs[pScreen->myNum].fd, FBIOPUTCMAP, &alphaCmap) < 0) {
+	Error("CGUpdateColormap");
+	FatalError( "CGUpdateColormap: FBIOPUTCMAP failed\n" );
+    }
+#endif
 }
 
 void alphaInstallColormap(cmap)
@@ -268,7 +279,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 	 * things out, we have to look at the TGA registers.
 	 */ 
 	tgaregs = (tga_reg_t *)(fb + (1 * 1024 * 1024));
-	fb_off = (int)alphaFbs[screen].size / 2;
+	fb_off = (int)alphaFbs[screen].info.fb_size / 2;
 
 	/* Find out real pixel width of the display. */
         switch (tgaregs[TGA_REG_VHCR] & 0x1ff) {            /* XXX */
@@ -290,7 +301,7 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 	 * where the displayed frame buffer actually starts.
 	 */
 	rowsize = 2 * 1024;			/* 2k for 128K VRAMs, 8BPP */
-	if (alphaFbs[screen].info.depth == 32)
+	if (alphaFbs[screen].info.fb_depth == 32)
 		rowsize *= 4;			/* increase by 4x for 32BPP */
 	if ((tgaregs[TGA_REG_GDER] & 0x200) == 0) /* 256K VRAMs */
 		rowsize *= 2;			/* increase by 2x */
@@ -305,11 +316,11 @@ Bool alphaTGAInit (screen, pScreen, argc, argv)
 #endif
 
 	if (!alphaCfbScreenInit(pScreen, fb + fb_off,
-	    alphaFbs[screen].info.width,
-	    alphaFbs[screen].info.height,
+	    alphaFbs[screen].info.fb_width,
+	    alphaFbs[screen].info.fb_height,
 	    monitorResolution, monitorResolution,
 	    realwidth,
-	    alphaFbs[screen].info.depth))
+	    alphaFbs[screen].info.fb_depth))
             return FALSE;
 
 	CGScreenInit(pScreen);

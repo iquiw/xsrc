@@ -84,8 +84,13 @@ void alphaEnqueueEvents (
 #endif
 )
 {
+#ifdef USE_WSCONS
     struct wscons_event *ptrEvents,
 			*kbdEvents;
+#else
+    Firm_event	*ptrEvents,    	/* Current pointer event */
+		*kbdEvents;    	/* Current keyboard event */
+#endif
     int		numPtrEvents, 	/* Number of remaining pointer events */
 		numKbdEvents;   /* Number of remaining keyboard events */
     int		nPE,   	    	/* Original number of pointer events */
@@ -132,7 +137,11 @@ void alphaEnqueueEvents (
 	if ((numPtrEvents == 0) && (numKbdEvents == 0))
 	    break;
 	if (numPtrEvents && numKbdEvents) {
+#ifdef USE_WSCONS
 	    if (timespeccmp (&kbdEvents->time, &ptrEvents->time, <)) {
+#else
+	    if (timercmp (&kbdEvents->time, &ptrEvents->time, <)) {
+#endif
 		alphaKbdEnqueueEvent (pKeyboard, kbdEvents);
 		numKbdEvents--;
 		kbdEvents++;
@@ -192,10 +201,6 @@ ddxProcessArgument (argc, argv, i)
 {
     extern void UseMsg();
 
-    if (!strcmp(argv[i], "-noaccel")) {
-	alphaTgaAccelerate = 0;
-	return 1;
-    }
 #if 0 /* XXX */
 #ifndef XKB
     if (strcmp (argv[i], "-ar1") == 0) {	/* -ar1 int */
@@ -229,12 +234,10 @@ ddxProcessArgument (argc, argv, i)
     if (strcmp (argv[i], "-mono") == 0) {	/* -mono */
 	return 1;
     }
-#endif
     if (strcmp (argv[i], "-zaphod") == 0) {	/* -zaphod */
-	alphaActiveZaphod = FALSE;
+	sunActiveZaphod = FALSE;
 	return 1;
     }
-#if 0 /* XXX */
     if (strcmp (argv[i], "-flipPixels") == 0) {	/* -flipPixels */
 	sunFlipPixels = TRUE;
 	return 1;

@@ -254,7 +254,6 @@ extern void set_tek_visibility (Boolean on);
 extern void set_vt_visibility (Boolean on);
 extern void switch_modes (Bool tovt);
 extern void xevents (void);
-extern void xtermSetenv (char *var, char *value);
 extern void xt_error (String message);
 
 #ifdef ALLOWLOGGING
