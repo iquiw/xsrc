@@ -75,12 +75,21 @@ static void *   ET4000Save();
 static void     ET4000Restore();
 static void     ET4000Adjust();
 static void     ET4000FbInit();
+#ifdef __mc68000__
+# define     ET4000SetRead		(void (*)())NoopDDA
+# define     ET4000SetWrite		(void (*)())NoopDDA
+# define     ET4000SetReadWrite		(void (*)())NoopDDA
+# define     ET4000W32SetRead		(void (*)())NoopDDA
+# define     ET4000W32SetWrite		(void (*)())NoopDDA
+# define     ET4000W32SetReadWrite	(void (*)())NoopDDA
+#else
 extern void     ET4000SetRead();
 extern void     ET4000SetWrite();
 extern void     ET4000SetReadWrite();
 extern void     ET4000W32SetRead();
 extern void     ET4000W32SetWrite();
 extern void     ET4000W32SetReadWrite();
+#endif
 extern void	TsengAccelInit();
 extern void     ET4000HWSaveScreen();
 
@@ -286,6 +295,14 @@ TsengFindBusType()
                XCONFIG_PROBED, vga256InfoRec.name, bus);
         switch (bus) {
             case 0x1C:
+#if defined(__NetBSD__) && defined(__atari__)
+		/*
+		 * No PCI scan yet. But Atari on NetBSD is PCI only.
+		 */
+                Tseng_bus = BUS_PCI;
+                Tseng_MemBase_mask = 0x3FC00000; /* A29..A22 */
+                ErrorF("PCI.\n");
+#else
                 if (tseng_pcr)  /* PCI bus detected. Can we read this from some register instead? */
                 {
                   Tseng_bus = BUS_PCI;
@@ -299,6 +316,7 @@ TsengFindBusType()
                   ErrorF("Local Buffered Bus\n");
                   tseng_linmem_1meg = TRUE; /* IMA bus support allows for only 1M linear memory */
                 }
+#endif
                 break;
             case 0x13:
                 ErrorF("Local Bus option 1a.\n");
@@ -332,8 +350,6 @@ TsengFindBusType()
         Tseng_MemBase_mask = 0xFF000000;
         break;
   }
-
-
 }
 
 
@@ -399,6 +415,7 @@ ET4000LinMem(Bool autodetect)
   }
   else     /* MemBase not given: find it */
   {
+#ifndef __mc68000__
     switch(et4000_type)
     {
       case TYPE_ET4000W32:
@@ -437,6 +454,13 @@ ET4000LinMem(Bool autodetect)
         else vga256InfoRec.MemBase = 0xF0000000; /* map memory near top of memory by default */
         break;
     }
+#else
+    /*
+     * I do not kow about any m68k system that allows a PCI scan. We use
+     * instead a function from the os layer.
+     */
+    vga256InfoRec.MemBase = (int)xf86GetLinearAddress();
+#endif
     vga256InfoRec.MemBase &= Tseng_MemBase_mask;
   }
 
@@ -471,6 +495,12 @@ ET4000LinMem(Bool autodetect)
    * address space.
    */
 
+#ifdef __mc68000__
+  /* Atari Crazy Dots (VME ET4000) card only has 1MB, so we cannot mmap 4MB */
+  if(OFLG_ISSET(OPTION_CRAZYDOTS, &vga256InfoRec.options))
+    ET4000.ChipLinearSize = 1024 * 1024;
+  else
+#endif
   ET4000.ChipLinearSize = 4096 * 1024;
 
   ET4000.ChipLinearBase = vga256InfoRec.MemBase;
@@ -982,6 +1012,7 @@ ET4000Probe()
            XCONFIG_PROBED, vga256InfoRec.name, vgaBitsPerPixel);
   }
 
+#ifndef __mc68000__
   /* check if linear memory is supported and check for a suitable MemBase */
   /* for >8bpp, linear memory is _required_ */
   if (OFLG_ISSET(OPTION_LINEAR, &vga256InfoRec.options)
@@ -991,6 +1022,13 @@ ET4000Probe()
   {
     ET4000LinMem(autodetect);
   }
+#else
+  /*
+   * On m68k always check for linear memory because we do not support
+   * banked addressing. (Does anyone like to port the assembler stuff?)
+   */
+   ET4000LinMem(autodetect);
+#endif
   
   /* what color depths can we handle? */
   switch(TsengRamdacType) {
@@ -1113,6 +1151,14 @@ ET4000Probe()
   }
 
 #endif /* MONOVGA */
+
+#ifdef __mc68000__
+  if (et4000_type == TYPE_ET4000)
+  {
+    /* Atari Crazy Dots (VME ET4000) card */
+    OFLG_SET(OPTION_CRAZYDOTS, &ET4000.ChipOptionFlags);
+  }
+#endif /* __mc68000__ */
 
   if (et4000_type < TYPE_ET6000)
   {
@@ -1292,6 +1338,7 @@ ET4000FbInit()
                   XCONFIG_PROBED, vga256InfoRec.name,
                   vga256InfoRec.chipset, ET4000.ChipLinearBase);
 
+#ifndef __mc68000__
   if (vga256InfoRec.videoRam > 1024)
     useSpeedUp = vga256InfoRec.speedup & SPEEDUP_ANYCHIPSET;
   else
@@ -1333,6 +1380,7 @@ ET4000FbInit()
       vga256LowlevFuncs.fillBoxSolid = speedupvga256FillBoxSolid;
     }
   }
+#endif /* __mc68000__ */
 
   /* Hardware cursor setup */
   if (OFLG_ISSET(OPTION_HW_CURSOR, &vga256InfoRec.options) &&
@@ -1631,6 +1679,13 @@ ET4000Restore(restore)
         (ClockSelect)(restore->std.NoClock);
       }
 
+#ifdef __mc68000__
+  /* Clock setting for Atari Crazy Dots (VME ET4000) card */
+  if(OFLG_ISSET(OPTION_CRAZYDOTS, &vga256InfoRec.options))
+  {
+    CDSetClock (vga256InfoRec.clock[restore->std.NoClock]);
+  }
+#endif /* __mc68000__ */
 #ifndef MONOVGA
   if (tseng_use_ACL & (restore->std.Attribute[16] & 1)) /* are we going to graphics mode? */
     tseng_init_acl(); /* initialize acceleration hardware */
@@ -2064,9 +2119,14 @@ ET4000Init(mode)
       new->Compatibility = (new->Compatibility & 0xFD) | 
       				((new->std.NoClock & 0x04) >> 1);
 #ifndef OLD_CLOCK_SCHEME
-      /* clock select bit 3 = divide-by-2 disable/enable */
-      new->AuxillaryMode = (tseng_save_divide ^ ((new->std.NoClock & 0x08) << 3)) |
-                           (new->AuxillaryMode & 0xBF);
+      /* Don't set mclk/2 on an Atari Crazy Dots (VME ET4000) card */
+      if (!OFLG_ISSET(OPTION_CRAZYDOTS, &vga256InfoRec.options))
+      {
+        /* clock select bit 3 = divide-by-2 disable/enable */
+        new->AuxillaryMode = (tseng_save_divide ^
+                             ((new->std.NoClock & 0x08) << 3)) |
+                             (new->AuxillaryMode & 0xBF);
+      }
       /* clock select bit 4 = CS3 */
       new->GenPurp = ((new->std.NoClock & 0x10) << 2) | (new->GenPurp & 0x3F);
 #else
@@ -2218,6 +2278,22 @@ void
 ET4000HWSaveScreen(start)
 Bool start;
 {
+#ifdef __mc68000__
+  /*
+   * On m68k we use linear memory on all et4000
+   */
+  if (start == SS_START)
+  {
+    outb(vgaIOBase + 4, 0x36);
+    save_VSConf1 = inb(vgaIOBase + 5);
+    vgaHWSaveScreen(start);
+  }
+  else
+  {
+    vgaHWSaveScreen(start);
+    outw(vgaIOBase + 4, (save_VSConf1 << 8) | 0x36);
+  }
+#else
 #ifndef PC98_NEC480
 #ifndef PC98_EGC
   if (start == SS_START)
@@ -2237,6 +2313,7 @@ Bool start;
       outw(vgaIOBase + 4, (save_VSConf1 << 8) | 0x36);
     }
   }
+#endif
 #endif
 #endif
 }

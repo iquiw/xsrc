@@ -11,14 +11,21 @@ This software has NO WARRANTY.  Use it at your own risk.
 */
 /* $XFree86: xc/programs/Xserver/hw/xfree86/vga256/drivers/s3_savage/lrmi.c,v 1.1.2.1 1999/07/30 11:21:25 hohndel Exp $ */
 
-#if defined(linux) && defined(__i386__)
+#if (defined(linux) || defined(__NetBSD__)) && defined(__i386__)
 
 #include <stdio.h>
 #include <string.h>
-#include <asm/vm86.h>
 
+#if defined(linux)
+#include <asm/vm86.h>
 #ifdef USE_LIBC_VM86
 #include <sys/vm86.h>
+#endif /* USE_LIBC_VM86 */
+#elif defined(__NetBSD__)
+#include <signal.h>
+#include <setjmp.h>
+#include <machine/psl.h>
+#include <machine/vm86.h>
 #endif
 
 #include <sys/types.h>
@@ -30,8 +37,21 @@ This software has NO WARRANTY.  Use it at your own risk.
 #define LRMI_PREFIX	S3V_
 #include "lrmi.h"
 
+#ifndef asm
 #define asm		__asm__
+#endif
+
+#ifndef volatile
 #define volatile	__volatile__
+#endif
+
+#if defined(linux)
+#define	CONTEXT_REGS	context.vm.regs
+#define	REG(x)		x
+#elif defined(__NetBSD__)
+#define	CONTEXT_REGS	context.vm.substr.regs
+#define	REG(x)		vmsc.sc_ ## x
+#endif
 
 #define REAL_MEM_BASE 	((void *)0x10000)
 #define REAL_MEM_SIZE 	0x10000
@@ -68,7 +88,7 @@ real_mem_init(void)
 
 	m = mmap((void *)REAL_MEM_BASE, REAL_MEM_SIZE,
 	 PROT_READ | PROT_WRITE | PROT_EXEC,
-	 MAP_FIXED | MAP_PRIVATE, fd_zero, 0);
+	 MAP_FIXED | MAP_SHARED, fd_zero, 0);
 
 	if (m == (void *)-1)
 		{
@@ -176,7 +196,13 @@ LRMI_free_real(void *m)
 	}
 
 
+#if defined(linux)
 #define DEFAULT_VM86_FLAGS 	(IF_MASK | IOPL_MASK)
+#elif defined(__NetBSD__)
+#define	DEFAULT_VM86_FLAGS	(PSL_I | PSL_IOPL)
+#define	TF_MASK			PSL_T
+#define	VIF_MASK		PSL_VIF
+#endif
 #define DEFAULT_STACK_SIZE 	0x1000
 #define RETURN_TO_32_INT 	255
 
@@ -186,6 +212,12 @@ static struct
 	unsigned short ret_seg, ret_off;
 	unsigned short stack_seg, stack_off;
 	struct vm86_struct vm;
+#if defined(__NetBSD__)
+	int success;
+	jmp_buf env;
+	void *old_sigurg;
+	int vret;
+#endif
 	} context = { 0 };
 
 
@@ -215,9 +247,9 @@ get_int_off(int i)
 static __inline__ void
 pushw(unsigned short i)
 	{
-	struct vm86_regs *r = &context.vm.regs;
-	r->esp -= 2;
-	*(unsigned short *)(((unsigned int)r->ss << 4) + r->esp) = i;
+	struct vm86_regs *r = &CONTEXT_REGS;
+	r->REG(esp) -= 2;
+	*(unsigned short *)(((unsigned int)r->REG(ss) << 4) + r->REG(esp)) = i;
 	}
 
 
@@ -247,7 +279,7 @@ LRMI_init(void)
 
 	m = mmap((void *)0, 0x502,
 	 PROT_READ | PROT_WRITE | PROT_EXEC,
-	 MAP_FIXED | MAP_PRIVATE, fd_mem, 0);
+	 MAP_FIXED | MAP_SHARED, fd_mem, 0);
 
 	if (m == (void *)-1)
 		{
@@ -290,8 +322,13 @@ LRMI_init(void)
 	/*
 	 Enable kernel emulation of all ints except RETURN_TO_32_INT
 	*/
+#if defined(linux)
 	memset(&context.vm.int_revectored, 0, sizeof(context.vm.int_revectored));
 	set_bit(RETURN_TO_32_INT, &context.vm.int_revectored);
+#elif defined(__NetBSD__)
+	memset(context.vm.int_byuser, 0, sizeof(context.vm.int_byuser));
+	set_bit(RETURN_TO_32_INT, &context.vm.int_byuser);
+#endif
 
 	context.ready = 1;
 
@@ -302,36 +339,36 @@ LRMI_init(void)
 static void
 set_regs(struct LRMI_regs *r)
 	{
-	context.vm.regs.edi = r->edi;
-	context.vm.regs.esi = r->esi;
-	context.vm.regs.ebp = r->ebp;
-	context.vm.regs.ebx = r->ebx;
-	context.vm.regs.edx = r->edx;
-	context.vm.regs.ecx = r->ecx;
-	context.vm.regs.eax = r->eax;
-	context.vm.regs.eflags = DEFAULT_VM86_FLAGS;
-	context.vm.regs.es = r->es;
-	context.vm.regs.ds = r->ds;
-	context.vm.regs.fs = r->fs;
-	context.vm.regs.gs = r->gs;
+	CONTEXT_REGS.REG(edi) = r->edi;
+	CONTEXT_REGS.REG(esi) = r->esi;
+	CONTEXT_REGS.REG(ebp) = r->ebp;
+	CONTEXT_REGS.REG(ebx) = r->ebx;
+	CONTEXT_REGS.REG(edx) = r->edx;
+	CONTEXT_REGS.REG(ecx) = r->ecx;
+	CONTEXT_REGS.REG(eax) = r->eax;
+	CONTEXT_REGS.REG(eflags) = DEFAULT_VM86_FLAGS;
+	CONTEXT_REGS.REG(es) = r->es;
+	CONTEXT_REGS.REG(ds) = r->ds;
+	CONTEXT_REGS.REG(fs) = r->fs;
+	CONTEXT_REGS.REG(gs) = r->gs;
 	}
 
 
 static void
 get_regs(struct LRMI_regs *r)
 	{
-	r->edi = context.vm.regs.edi;
-	r->esi = context.vm.regs.esi;
-	r->ebp = context.vm.regs.ebp;
-	r->ebx = context.vm.regs.ebx;
-	r->edx = context.vm.regs.edx;
-	r->ecx = context.vm.regs.ecx;
-	r->eax = context.vm.regs.eax;
-	r->flags = context.vm.regs.eflags;
-	r->es = context.vm.regs.es;
-	r->ds = context.vm.regs.ds;
-	r->fs = context.vm.regs.fs;
-	r->gs = context.vm.regs.gs;
+	r->edi = CONTEXT_REGS.REG(edi);
+	r->esi = CONTEXT_REGS.REG(esi);
+	r->ebp = CONTEXT_REGS.REG(ebp);
+	r->ebx = CONTEXT_REGS.REG(ebx);
+	r->edx = CONTEXT_REGS.REG(edx);
+	r->ecx = CONTEXT_REGS.REG(ecx);
+	r->eax = CONTEXT_REGS.REG(eax);
+	r->flags = CONTEXT_REGS.REG(eflags);
+	r->es = CONTEXT_REGS.REG(es);
+	r->ds = CONTEXT_REGS.REG(ds);
+	r->fs = CONTEXT_REGS.REG(fs);
+	r->gs = CONTEXT_REGS.REG(gs);
 	}
 
 #define DIRECTION_FLAG 	(1 << 10)
@@ -341,11 +378,11 @@ em_ins(int size)
 	{
 	unsigned int edx, edi;
 
-	edx = context.vm.regs.edx & 0xffff;
-	edi = context.vm.regs.edi & 0xffff;
-	edi += (unsigned int)context.vm.regs.ds << 4;
+	edx = CONTEXT_REGS.REG(edx) & 0xffff;
+	edi = CONTEXT_REGS.REG(edi) & 0xffff;
+	edi += (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	if (context.vm.regs.eflags & DIRECTION_FLAG)
+	if (CONTEXT_REGS.REG(eflags) & DIRECTION_FLAG)
 		{
 		if (size == 4)
 			asm volatile ("std; insl; cld"
@@ -370,10 +407,10 @@ em_ins(int size)
 			 : "=D" (edi) : "d" (edx), "0" (edi));
 		}
 
-	edi -= (unsigned int)context.vm.regs.ds << 4;
+	edi -= (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	context.vm.regs.edi &= 0xffff0000;
-	context.vm.regs.edi |= edi & 0xffff;
+	CONTEXT_REGS.REG(edi) &= 0xffff0000;
+	CONTEXT_REGS.REG(edi) |= edi & 0xffff;
 	}
 
 static void
@@ -381,12 +418,12 @@ em_rep_ins(int size)
 	{
 	unsigned int ecx, edx, edi;
 
-	ecx = context.vm.regs.ecx & 0xffff;
-	edx = context.vm.regs.edx & 0xffff;
-	edi = context.vm.regs.edi & 0xffff;
-	edi += (unsigned int)context.vm.regs.ds << 4;
+	ecx = CONTEXT_REGS.REG(ecx) & 0xffff;
+	edx = CONTEXT_REGS.REG(edx) & 0xffff;
+	edi = CONTEXT_REGS.REG(edi) & 0xffff;
+	edi += (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	if (context.vm.regs.eflags & DIRECTION_FLAG)
+	if (CONTEXT_REGS.REG(eflags) & DIRECTION_FLAG)
 		{
 		if (size == 4)
 			asm volatile ("std; rep; insl; cld"
@@ -417,13 +454,13 @@ em_rep_ins(int size)
 			 : "d" (edx), "0" (edi), "1" (ecx));
 		}
 
-	edi -= (unsigned int)context.vm.regs.ds << 4;
+	edi -= (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	context.vm.regs.edi &= 0xffff0000;
-	context.vm.regs.edi |= edi & 0xffff;
+	CONTEXT_REGS.REG(edi) &= 0xffff0000;
+	CONTEXT_REGS.REG(edi) |= edi & 0xffff;
 
-	context.vm.regs.ecx &= 0xffff0000;
-	context.vm.regs.ecx |= ecx & 0xffff;
+	CONTEXT_REGS.REG(ecx) &= 0xffff0000;
+	CONTEXT_REGS.REG(ecx) |= ecx & 0xffff;
 	}
 
 static void
@@ -431,11 +468,11 @@ em_outs(int size)
 	{
 	unsigned int edx, esi;
 
-	edx = context.vm.regs.edx & 0xffff;
-	esi = context.vm.regs.esi & 0xffff;
-	esi += (unsigned int)context.vm.regs.ds << 4;
+	edx = CONTEXT_REGS.REG(edx) & 0xffff;
+	esi = CONTEXT_REGS.REG(esi) & 0xffff;
+	esi += (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	if (context.vm.regs.eflags & DIRECTION_FLAG)
+	if (CONTEXT_REGS.REG(eflags) & DIRECTION_FLAG)
 		{
 		if (size == 4)
 			asm volatile ("std; outsl; cld"
@@ -460,10 +497,10 @@ em_outs(int size)
 			 : "=S" (esi) : "d" (edx), "0" (esi));
 		}
 
-	esi -= (unsigned int)context.vm.regs.ds << 4;
+	esi -= (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	context.vm.regs.esi &= 0xffff0000;
-	context.vm.regs.esi |= esi & 0xffff;
+	CONTEXT_REGS.REG(esi) &= 0xffff0000;
+	CONTEXT_REGS.REG(esi) |= esi & 0xffff;
 	}
 
 static void
@@ -471,12 +508,12 @@ em_rep_outs(int size)
 	{
 	unsigned int ecx, edx, esi;
 
-	ecx = context.vm.regs.ecx & 0xffff;
-	edx = context.vm.regs.edx & 0xffff;
-	esi = context.vm.regs.esi & 0xffff;
-	esi += (unsigned int)context.vm.regs.ds << 4;
+	ecx = CONTEXT_REGS.REG(ecx) & 0xffff;
+	edx = CONTEXT_REGS.REG(edx) & 0xffff;
+	esi = CONTEXT_REGS.REG(esi) & 0xffff;
+	esi += (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	if (context.vm.regs.eflags & DIRECTION_FLAG)
+	if (CONTEXT_REGS.REG(eflags) & DIRECTION_FLAG)
 		{
 		if (size == 4)
 			asm volatile ("std; rep; outsl; cld"
@@ -507,61 +544,61 @@ em_rep_outs(int size)
 			 : "d" (edx), "0" (esi), "1" (ecx));
 		}
 
-	esi -= (unsigned int)context.vm.regs.ds << 4;
+	esi -= (unsigned int)CONTEXT_REGS.REG(ds) << 4;
 
-	context.vm.regs.esi &= 0xffff0000;
-	context.vm.regs.esi |= esi & 0xffff;
+	CONTEXT_REGS.REG(esi) &= 0xffff0000;
+	CONTEXT_REGS.REG(esi) |= esi & 0xffff;
 
-	context.vm.regs.ecx &= 0xffff0000;
-	context.vm.regs.ecx |= ecx & 0xffff;
+	CONTEXT_REGS.REG(ecx) &= 0xffff0000;
+	CONTEXT_REGS.REG(ecx) |= ecx & 0xffff;
 	}
 
 static void
 em_inb(void)
 	{
 	asm volatile ("inb (%w1), %b0"
-	 : "=a" (context.vm.regs.eax)
-	 : "d" (context.vm.regs.edx), "0" (context.vm.regs.eax));
+	 : "=a" (CONTEXT_REGS.REG(eax))
+	 : "d" (CONTEXT_REGS.REG(edx)), "0" (CONTEXT_REGS.REG(eax)));
 	}
 
 static void
 em_inw(void)
 	{
 	asm volatile ("inw (%w1), %w0"
-	 : "=a" (context.vm.regs.eax)
-	 : "d" (context.vm.regs.edx), "0" (context.vm.regs.eax));
+	 : "=a" (CONTEXT_REGS.REG(eax))
+	 : "d" (CONTEXT_REGS.REG(edx)), "0" (CONTEXT_REGS.REG(eax)));
 	}
 
 static void
 em_inl(void)
 	{
 	asm volatile ("inl (%w1), %0"
-	 : "=a" (context.vm.regs.eax)
-	 : "d" (context.vm.regs.edx));
+	 : "=a" (CONTEXT_REGS.REG(eax))
+	 : "d" (CONTEXT_REGS.REG(edx)));
 	}
 
 static void
 em_outb(void)
 	{
 	asm volatile ("outb %b0, (%w1)"
-	 : : "a" (context.vm.regs.eax),
-	 "d" (context.vm.regs.edx));
+	 : : "a" (CONTEXT_REGS.REG(eax)),
+	 "d" (CONTEXT_REGS.REG(edx)));
 	}
 
 static void
 em_outw(void)
 	{
 	asm volatile ("outw %w0, (%w1)"
-	 : : "a" (context.vm.regs.eax),
-	 "d" (context.vm.regs.edx));
+	 : : "a" (CONTEXT_REGS.REG(eax)),
+	 "d" (CONTEXT_REGS.REG(edx)));
 	}
 
 static void
 em_outl(void)
 	{
 	asm volatile ("outl %0, (%w1)"
-	 : : "a" (context.vm.regs.eax),
-	 "d" (context.vm.regs.edx));
+	 : : "a" (CONTEXT_REGS.REG(eax)),
+	 "d" (CONTEXT_REGS.REG(edx)));
 	}
 
 static int
@@ -575,8 +612,8 @@ emulate(void)
 		} prefix = { 0, 0 };
 	int i = 0;
 
-	insn = (unsigned char *)((unsigned int)context.vm.regs.cs << 4);
-	insn += context.vm.regs.eip;
+	insn = (unsigned char *)((unsigned int)CONTEXT_REGS.REG(cs) << 4);
+	insn += CONTEXT_REGS.REG(eip);
 
 	while (1)
 		{
@@ -655,6 +692,21 @@ emulate(void)
 			i++;
 			break;
 			}
+		else if (insn[i] == 0xe4)
+			{
+			/* This is INB imm8 */
+			CONTEXT_REGS.REG(eax) &= ~0xff;
+			CONTEXT_REGS.REG(eax) |= inb(insn[i+1]);
+			i+=2;
+			break;
+			}
+		else if (insn[i] == 0xe6)
+			{
+			/* This is OUTB imm8 */
+			outb(insn[i+1], CONTEXT_REGS.REG(eax) & 0xff);
+			i+=2;
+			break;
+			}
 		else if (insn[i] == 0xec)
 			{
 			em_inb();
@@ -687,14 +739,19 @@ emulate(void)
 			break;
 			}
 		else
+			{
+			fprintf(stderr, "LRMI: non-emulated insn 0x%02x\n",
+			    insn[i]);
 			return 0;
+			}
 		}
 
-	context.vm.regs.eip += i;
+	CONTEXT_REGS.REG(eip) += i;
 	return 1;
 	}
 
 
+#if defined(linux)
 /*
  I don't know how to make sure I get the right vm86() from libc.
  The one I want is syscall # 113 (vm86old() in libc 5, vm86() in glibc)
@@ -727,6 +784,9 @@ lrmi_vm86(struct vm86_struct *vm)
 	}
 #else
 #define lrmi_vm86 vm86
+#endif /* USE_LIBC_VM86 */
+#elif defined(__NetBSD__)
+#define	lrmi_vm86	i386_vm86
 #endif
 
 
@@ -738,26 +798,26 @@ debug_info(int vret)
 
 	fputs("vm86() failed\n", stderr);
 	fprintf(stderr, "return = 0x%x\n", vret);
-	fprintf(stderr, "eax = 0x%08lx\n", context.vm.regs.eax);
-	fprintf(stderr, "ebx = 0x%08lx\n", context.vm.regs.ebx);
-	fprintf(stderr, "ecx = 0x%08lx\n", context.vm.regs.ecx);
-	fprintf(stderr, "edx = 0x%08lx\n", context.vm.regs.edx);
-	fprintf(stderr, "esi = 0x%08lx\n", context.vm.regs.esi);
-	fprintf(stderr, "edi = 0x%08lx\n", context.vm.regs.edi);
-	fprintf(stderr, "ebp = 0x%08lx\n", context.vm.regs.ebp);
-	fprintf(stderr, "eip = 0x%08lx\n", context.vm.regs.eip);
-	fprintf(stderr, "cs  = 0x%04x\n", context.vm.regs.cs);
-	fprintf(stderr, "esp = 0x%08lx\n", context.vm.regs.esp);
-	fprintf(stderr, "ss  = 0x%04x\n", context.vm.regs.ss);
-	fprintf(stderr, "ds  = 0x%04x\n", context.vm.regs.ds);
-	fprintf(stderr, "es  = 0x%04x\n", context.vm.regs.es);
-	fprintf(stderr, "fs  = 0x%04x\n", context.vm.regs.fs);
-	fprintf(stderr, "gs  = 0x%04x\n", context.vm.regs.gs);
-	fprintf(stderr, "eflags  = 0x%08lx\n", context.vm.regs.eflags);
+	fprintf(stderr, "eax = 0x%08lx\n", CONTEXT_REGS.REG(eax));
+	fprintf(stderr, "ebx = 0x%08lx\n", CONTEXT_REGS.REG(ebx));
+	fprintf(stderr, "ecx = 0x%08lx\n", CONTEXT_REGS.REG(ecx));
+	fprintf(stderr, "edx = 0x%08lx\n", CONTEXT_REGS.REG(edx));
+	fprintf(stderr, "esi = 0x%08lx\n", CONTEXT_REGS.REG(esi));
+	fprintf(stderr, "edi = 0x%08lx\n", CONTEXT_REGS.REG(edi));
+	fprintf(stderr, "ebp = 0x%08lx\n", CONTEXT_REGS.REG(ebp));
+	fprintf(stderr, "eip = 0x%08lx\n", CONTEXT_REGS.REG(eip));
+	fprintf(stderr, "cs  = 0x%04x\n", CONTEXT_REGS.REG(cs));
+	fprintf(stderr, "esp = 0x%08lx\n", CONTEXT_REGS.REG(esp));
+	fprintf(stderr, "ss  = 0x%04x\n", CONTEXT_REGS.REG(ss));
+	fprintf(stderr, "ds  = 0x%04x\n", CONTEXT_REGS.REG(ds));
+	fprintf(stderr, "es  = 0x%04x\n", CONTEXT_REGS.REG(es));
+	fprintf(stderr, "fs  = 0x%04x\n", CONTEXT_REGS.REG(fs));
+	fprintf(stderr, "gs  = 0x%04x\n", CONTEXT_REGS.REG(gs));
+	fprintf(stderr, "eflags  = 0x%08lx\n", CONTEXT_REGS.REG(eflags));
 
 	fputs("cs:ip = [ ", stderr);
 
-	p = (unsigned char *)((context.vm.regs.cs << 4) + (context.vm.regs.eip & 0xffff));
+	p = (unsigned char *)((CONTEXT_REGS.REG(cs) << 4) + (CONTEXT_REGS.REG(eip) & 0xffff));
 
 	for (i = 0; i < 16; ++i)
 		fprintf(stderr, "%02x ", (unsigned int)p[i]);
@@ -765,7 +825,7 @@ debug_info(int vret)
 	fputs("]\n", stderr);
 	}
 
-
+#if defined(linux)
 static int
 run_vm86(void)
 	{
@@ -782,13 +842,13 @@ run_vm86(void)
 			if (v == RETURN_TO_32_INT)
 				return 1;
 
-			pushw(context.vm.regs.eflags);
-			pushw(context.vm.regs.cs);
-			pushw(context.vm.regs.eip);
+			pushw(CONTEXT_REGS.REG(eflags));
+			pushw(CONTEXT_REGS.REG(cs));
+			pushw(CONTEXT_REGS.REG(eip));
 
-			context.vm.regs.cs = get_int_seg(v);
-			context.vm.regs.eip = get_int_off(v);
-			context.vm.regs.eflags &= ~(VIF_MASK | TF_MASK);
+			CONTEXT_REGS.REG(cs) = get_int_seg(v);
+			CONTEXT_REGS.REG(eip) = get_int_off(v);
+			CONTEXT_REGS.REG(eflags) &= ~(VIF_MASK | TF_MASK);
 
 			continue;
 			}
@@ -804,6 +864,93 @@ run_vm86(void)
 
 	return 0;
 	}
+#elif defined(__NetBSD__)
+static int
+vm86_callback(int sig, int code, struct sigcontext *scp)
+	{
+
+	/* Sync our context with what the kernel develivered to us. */
+	memcpy(&context.vm.substr.regs.vmsc, scp, sizeof(*scp));
+
+	switch (VM86_TYPE(code))
+		{
+		case VM86_INTx:
+			{
+			unsigned int v = VM86_ARG(code);
+
+			if (v == RETURN_TO_32_INT)
+				{
+				context.success = 1;
+				longjmp(context.env, 1);
+				}
+
+			pushw(CONTEXT_REGS.REG(eflags));
+			pushw(CONTEXT_REGS.REG(cs));
+			pushw(CONTEXT_REGS.REG(eip));
+
+			CONTEXT_REGS.REG(cs) = get_int_seg(v);
+			CONTEXT_REGS.REG(eip) = get_int_off(v);
+			CONTEXT_REGS.REG(eflags) &= ~(VIF_MASK | TF_MASK);
+
+			break;
+			}
+
+		case VM86_UNKNOWN:
+			if (emulate() == 0)
+				{
+				context.success = 0;
+				context.vret = code;
+				longjmp(context.env, 1);
+				}
+			break;
+
+		default:
+			context.success = 0;
+			context.vret = code;
+			longjmp(context.env, 1);
+			return;
+		}
+
+	/* ...and sync our context back to the kernel. */
+	memcpy(scp, &context.vm.substr.regs.vmsc, sizeof(*scp));
+	}
+
+static int
+run_vm86(void)
+	{
+
+	if (context.old_sigurg)
+		{
+		fprintf(stderr, "run_vm86: callback already installed\n");
+		return (0);
+		}
+
+	if ((context.old_sigurg =
+	     signal(SIGURG, (void (*)(int))vm86_callback)) == (void *)-1)
+		{
+		context.old_sigurg = NULL;
+		fprintf(stderr, "run_vm86: cannot install callback\n");
+		return (0);
+		}
+
+	if (setjmp(context.env))
+		{
+		(void) signal(SIGURG, context.old_sigurg);
+		context.old_sigurg = NULL;
+
+		if (context.success)
+			return (1);
+		debug_info(context.vret);
+		return (0);
+		}
+
+	if (i386_vm86(&context.vm) == -1)
+		return (0);
+
+	/* NOTREACHED */
+	return (0);
+	}
+#endif
 
 
 int
@@ -811,22 +958,22 @@ LRMI_call(struct LRMI_regs *r)
 	{
 	unsigned int vret;
 
-	memset(&context.vm.regs, 0, sizeof(context.vm.regs));
+	memset(&CONTEXT_REGS, 0, sizeof(CONTEXT_REGS));
 
 	set_regs(r);
 
-	context.vm.regs.cs = r->cs;
-	context.vm.regs.eip = r->ip;
+	CONTEXT_REGS.REG(cs) = r->cs;
+	CONTEXT_REGS.REG(eip) = r->ip;
 
 	if (r->ss == 0 && r->sp == 0)
 		{
-		context.vm.regs.ss = context.stack_seg;
-		context.vm.regs.esp = context.stack_off;
+		CONTEXT_REGS.REG(ss) = context.stack_seg;
+		CONTEXT_REGS.REG(esp) = context.stack_off;
 		}
 	else
 		{
-		context.vm.regs.ss = r->ss;
-		context.vm.regs.esp = r->sp;
+		CONTEXT_REGS.REG(ss) = r->ss;
+		CONTEXT_REGS.REG(esp) = r->sp;
 		}
 
 	pushw(context.ret_seg);
@@ -859,22 +1006,22 @@ LRMI_int(int i, struct LRMI_regs *r)
 		return 0;
 		}
 
-	memset(&context.vm.regs, 0, sizeof(context.vm.regs));
+	memset(&CONTEXT_REGS, 0, sizeof(CONTEXT_REGS));
 
 	set_regs(r);
 
-	context.vm.regs.cs = seg;
-	context.vm.regs.eip = off;
+	CONTEXT_REGS.REG(cs) = seg;
+	CONTEXT_REGS.REG(eip) = off;
 
 	if (r->ss == 0 && r->sp == 0)
 		{
-		context.vm.regs.ss = context.stack_seg;
-		context.vm.regs.esp = context.stack_off;
+		CONTEXT_REGS.REG(ss) = context.stack_seg;
+		CONTEXT_REGS.REG(esp) = context.stack_off;
 		}
 	else
 		{
-		context.vm.regs.ss = r->ss;
-		context.vm.regs.esp = r->sp;
+		CONTEXT_REGS.REG(ss) = r->ss;
+		CONTEXT_REGS.REG(esp) = r->sp;
 		}
 
 	pushw(DEFAULT_VM86_FLAGS);

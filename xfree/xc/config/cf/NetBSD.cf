@@ -25,6 +25,13 @@ XCOMM platform:  $XFree86: xc/config/cf/NetBSD.cf,v 3.102 2002/01/03 16:33:49 ts
 XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVersion)
 
 /*
+ * Enable support for "xdmauth" authentification.
+ */
+#ifndef HasXdmAuth
+#define HasXdmAuth YES
+#endif
+
+/*
  * C library features
  */
 #if ((OSMajorVersion > 1) || \
@@ -109,16 +116,6 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 
 #define MkdirHierCmd		mkdir -p
 
-#if OSMajorVersion < 1 || OSMajorVersion == 1 && OSMinorVersion < 5
-#define CppCmd          	/usr/libexec/cpp
-#else
-#define CppCmd			/usr/bin/cpp
-#endif
-#define StandardCppOptions	-traditional
-#define StandardCppDefines	/**/
-#define PreProcessCmd   	CppCmd
-#define PreIncDir		/usr/include
-
 #undef CcCmd
 #define CcCmd 			gcc
 #ifndef DefaultCCOptions
@@ -128,11 +125,20 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #ifdef Arm32Architecture
 #define DefaultCCOptions 	-ansi -Dasm=__asm -fsigned-char \
 				-fomit-frame-pointer GccWarningOptions
+#elif defined(PpcArchitecture)
+# define DefaultCCOptions 	-ansi -Dasm=__asm -fsigned-char \
+				GccWarningOptions
 #else
-#define DefaultCCOptions 	-ansi -Dasm=__asm GccWarningOptions
+# define DefaultCCOptions 	-ansi -Dasm=__asm GccWarningOptions
 #endif
 #endif
 #endif
+
+#define CppCmd          	cpp
+#define StandardCppOptions	-traditional
+#define StandardCppDefines	/**/
+#define PreProcessCmd   	CcCmd -E
+#define PostIncDir		/usr/include
 
 #define GccGasOption 		-DGCCUSESGAS
 #define AsmDefines 		-DUSE_GAS
@@ -181,17 +187,19 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # endif
 # define OptimizedCDebugFlags 	DefaultGcc2i386Opt
 # if OSMajorVersion < 1
-#  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME -DXNO_SYSCONF
+#  define ServerOSDefines	XFree86ServerOSDefines -DXNO_SYSCONF
 # else
-#  define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
+#  define ServerOSDefines	XFree86ServerOSDefines
 # endif
 # if OSMajorVersion == 1 && OSMinorVersion >= 1 || OSMajorVersion >= 2
 #  define ServerExtraSysLibs	-li386
 # endif
 #else
 # define OptimizedCDebugFlags 	-O2
-# if defined(SparcArchitecture) || defined(AlphaArchitecture)
+# if defined(SparcArchitecture)
 #  define ServerOSDefines 	-DDDXOSINIT
+# elif defined(AlphaArchitecture)
+#  define ServerOSDefines 	XFree86ServerOSDefines
 # elif defined(Arm32Architecture)
 #   define ServerOSDefines	XFree86ServerOSDefines -DDDXTIME
 # elif defined(PpcArchitecture)
@@ -199,7 +207,11 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # else
 #  define ServerOSDefines 	/**/
 # endif
-# define ServerExtraSysLibs	/**/
+# if defined(AlphaArchitecture)
+#  define ServerExtraSysLibs	-lalpha
+# else
+#  define ServerExtraSysLibs	/**/
+# endif
 #endif
 #ifdef i386Architecture
 # define ServerExtraDefines GccGasOption XFree86ServerDefines
@@ -217,6 +229,12 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 #   define ServerExtraDefines XFree86ServerDefines -D_XSERVER64
 #  else
 #   define ServerExtraDefines XFree86ServerDefines
+#  endif
+# elif defined(AlphaArchitecture)
+	/* XXX for the following */
+#  define ServerExtraDefines GccGasOption XFree86ServerDefines -D_XSERVER64
+#  ifndef XFree86ConsoleDefines
+#   define XFree86ConsoleDefines -DWSCONS_SUPPORT -DPCCONS_SUPPORT -DPCVT_SUPPORT
 #  endif
 #elif defined(AlphaArchitecture)
 #   define ServerExtraDefines GccGasOption -D_XSERVER64
@@ -327,11 +345,7 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
  */
 #if defined(i386Architecture)
 # ifndef HasNetBSDApertureDriver
-#  define HasNetBSDApertureDriver	NO
-   /* Where the aperture driver is installed */
-#  ifndef NetBSDApertureDir
-#   define NetBSDApertureDir		/usr/local/aperture
-#  endif
+#  define HasNetBSDApertureDriver	YES
 # endif
 
 /*
@@ -377,6 +391,17 @@ XCOMM operating system:  OSName (OSMajorVersion./**/OSMinorVersion./**/OSTeenyVe
 # endif
 #endif
 
+/*
+ * agpgart support (NetBSD 1.5Y and up)
+ */
+#if ((OSMajorVersion > 1) || \
+     (OSMajorVersion == 1 && OSMinorVersion >= 6) || \
+     (OSMajorVersion == 1 && OSMinorVersion == 5 && \
+      OSTeenyVersion >= 25))
+# ifndef HasAgpGart
+#  define HasAgpGart	YES
+# endif
+#endif
 
 /*
  * ForceSubdirs - force make to build subdirectories
@@ -512,26 +537,33 @@ InstallManPageAliasesBase(file,destdir,aliases)
 #include <bsdLib.rules>
 #endif /* HasSharedLibraries */
 
-#if defined(i386Architecture) || defined(Arm32Architecture) || defined(PpcArchitecture) 
+#if defined(i386Architecture) || defined(Arm32Architecture) || defined(AlphaArchitecture) || defined(PpcArchitecture)
 # include <xfree86.cf>
 #endif
+
+/*
+ * NetBSD always uses the XFree86 contrib distribution.
+ */
+#undef	XF86Contrib
+#define	XF86Contrib	YES
 
 /*
  * Definitions for the SUN server on NetBSD/sparc
  */
 #ifdef SparcArchitecture
 #ifndef Xsun24Server
-#define Xsun24Server	NO
+#define Xsun24Server	YES
 #endif
 #ifndef XsunServer
 #define XsunServer	YES
 #endif
 #ifndef XsunMonoServer
-#define XsunMonoServer	YES
+#define XsunMonoServer	NO	/* XXX: does not link */
 #endif
 #ifndef BuildScreenSaverLibrary
 #define BuildScreenSaverLibrary	YES
 #endif
+
 /*
  * XFree86 uses its own (more portable) database routines to speed up 
  * the RGB database lookups
@@ -562,8 +594,7 @@ sed 's/\.[0-9]*$$//'`
  * Definition for compiling on Alpha machines
  */
 #ifdef AlphaArchitecture
-#define	BuildServer	NO
-/* Build the shared XDM greeter on Alph if it supports shared libs */
+/* Build the shared XDM greeter on Alpha if it supports shared libs */
 #define SharedLibXdmGreet HasSharedLibraries
 #endif
 
@@ -597,6 +628,10 @@ sed 's/\.[0-9]*$$//'`
 #define SharedLibXdmGreet NO
 #endif
 
-#ifndef BuildHtmlManPages 
-#define BuildHtmlManPages NO /* We don't want HTML manpages */ 
+#ifndef BuildHtmlManPages
+#define BuildHtmlManPages NO	/* We don't want HTML manpages */
+#endif
+
+#ifndef UseSeparateConfDir
+#define UseSeparateConfDir NO	/* We don't want appdefs in "/etc/X11". */
 #endif

@@ -23,7 +23,7 @@
 .\" be used in advertising or otherwise to promote the sale, use or other 
 .\" dealing in this Software without prior written authorization from the 
 .\" X Consortium.
-.TH X 1 "Release 6.3" "X Version 11"
+.TH X 7 "Release 6.3" "X Version 11"
 .SH NAME
 X \- a portable, network-transparent window system
 .SH SYNOPSIS
@@ -1038,9 +1038,9 @@ the appropriate instance name can be placed before the asterisk:
 .SH "SEE ALSO"
 .PP
 .\" introductions
-XConsortium(1),
-XStandards(1),
-Xsecurity(1),
+XConsortium(7),
+XStandards(7),
+Xsecurity(7),
 .\" clients, utilities, and demos
 
 appres(1), bdftopcf(1), bitmap(1), editres(1), fsinfo(1),

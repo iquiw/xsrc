@@ -1,0 +1,14 @@
+$NetBSD: TODO,v 1.3 2002/02/26 12:34:53 ad Exp $
+
+Things that need to be done:
+
+- Unmap registers before core-dump.
+
+Things that are optional:
+
+- More SFB acceleration.
+- Figure out why SFB hardware cursor refuses to display.
+- Save colormap and restore; reset display mode on abort/exit.
+- Proper write barriers.
+- Fix lk keyboard map.
+- Remove decFbInfo::size.

@@ -187,6 +187,7 @@ XCOMM $XFree86: xc/config/cf/Imake.cf,v 3.74 2001/11/16 16:47:50 dawes Exp $
 # endif
 # ifdef __alpha__
 #   define AlphaArchitecture
+#   define AlphaBsdArchitecture
 #   undef __alpha__
 # endif
 # ifdef mc68000

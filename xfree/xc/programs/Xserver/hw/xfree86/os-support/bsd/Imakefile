@@ -25,7 +25,9 @@ SHARED_CFLAGS = PositionIndependentCFlags
 
 #if defined(OpenBSDArchitecture) || defined(NetBSDArchitecture) \
     && ((OSMajorVersion == 1 && OSMinorVersion >= 1) || OSMajorVersion >= 2)
-# if defined(ArcArchitecture)
+# if defined(AlphaArchitecture)
+ IOPERMDEFINES = -DUSE_ALPHA_PIO
+# elif defined(ArcArchitecture)
  IOPERMDEFINES = -DUSE_ARC_MMAP
 # elif defined(Arm32Architecture)
  IOPERMDEFINES = -DUSE_ARM32_MMAP
@@ -136,9 +138,7 @@ CONSDEFINES = XFree86ConsoleDefines
 RESDEFINES = -DUSESTDRES
 
 #if HasNetBSDApertureDriver
-APDIR = NetBSDApertureDir
 APDEFINES = -DHAS_APERTURE_DRV
-APINCLUDES = -I$(APDIR)/include
 #endif
 
 DEFINES = $(CONSDEFINES) $(APDEFINES) $(IOPERMDEFINES) $(RESDEFINES) \

@@ -33,9 +33,7 @@ XCOMM $XFree86: xc/programs/xdm/Imakefile,v 3.19.2.14 2001/02/26 23:05:19 dawes 
 #else
 #ifndef SharedLibXdmGreet
 #define SharedLibXdmGreet						\
-    ((defined(AlphaArchitecture) &&					\
-      (!defined(NetBSDArchitecture) ||					\
-       (defined(NetBSDArchitecture) && HasSharedLibraries))) ||		\
+    ((defined(AlphaArchitecture) && !defined(NetBSDArchitecture)) ||	\
      SystemV4)
 #endif
 
