@@ -67,6 +67,8 @@
 #define outb(p,v) _outb((v),(p))
 #define outw(p,v) _outw((v),(p))
 #define outl(p,v) _outl((v),(p))
+#elif defined(USE_ALPHA_PIO)
+#include <machine/pio.h>
 #else
 #if defined(__sparc__)
 #ifndef ASI_PL
@@ -124,7 +126,7 @@ unsigned long port;
    return ret;
 }
 #else
-#ifdef __arm32__
+#if defined(__arm__) || defined(__arm32__)
 unsigned int IOPortBase;  /* Memory mapped I/O port area */
 
 static __inline__ void
@@ -183,7 +185,7 @@ inl(port)
 
 	return(*(volatile unsigned long*)(((unsigned short)(port))+IOPortBase));
 }
-#else /* __arm32__ */
+#else /* __arm__ || __arm32__ */
 #if defined(Lynx) && defined(__powerpc__)
 extern unsigned char *ioBase;
 

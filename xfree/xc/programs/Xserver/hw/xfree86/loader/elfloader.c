@@ -921,7 +921,7 @@ ELFCreateGOT(ELFModulePtr elffile, int maxalign)
 	    ErrorF("ELFCreateGOT() Unable to reallocate memory!!!!\n");
 	    return FALSE;
 	}
-#   if defined(linux) && defined(__ia64__) || defined(__OpenBSD__)
+#   if defined(linux) && defined(__ia64__) || defined(__OpenBSD__) || defined(__NetBSD__)
 	{
 	    unsigned long page_size = getpagesize();
 	    unsigned long round;
@@ -2418,6 +2418,10 @@ Elf_RelocateEntry(ELFModulePtr elffile, Elf_Word secn, Elf_Rel_t *rel,
 # ifdef ELFDEBUG
 	ELFDEBUG("*dest32=%8.8lx\n", *dest32);
 # endif
+#if defined(__NetBSD__)
+            arm_sync_icache(dest32, 4);
+#endif
+
 	break;
 
     case R_ARM_REL32:
@@ -2442,6 +2446,10 @@ Elf_RelocateEntry(ELFModulePtr elffile, Elf_Word secn, Elf_Rel_t *rel,
 # ifdef ELFDEBUG
 	ELFDEBUG("*dest32=%8.8lx\n", *dest32);
 # endif
+#if defined(__NetBSD__)
+            arm_sync_icache(dest32, 4);
+#endif
+
 
 	break;
 
@@ -2456,6 +2464,10 @@ Elf_RelocateEntry(ELFModulePtr elffile, Elf_Word secn, Elf_Rel_t *rel,
 	    *dest32 = (*dest32 & 0xff000000) | (val & 0x00ffffff);
 #ifdef NOTYET
 	    arm_flush_cache(dest32);
+#else
+#if defined(__NetBSD__)
+            arm_sync_icache(dest32, 4);
+#endif
 #endif
 	}
 	break;
@@ -2760,7 +2772,7 @@ ELFCollectSections(ELFModulePtr elffile, int pass, int *totalsize,
 	elffile->lsection[j].size = SecSize(i);
 	elffile->lsection[j].flags = flags;
 	switch (SecType(i)) {
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined(__NetBSD__)
 	case SHT_PROGBITS:
 	    mprotect(elffile->lsection[j].saddr, SecSize(i),
 		     PROT_READ | PROT_WRITE | PROT_EXEC);
@@ -2958,7 +2970,7 @@ ELFLoadModule(loaderPtr modrec, int elffd, LOOKUP **ppLookup)
 	ErrorF("Unable to allocate ELF sections\n");
 	return NULL;
     }
-#  if defined(linux) && defined(__ia64__) || defined(__OpenBSD__)
+#  if defined(linux) && defined(__ia64__) || defined(__OpenBSD__) || defined(__NetBSD__)
     {
 	unsigned long page_size = getpagesize();
 	unsigned long round;

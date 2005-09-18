@@ -39,6 +39,9 @@
 #include <sys/types.h>
 #include <sys/fbio.h>
 #include <dev/ofw/openpromio.h>
+#elif defined(__NetBSD__)
+#include <dev/sun/fbio.h>
+#include <dev/ofw/openfirmio.h>
 #else
 #include <machine/fbio.h>
 #endif

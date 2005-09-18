@@ -32,6 +32,7 @@
 #include	"fontmisc.h"
 #include	"fontstruct.h"
 #include	"fservestr.h"
+#include	"fslibos.h"
 
 extern char _fs_glyph_undefined;
 extern char _fs_glyph_requested;
@@ -104,6 +105,9 @@ _fs_convert_props(pi, po, pd, pfi)
 #define BAD_RESOURCE 0xe0000000
 
     nprops = pfi->nprops = pi->num_offsets;
+    if (nprops < 0 ||
+        nprops > SIZE_T_MAX/(sizeof(FontPropRec) + sizeof(char)))
+	return -1;
 
     dprop = (FontPropPtr) xalloc(sizeof(FontPropRec) * nprops);
     is_str = (char *) xalloc(sizeof(char) * nprops);

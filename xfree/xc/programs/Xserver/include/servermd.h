@@ -122,7 +122,7 @@ SOFTWARE.
  *	Currently defined for SPARC.
  */
 
-#ifdef vax
+#if defined(vax) || defined(__vax__)
 
 #define IMAGE_BYTE_ORDER	LSBFirst        /* Values for the VAX only */
 #define BITMAP_BIT_ORDER	LSBFirst
@@ -132,6 +132,14 @@ SOFTWARE.
 
 #endif /* vax */
 
+#if defined(__arm__)
+#define IMAGE_BYTE_ORDER        LSBFirst
+#define BITMAP_BIT_ORDER      LSBFirst
+#define GLYPHPADBYTES           4
+#define GETLEFTBITS_ALIGNMENT   1
+#define LARGE_INSTRUCTION_CACHE
+
+#endif /* __arm__ */
 #ifdef __arm32__
 
 #define IMAGE_BYTE_ORDER        LSBFirst
@@ -222,7 +230,7 @@ SOFTWARE.
 # define BITMAP_BIT_ORDER	MSBFirst
 #endif
 
-#ifdef sparc
+#if defined(sparc) || defined(__sparc__) || defined(__sparc_v9__)
 # define AVOID_MEMORY_READ
 # define LARGE_INSTRUCTION_CACHE
 # define FAST_CONSTANT_OFFSET_MODE
@@ -389,7 +397,7 @@ SOFTWARE.
 
 #endif /* ia64 */
 
-#if defined(__AMD64__) || defined(AMD64)
+#if defined(__AMD64__) || defined(AMD64) || defined(__amd64__)
 # define IMAGE_BYTE_ORDER	LSBFirst
 
 # if defined(XF86MONOVGA) || defined(XF86VGA16) || defined(XF86MONO)
@@ -481,7 +489,8 @@ SOFTWARE.
 
 #endif /* SVR4 / BSD / i386 */
 
-#if defined (linux) && defined (__mc68000__)
+#if (defined (linux) && defined (__mc68000__)) || \
+    (defined (__NetBSD__) && defined (__m68k__))
 
 #define IMAGE_BYTE_ORDER       MSBFirst
 #define BITMAP_BIT_ORDER       MSBFirst
@@ -489,7 +498,7 @@ SOFTWARE.
 #define GLYPHPADBYTES          4
 #define GETLEFTBITS_ALIGNMENT  1
 
-#endif /* linux/m68k */
+#endif /* linux/m68k or NetBSD/m68k */
 
 #ifdef sgi
 

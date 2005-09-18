@@ -22,7 +22,7 @@
  * used in advertising or otherwise to promote the sale, use or other dealings
  * in this Software without prior written authorization from GROUPE BULL.
  */
-/* $XFree86: xc/extras/Xpm/lib/xpm.h,v 1.3 2003/11/17 22:20:02 dawes Exp $ */
+/* $XFree86: xc/extras/Xpm/lib/xpm.h,v 1.2 2001/08/22 23:36:44 dawes Exp $ */
 
 /*****************************************************************************\
 * xpm.h:                                                                      *
@@ -284,9 +284,7 @@ typedef struct {
  * functions declarations
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+_XFUNCPROTOBEGIN
 
 /* FOR_MSW, all ..Pixmap.. are excluded, only the ..XImage.. are used */
 /* Same for Amiga! */
@@ -440,10 +438,7 @@ extern "C" {
 
     FUNC(XpmFree, void, (void *ptr));
 
-#ifdef __cplusplus
-} /* for C++ V2.0 */
-#endif
-
+_XFUNCPROTOEND
 
 /* backward compatibility */
 

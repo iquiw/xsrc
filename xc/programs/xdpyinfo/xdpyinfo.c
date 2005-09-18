@@ -682,7 +682,7 @@ char *msetable[] = { "None", "Microsoft", "MouseSystems", "MMSeries",
 		     "GlidePoint", "IntelliMouse", "ThinkingMouse",
 		     "IMPS/2", "ThinkingMousePS/2", "MouseManPlusPS/2",
 		     "GlidePointPS/2", "NetMousePS/2", "NetScrollPS/2",
-		     "SysMouse", "Auto", "AceCad", "wsmouse", "usb" };
+		     "SysMouse", "Auto", "AceCad", "wsmouse", "sun", "usb" };
 
 char *flgtable[] = { "None", "ClearDTR", "ClearRTS",
 		     "ClearDTR and ClearRTS" };

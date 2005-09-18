@@ -63,7 +63,11 @@ Author: Ralph Mor, X Consortium
        return (0); \
     }
 
-
+#define BAIL_STRING(_iceConn, _opcode, _pStart) {\
+    _IceErrorBadLength (_iceConn, 0, _opcode, IceFatalToConnection);\
+    IceDisposeCompleteMessage (_iceConn, _pStart);\
+    return (0);\
+}
 
 /*
  * IceProcessMessages:
@@ -844,10 +848,17 @@ Bool		swap;
 
     pData = pStart;
     pEnd = pStart + (length << 3);
-
-    SKIP_STRING (pData, swap, pEnd);				       /* vendor */
-    SKIP_STRING (pData, swap, pEnd);				       /* release */
-    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount, pEnd);/* auth names */
+    
+    SKIP_STRING (pData, swap, pEnd, 
+		 BAIL_STRING(iceConn, ICE_ConnectionSetup,
+			     pStart));			       /* vendor */
+    SKIP_STRING (pData, swap, pEnd, 
+		 BAIL_STRING(iceConn, ICE_ConnectionSetup,
+			    pStart));	        	       /* release */
+    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount, pEnd, 
+			BAIL_STRING(iceConn, ICE_ConnectionSetup,
+				   pStart));		       /* auth names */
+    
     pData += (message->versionCount * 4);		       /* versions */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ConnectionSetup,
@@ -1704,8 +1715,12 @@ IceReplyWaitInfo 	*replyWait;
     pData = pStart;
     pEnd = pStart + (length << 3);
 
-    SKIP_STRING (pData, swap, pEnd);				     /* vendor */
-    SKIP_STRING (pData, swap, pEnd);				     /* release */
+    SKIP_STRING (pData, swap, pEnd,
+		 BAIL_STRING (iceConn, ICE_ConnectionReply,
+			      pStart));		    	     /* vendor */
+    SKIP_STRING (pData, swap, pEnd,
+		 BAIL_STRING (iceConn, ICE_ConnectionReply,
+			      pStart));			     /* release */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ConnectionReply,
 	length, pData - pStart + SIZEOF (iceConnectionReplyMsg),
@@ -1828,10 +1843,18 @@ Bool		swap;
     pData = pStart;
     pEnd = pStart + (length << 3);
 
-    SKIP_STRING (pData, swap, pEnd);				       /* proto name */
-    SKIP_STRING (pData, swap, pEnd);				       /* vendor */
-    SKIP_STRING (pData, swap, pEnd);				       /* release */
-    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount, pEnd);/* auth names */
+    SKIP_STRING (pData, swap, pEnd,
+		 BAIL_STRING(iceConn, ICE_ProtocolSetup, 
+			     pStart));			       /* proto name */
+    SKIP_STRING (pData, swap, pEnd,
+		 BAIL_STRING(iceConn, ICE_ProtocolSetup, 
+			     pStart));			       /* vendor */
+    SKIP_STRING (pData, swap, pEnd,
+		 BAIL_STRING(iceConn, ICE_ProtocolSetup, 
+			     pStart));			       /* release */
+    SKIP_LISTOF_STRING (pData, swap, (int) message->authCount, pEnd,
+			BAIL_STRING(iceConn, ICE_ProtocolSetup, 
+				    pStart));		       /* auth names */
     pData += (message->versionCount * 4);		       /* versions */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ProtocolSetup,
@@ -2191,8 +2214,12 @@ IceReplyWaitInfo 	*replyWait;
     pData = pStart;
     pEnd = pStart + (length << 3);
 
-    SKIP_STRING (pData, swap, pEnd);				     /* vendor */
-    SKIP_STRING (pData, swap, pEnd);				     /* release */
+    SKIP_STRING (pData, swap, pEnd,
+		 BAIL_STRING(iceConn, ICE_ProtocolReply,
+		             pStart));				/* vendor */
+    SKIP_STRING (pData, swap, pEnd,
+		 BAIL_STRING(iceConn, ICE_ProtocolReply,
+		            pStart));				/* release */
 
     CHECK_COMPLETE_SIZE (iceConn, ICE_ProtocolReply,
 	length, pData - pStart + SIZEOF (iceProtocolReplyMsg),

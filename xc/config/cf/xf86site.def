@@ -162,7 +162,61 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
  * on your platform.
  *
  * The following servers are supported in Intel x86 platforms
- *
+ */
+#ifdef i386Architecture
+#ifdef NetBSDArchitecture
+#ifndef	XF86SVGAServer
+# define XF86SVGAServer		YES
+#endif
+#ifndef XF86VGA16Server
+# define XF86VGA16Server	YES
+#endif
+#ifndef XF86VGA16DualServer
+# define XF86VGA16DualServer	YES
+#endif
+#ifndef XF86MonoServer
+# define XF86MonoServer		YES
+#endif
+#ifndef XF86MonoDualServer
+# define XF86MonoDualServer	YES
+#endif
+#ifndef XF86S3Server
+# define XF86S3Server		YES
+#endif
+#ifndef XF86S3VServer
+# define XF86S3VServer		YES
+#endif
+#ifndef XF86I8514Server
+# define XF86I8514Server	YES
+#endif
+#ifndef XF86Mach8Server
+# define XF86Mach8Server	YES
+#endif
+#ifndef XF86Mach32Server
+# define XF86Mach32Server	YES
+#endif
+#ifndef XF86Mach64Server
+# define XF86Mach64Server	YES
+#endif
+#ifndef XF86P9000Server
+# define XF86P9000Server	YES
+#endif
+#ifndef XF86AGXServer
+# define XF86AGXServer		YES
+#endif
+#ifndef XF86W32Server
+# define XF86W32Server		YES
+#endif
+#ifndef XF86I128Server
+# define XF86I128Server		YES
+#endif
+#ifndef XF86GLINTServer
+#define XF86GLINTServer		YES
+#endif
+#ifndef XF86FBDevServer
+#define XF86FBDevServer		NO
+#endif
+#else
 #define XF86SVGAServer          NO
 #define XF86VGA16Server         NO
 #define XF86VGA16DualServer	NO
@@ -180,15 +234,14 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
 #define XF86I128Server		NO
 #define XF86GLINTServer		NO
 #define XF86FBDevServer		NO
- */
+
+#endif /* NetBSDArchitecture */
+#endif
 
 /*
- * Which servers do you wish to build, you can save a lot of disk space
- * by only compiling the server you will be using.  It will also save you
- * considerable compile time.
- *
  * The following servers are supported on Digital Alpha platforms:
- *
+ */
+#ifdef AlphaArchitecture
 #define XF86SVGAServer          NO
 #define XF86MonoServer          NO
 #define XF86S3Server            NO
@@ -198,13 +251,28 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
 #define XF86GLINTServer		NO
 #define XF86Mach64Server	NO
 #define XF86I128Server		NO
- */
+#endif
 
 /*
- * Which servers do you wish to build, you can save a lot of disk space
- * by only compiling the server you will be using.  It will also save you
- * considerable compile time.
- *
+ * The following servers are supported on m68k platforms:
+ */
+#ifdef Mc68020Architecture
+# ifdef LinuxArchitecture
+#  define XF68FBDevServer	YES
+#  define XF68SVGAServer	NO
+#  define XF68W32Server		NO
+# elif defined(NetBSDArchitecture) && defined(atariArchitecture)
+#  define XF68FBDevServer	YES
+#  define XF68SVGAServer	YES
+#  define XF68W32Server		YES
+# else
+#  define XF68FBDevServer	NO
+#  define XF68SVGAServer	NO
+#  define XF68W32Server		NO
+# endif
+#endif
+
+/*
  * The following server is supported on Mips/Arc platforms:
  *
 #define XF86S3Server            NO
@@ -241,6 +309,16 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
  * The following server is supported on Motorola 68k platforms:
  *
 #define XF68FBDevServer		NO
+#define XF68SVGAServer		NO
+#define XF68W32Server		NO
+ */
+
+/*
+ * The following servers are supported on SHARK platforms:
+ *
+#define XF86SVGAServer          NO
+#define XF86VGA16Server         NO
+#define XF86MonoServer          NO
  */
 
 /*
@@ -271,9 +349,15 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
  *
 #define XF86SvgaDrivers		nv et4000 et3000 pvga1 gvga r128 ati sis tvga8900 \
 				cirrus ncr77c22 compaq mga oak al2101 ali \
-				cl64xx video7 ark mx realtek apm s3_savage \
-				s3v s3_svga neo chips cyrix rendition p9x00 \
-				spc8110 i740 tdfx i810 smi generic
+				cl64xx video7 ark mx realtek apm s3v \
+				s3_savage s3_svga neo chips cyrix rendition \
+				p9x00 spc8110 i740 tdfx smi generic
+ */
+
+/*
+ * m68k SVGA server:
+ *
+#define XF68SvgaDrivers		et4000
  */
 
 /*
@@ -303,6 +387,12 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
  */
 
 /*
+ * m68k ET4000/W32 server:
+ *
+#define XF68W32Drivers		et4000w32
+ */
+
+/*
  * BSD Console driver support (for FreeBSD and NetBSD).
  *
  * By default, support is included for pccons and pcvt for NetBSD, and
@@ -312,9 +402,9 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
  * Possible values are -DPCCONS_SUPPORT, -DSYSCONS_SUPPORT, -DPCVT_SUPPORT,
  * -DCODRV_SUPPORT.  The following example includes support for syscons and
  * pcvt only.
- *
-#define XFree86ConsoleDefines	-DSYSCONS_SUPPORT -DPCVT_SUPPORT
+#define XFree86ConsoleDefines	-DSYSCONS_SUPPORT -DPCCONS_SUPPORT
  */
+
 
 /*
  * The X servers need to run as root on most OSs.  We're now using a
@@ -402,6 +492,7 @@ XCOMM $XFree86: xc/config/cf/xf86site.def,v 3.101.2.37 2001/02/26 18:28:18 dawes
  *
 #define JoystickSupport		NO
 #define WacomSupport		YES
+#define USBSupport		YES
 #define MicroTouchSupport	YES 
 #define ElographicsSupport	YES 
 #define DynaproSupport		YES 

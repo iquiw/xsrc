@@ -1633,7 +1633,10 @@ MouseProc(DeviceIntPtr device, int what)
 	if (pInfo->fd == -1)
 	    xf86Msg(X_WARNING, "%s: cannot open input device\n", pInfo->name);
 	else {
-	    pMse->buffer = XisbNew(pInfo->fd, 64);
+	    if (pMse->xisbscale)
+		pMse->buffer = XisbNew(pInfo->fd, pMse->xisbscale * 4);
+	    else
+		pMse->buffer = XisbNew(pInfo->fd, 64);
 	    if (!pMse->buffer) {
 		xf86CloseSerial(pInfo->fd);
 		pInfo->fd = -1;
@@ -1941,13 +1944,9 @@ Emulate3ButtonsSoft(InputInfoPtr pInfo)
     if (!pMse->emulate3ButtonsSoft)
 	return TRUE;
 
-    pMse->emulate3Buttons = FALSE;
-    
     if (pMse->emulate3Pending)
 	buttonTimer(pInfo);
 
-    xf86Msg(X_INFO,"3rd Button detected: disabling emulate3Button\n");
-    
     return FALSE;
 }
 

@@ -895,8 +895,6 @@ main(int argc, char *argv[])
 		zstrcpy(&fout, t);
 
 		/* write new BDF file */
-		fprintf(stderr, "Writing %d characters into file '%s'.\n",
-			j, fout);
 		fout_fp = fopen(fout, "w");
 		if (fout_fp == NULL) {
 			fprintf(stderr, "%s: Can't write file '%s': %s!\n",

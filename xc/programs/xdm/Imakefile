@@ -33,9 +33,7 @@ XCOMM $XFree86: xc/programs/xdm/Imakefile,v 3.19.2.14 2001/02/26 23:05:19 dawes 
 #else
 #ifndef SharedLibXdmGreet
 #define SharedLibXdmGreet						\
-    ((defined(AlphaArchitecture) &&					\
-      (!defined(NetBSDArchitecture) ||					\
-       (defined(NetBSDArchitecture) && HasSharedLibraries))) ||		\
+    ((defined(AlphaArchitecture) && !defined(NetBSDArchitecture)) ||	\
      SystemV4)
 #endif
 
@@ -136,6 +134,12 @@ SOCK_DEFINES = -DBSD44SOCKETS
 FRAGILE_DEFINES = -DFRAGILE_DEV_MEM
 #endif
 
+#if defined(NetBSDArchitecture) && \
+    ((OSMajorVersion > 1) || \
+     (OSMajorVersion == 1 && OSMinorVersion > 3))
+RANDOM_DEFINES = -DDEV_RANDOM=\"/dev/urandom\"
+#endif
+
 #if HasVFork
 VFORK_DEFINES = -DHAS_VFORK
 #endif
@@ -212,7 +216,7 @@ LOCAL_LIBRARIES = $(XMULIB) $(XTOOLLIB) $(XLIB) $(XAUTHLIB) $(XDMCPLIB) $(RPCLIB
 		$(SIGNAL_DEFINES) $(CRYPT_DEFINES) \
 		$(XDMAUTH_DEFINES) $(RPC_DEFINES) $(KRB5_DEFINES) \
 		$(PWD_DEFINES) $(CONN_DEFINES) \
-		$(GREET_DEFINES) $(FRAGILE_DEFINES) \
+		$(GREET_DEFINES) $(FRAGILE_DEFINES) $(RANDOM_DEFINES) \
 		-DOSMAJORVERSION=$(OSMAJORVERSION) \
 		-DOSMINORVERSION=$(OSMINORVERSION) \
 		$(XKB_CLIENT_DEFINES) $(USER_CONTEXT_DEFINES)
