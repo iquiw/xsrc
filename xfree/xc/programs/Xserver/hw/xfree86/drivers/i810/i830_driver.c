@@ -2667,6 +2667,9 @@ I830BIOSPreInit(ScrnInfoPtr pScrn, int flags)
                                  pI830->pipeDisplaySize[n].y2,
                                  60);
 
+   } else {
+        xf86SetMonitorParameters(pScrn, pScrn->monitor, 0, 0, 0);
+        xf86AddEDIDModes(pScrn, pScrn->monitor, 0);
    }
 
    /* By now, we should have had some monitor settings, but if not, we
@@ -3341,7 +3344,7 @@ static void I830SetCloneVBERefresh(ScrnInfoPtr pScrn, int mode, VbeCRTCInfoBlock
          clock = VBEGetPixelClock(pI830->pVbe, mode, block->PixelClock);
 #ifdef DEBUG
          ErrorF("Setting clock %.2fMHz, closest is %.2fMHz\n",
-                    (double)data->block->PixelClock / 1000000.0, 
+                    (double)block->PixelClock / 1000000.0, 
                     (double)clock / 1000000.0);
 #endif
          if (clock)
@@ -4577,8 +4580,10 @@ I830BIOSLeaveVT(int scrnIndex, int flags)
    RestoreBIOSMemSize(pScrn);
    if (IsPrimary(pScrn))
       I830UnbindGARTMemory(pScrn);
+#ifdef XF86DRI
    if (pI830->AccelInfoRec)
       pI830->AccelInfoRec->NeedToSync = FALSE;
+#endif
 
    if (IsPrimary(pScrn)) {
       if (!SetDisplayDevices(pScrn, pI830->savedDevices)) {

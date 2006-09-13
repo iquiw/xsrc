@@ -285,5 +285,3 @@ xf86WSKbdEvents(void)
 }
 
 #endif /* WSCONS_SUPPORT */
-
-

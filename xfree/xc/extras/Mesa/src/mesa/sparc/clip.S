@@ -5,6 +5,13 @@
  */
 
 #if (defined(__sparc_v9__) && (!defined(__linux__) || defined(__linux_sparc_64__)))
+
+        /* Solaris requires this for 64-bit. */
+        .register %g2, #scratch
+        .register %g3, #scratch
+        .register %g7, #scratch
+
+#define SAVESZ		128
 #define LDPTR		ldx
 #define V4F_DATA	0x00
 #define V4F_START	0x08
@@ -13,6 +20,7 @@
 #define V4F_SIZE	0x18
 #define V4F_FLAGS	0x1c
 #else
+#define SAVESZ		64
 #define LDPTR		ld
 #define V4F_DATA	0x00
 #define V4F_START	0x04
@@ -27,12 +35,6 @@
 #define VEC_SIZE_3   	7
 #define VEC_SIZE_4   	15
 
-#ifdef SVR4
-        /* Solaris requires this for 64-bit. */
-        .register %g2, #scratch
-        .register %g3, #scratch
-        .register %g7, #scratch
-#endif
 
 	.text
 	.align		64
@@ -73,7 +75,7 @@ __pc_tramp:
 
 	.globl		_mesa_sparc_cliptest_points4
 _mesa_sparc_cliptest_points4:
-	save		%sp, -64, %sp
+	save		%sp, -SAVESZ, %sp
 	call		__pc_tramp
 	 sub		%o7, (. - one_dot_zero - 4), %g1
 	ld		[%g1 + 0x0], %f4
@@ -169,7 +171,7 @@ _mesa_sparc_cliptest_points4:
 
 	.globl		_mesa_sparc_cliptest_points4_np
 _mesa_sparc_cliptest_points4_np:
-	save		%sp, -64, %sp
+	save		%sp, -SAVESZ, %sp
 
 	call		__pc_tramp
 	 sub		%o7, (. - one_dot_zero - 4), %g1

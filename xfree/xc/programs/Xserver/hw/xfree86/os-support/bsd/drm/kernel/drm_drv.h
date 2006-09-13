@@ -211,6 +211,10 @@ static drm_ioctl_desc_t		  DRM(ioctls)[] = {
 
 const char *DRM(find_description)(int vendor, int device);
 
+static drm_pci_id_list_t DRM(pciidlist)[] = {
+	DRIVER_PCI_IDS
+};
+
 #ifdef __FreeBSD__
 static struct cdevsw DRM(cdevsw) = {
 #if __FreeBSD_version >= 502103
@@ -232,10 +236,6 @@ static struct cdevsw DRM(cdevsw) = {
 #if __FreeBSD_version < 500000
 	.d_bmaj =	-1
 #endif
-};
-
-static drm_pci_id_list_t DRM(pciidlist)[] = {
-	DRIVER_PCI_IDS
 };
 
 static int DRM(probe)(device_t dev)
@@ -658,12 +658,19 @@ static int DRM(init)( device_t nbdev )
 	unit = minor(dev->device.dv_unit);
 #endif
 
+#if __NetBSD__
+	dev->irq = 1;
+	dev->pci_bus = dev->pa.pa_bus;
+	dev->pci_slot = dev->pa.pa_device;
+	dev->pci_func = dev->pa.pa_function;
+#else
 	dev->irq = pci_get_irq(dev->device);
 	/* XXX Fix domain number (alpha hoses) */
-	dev->pci_domain = 0;
 	dev->pci_bus = pci_get_bus(dev->device);
 	dev->pci_slot = pci_get_slot(dev->device);
 	dev->pci_func = pci_get_function(dev->device);
+#endif
+	dev->pci_domain = 0;
 
 	dev->maplist = DRM(calloc)(1, sizeof(*dev->maplist), DRM_MEM_MAPS);
 	if (dev->maplist == NULL) {
@@ -815,6 +822,9 @@ int DRM(open)(DEV_T kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 	int retcode = 0;
 
 	dev = DRIVER_SOFTC(minor(kdev));
+
+	if (dev == NULL)
+		return ENXIO;
 
 	DRM_DEBUG( "open_count = %d\n", dev->open_count );
 
@@ -993,6 +1003,13 @@ int DRM(ioctl)(DEV_T kdev, u_long cmd, caddr_t data, int flags,
 		return 0;
 #endif /* __FreeBSD__ */
 #ifdef __NetBSD__
+	case FIOSETOWN:
+		return fsetown(DRM_CURRENTPID, &dev->buf_pgid, cmd, data);
+
+	case FIOGETOWN:
+		fgetown(DRM_CURRENTPID, &dev->buf_pgid, cmd, data);
+		return 0;
+
 	case TIOCSPGRP:
 		dev->buf_pgid = *(int *)data;
 		return 0;

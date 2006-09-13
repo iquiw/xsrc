@@ -2653,6 +2653,7 @@ void XrmDestroyDatabase(
 	    else
 		DestroyNTable(table);
 	}
+	_XUnlockMutex(&db->linfo);
 	_XFreeMutex(&db->linfo);
 	(*db->methods->destroy)(db->mbstate);
 	Xfree((char *)db);

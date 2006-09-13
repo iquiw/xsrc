@@ -485,6 +485,8 @@ _LoaderFileToMem(int fd, unsigned long offset, int size, char *label)
 #ifdef UseMMAP
     unsigned long ret;
 
+    char *mm_addr = NULL;
+
 # ifdef MmapPageAlign
     unsigned long pagesize;
     unsigned long new_size;
@@ -515,12 +517,14 @@ _LoaderFileToMem(int fd, unsigned long offset, int size, char *label)
 			      new_off);
     if (ret == -1)
 	FatalError("mmap() failed: %s\n", strerror(errno));
+
     return (void *)(ret + new_off_bias);
 # else
     ret = (unsigned long)mmap(0, size, MMAP_PROT, MMAP_FLAGS, fd,
 			      offset + offsetbias);
     if (ret == -1)
 	FatalError("mmap() failed: %s\n", strerror(errno));
+
     return (void *)ret;
 # endif
 #else
@@ -578,6 +582,13 @@ _LoaderFileToMem(int fd, unsigned long offset, int size, char *label)
 	ppc_flush_icache(ptr + size - 1);
     }
 # endif
+#if defined(__NetBSD__)
+#if defined(__powerpc__)
+    __syncicache(ptr,size);
+#elif defined(__arm__)
+    arm_sync_icache(ptr, size);
+#endif
+#endif
 
 # ifdef DEBUGMEM
     ErrorF("=%lx\n", ptr);

@@ -257,6 +257,7 @@ xf86AddBusDeviceToConfigure(const char *driver, BusType bus, void *busData, int 
 	NewDevice.GDev.identifier = NewDevice.sVideo->descr;
 	if (sparcPromInit() >= 0) {
 	    promPath = sparcPromNode2Pathname(&NewDevice.sVideo->node);
+	    
 	    sparcPromClose();
 	}
 	if (promPath) {
@@ -307,7 +308,25 @@ configureInputSection (void)
     configPrologue(XF86ConfInputPtr)
 
     ptr->inp_identifier = "Keyboard0";
+#if defined(WSCONS_SUPPORT) && defined(__NetBSD__) && defined(USE_MODULAR_KBD)
+    /* check for /dev/wskbd */
+    {
+	int fd = open("/dev/wskbd", 0);
+	if (fd > 0) {
+	    close(fd);
+	    ptr->inp_driver = "kbd";
+	    ptr->inp_option_lst = 
+		xf86addNewOption(ptr->inp_option_lst, "Protocol", "wskbd");
+	    ptr->inp_option_lst = 
+		xf86addNewOption(ptr->inp_option_lst, "Device", "/dev/wskbd");
+        } else {
+    	    /* no /dev/wskbd - fall back to legacy driver */
+            ptr->inp_driver = "keyboard";
+	}
+    }
+#else
     ptr->inp_driver = "keyboard";
+#endif
     ptr->list.next = NULL;
 
     /* Crude mechanism to auto-detect mouse (os dependent) */
@@ -881,6 +900,9 @@ DoConfigure()
 #define PATH_MAX 2048
 #endif
 #if defined(__SCO__)
+#define PATH_MAX 1024
+#endif
+#ifndef PATH_MAX
 #define PATH_MAX 1024
 #endif
         const char* configfile = XF86CONFIGFILE".new";

@@ -980,7 +980,7 @@ DGAMapPhysical(
 	ioctl(pMap->fd, PCIIOC_MMAP_IS_MEM, 0);	/* Ignore errors */
 #endif
     pMap->virtual = mmap(NULL, size, PROT_READ | PROT_WRITE, 
-			MAP_FILE | MAP_SHARED, pMap->fd, (off_t)base);
+			MAP_FILE | MAP_SHARED, pMap->fd, (off_t)(unsigned long)base);
     if (pMap->virtual == (void *)-1)
 	return False;
     mprotect(pMap->virtual, size, PROT_READ | PROT_WRITE);

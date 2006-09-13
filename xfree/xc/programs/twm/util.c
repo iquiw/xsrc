@@ -484,6 +484,7 @@ InsertRGBColormap (a, maps, nmaps, replace)
 		     ProgramName, (unsigned long)sizeof (StdCmap));
 	    return;
 	}
+	memset(sc, 0, sizeof(StdCmap));
     }
 
     if (replace) {			/* just update contents */
@@ -932,9 +933,9 @@ putenv(s)
 	register i;
 
 	newenv = (char **) malloc((unsigned) ((idx + 2) * sizeof(char*)));
-	if(newenv == 0)
+	if (newenv == 0)
 	    return -1;
-	for(i = idx-1; i >= 0; --i)
+	for (i = idx-1; i >= 0; --i)
 	    newenv[i] = environ[i];
 	virgin = 0;     /* you're not a virgin anymore, sweety */
     } else {

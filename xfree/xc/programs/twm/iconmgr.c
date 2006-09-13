@@ -109,8 +109,8 @@ void CreateIconManagers()
 	    JunkX, JunkY, p->width, p->height, 1,
 	    Scr->Black, background);
 
-	sprintf(str, "%s Icon Manager", p->name);
-	sprintf(str1, "%s Icons", p->name);
+	snprintf(str, sizeof(str), "%s Icon Manager", p->name);
+	snprintf(str1, sizeof(str1), "%s Icons", p->name);
 	if (p->icon_name)
 	    icon_name = p->icon_name;
 	else
@@ -160,6 +160,9 @@ IconMgr *AllocateIconManager(name, icon_name, geom, columns)
 	return NULL;
 
     p = (IconMgr *)malloc(sizeof(IconMgr));
+    if (!p)
+	return NULL;
+    memset(p, 0, sizeof(IconMgr));
     p->name = name;
     p->icon_name = icon_name;
     p->geometry = geom;
@@ -420,6 +423,9 @@ WList *AddIconManager(tmp_win)
 	ip = &Scr->iconmgr;
 
     tmp = (WList *) malloc(sizeof(WList));
+    if (!tmp)
+	return NULL;
+    memset(tmp, 0, sizeof(WList));
     tmp->iconmgr = ip;
     tmp->next = NULL;
     tmp->active = FALSE;

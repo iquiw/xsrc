@@ -455,7 +455,7 @@ clean::									@@\
 #define SharedDepCplusplusLibraryTarget(libname,rev,deplist,solist,down,up)	@@\
 AllTarget(Concat($(LIBPREFIX),libname.so.rev))				@@\
 									@@\
-Concat($(LIBPREFIX),libname.so.rev):  deplist				@@\
+Concat($(LIBPREFIX),libname.so.rev):  deplist $(EXTRALIBRARYDEPS)	@@\
 	$(RM) $@~							@@\
 	@SetSonameRev(rev); \						@@\
 	SONAME=Concat($(LIBPREFIX),libname.so.$$S); \			@@\

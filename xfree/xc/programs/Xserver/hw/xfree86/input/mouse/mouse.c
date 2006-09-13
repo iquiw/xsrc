@@ -1991,13 +1991,9 @@ Emulate3ButtonsSoft(InputInfoPtr pInfo)
     if (!pMse->emulate3ButtonsSoft)
 	return TRUE;
 
-    pMse->emulate3Buttons = FALSE;
-    
     if (pMse->emulate3Pending)
 	buttonTimer(pInfo);
 
-    xf86Msg(X_INFO,"3rd Button detected: disabling emulate3Button\n");
-    
     return FALSE;
 }
 

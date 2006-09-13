@@ -24,6 +24,8 @@
 #include "xf86Keymap.h"
 #include "bsd_kbd.h"
 
+Bool ADBScanCode(InputInfoPtr, int *);
+
 #if (defined(SYSCONS_SUPPORT) || defined(PCVT_SUPPORT)) && defined(GIO_KEYMAP)
 #define KD_GET_ENTRY(i,n) \
   eascii_to_x[((keymap.key[i].spcl << (n+1)) & 0x100) + keymap.key[i].map[n]]
@@ -400,8 +402,8 @@ static CARD8 wsUsbMap[] = {
 	/* 98 */ KEY_KP_0,	/* Keypad 0 Ins */
 	/* 99 */ KEY_KP_Decimal,	/* Keypad . Del */
 	/* 100 */ KEY_Less,	/* < > on some keyboards */
-	/* 101 */ KEY_Menu,	/* Menu */
-	/* 102 */ KEY_NOTUSED,
+	/* 101 */ KEY_Menu,	/* Menu, Compose on Sun Type 6 USB */
+	/* 102 */ KEY_Power,	/* Sun Type 6 USB */
 	/* 103 */ KEY_KP_Equal, /* Keypad = on Mac keyboards */
 	/* 104 */ KEY_NOTUSED,
 	/* 105 */ KEY_NOTUSED,
@@ -415,20 +417,21 @@ static CARD8 wsUsbMap[] = {
 	/* 113 */ KEY_NOTUSED,
 	/* 114 */ KEY_NOTUSED,
 	/* 115 */ KEY_NOTUSED,
-	/* 116 */ KEY_NOTUSED,
-	/* 117 */ KEY_NOTUSED,
-	/* 118 */ KEY_NOTUSED,
-	/* 119 */ KEY_NOTUSED,
-	/* 120 */ KEY_NOTUSED,
-	/* 121 */ KEY_NOTUSED,
-	/* 122 */ KEY_NOTUSED,
-	/* 123 */ KEY_NOTUSED,
-	/* 124 */ KEY_NOTUSED,
-	/* 125 */ KEY_NOTUSED,
-	/* 126 */ KEY_NOTUSED,
-	/* 127 */ KEY_NOTUSED,
-	/* 128 */ KEY_NOTUSED,
-	/* 129 */ KEY_NOTUSED,
+	/* the following codes are used by Sun Type 6 USB keyboards */
+	/* 116 */ KEY_L7,
+	/* 117 */ KEY_Help,
+	/* 118 */ KEY_L3,
+	/* 119 */ KEY_L5,
+	/* 120 */ KEY_L1,
+	/* 121 */ KEY_L2,
+	/* 122 */ KEY_L4,
+	/* 123 */ KEY_L10,
+	/* 124 */ KEY_L6,
+	/* 125 */ KEY_L8,
+	/* 126 */ KEY_L9,
+	/* 127 */ KEY_Mute,
+	/* 128 */ KEY_AudioRaise,
+	/* 129 */ KEY_AudioLower,
 	/* 130 */ KEY_NOTUSED,
 	/* 131 */ KEY_NOTUSED,
 	/* 132 */ KEY_NOTUSED,
@@ -594,14 +597,14 @@ static CARD8 wsAdbMap[] = {
 	/* 48 */ KEY_Tab,
 	/* 49 */ KEY_Space,
 	/* 50 */ KEY_Tilde,
-	/* 51 */ KEY_Delete,
+	/* 51 */ KEY_BackSpace,
 	/* 52 */ KEY_AltLang,
 	/* 53 */ KEY_Escape,
 	/* 54 */ KEY_LCtrl,
-	/* 55 */ KEY_Alt,
+	/* 55 */ KEY_LMeta,
 	/* 56 */ KEY_ShiftL,
 	/* 57 */ KEY_CapsLock,
-	/* 58 */ KEY_LMeta,
+	/* 58 */ KEY_Alt,
 	/* 59 */ KEY_Left,
 	/* 60 */ KEY_Right,
 	/* 61 */ KEY_Down,
@@ -614,7 +617,7 @@ static CARD8 wsAdbMap[] = {
 	/* 68 */ KEY_NOTUSED,
 	/* 69 */ KEY_KP_Plus,
 	/* 70 */ KEY_NOTUSED,
-	/* 71 */ KEY_UNKNOWN,	/* Clear */
+	/* 71 */ KEY_NumLock,	/* Clear */
 	/* 72 */ KEY_NOTUSED, 
 	/* 73 */ KEY_NOTUSED,
 	/* 74 */ KEY_NOTUSED,
@@ -638,7 +641,7 @@ static CARD8 wsAdbMap[] = {
 	/* 92 */ KEY_KP_9,
 	/* 93 */ KEY_NOTUSED,
 	/* 94 */ KEY_NOTUSED,
-	/* 95 */ KEY_UNKNOWN,	/* Keypad ,  */
+	/* 95 */ KEY_KP_Decimal,	/* Keypad ,  */
 	/* 96 */ KEY_F5,
 	/* 97 */ KEY_F6,
 	/* 98 */ KEY_F7,
@@ -648,24 +651,29 @@ static CARD8 wsAdbMap[] = {
 	/* 102 */ KEY_NOTUSED,
 	/* 103 */ KEY_F11,
 	/* 104 */ KEY_NOTUSED,
-	/* 105 */ KEY_NOTUSED,
+	/* 105 */ KEY_Print,
 	/* 106 */ KEY_KP_Enter,
-	/* 107 */ KEY_NOTUSED,
+	/* 107 */ KEY_ScrollLock,
 	/* 108 */ KEY_NOTUSED,
 	/* 109 */ KEY_F10,
 	/* 110 */ KEY_NOTUSED,
 	/* 111 */ KEY_F12,
 	/* 112 */ KEY_NOTUSED,
-	/* 113 */ KEY_NOTUSED,
-	/* 114 */ KEY_NOTUSED,
+	/* 113 */ KEY_Pause,
+	/* 114 */ KEY_Insert,
 	/* 115 */ KEY_Home,
 	/* 116 */ KEY_PgUp,
-	/* 117 */ KEY_NOTUSED,
+	/* 117 */ KEY_Delete,
 	/* 118 */ KEY_F4,
 	/* 119 */ KEY_End,
 	/* 120 */ KEY_F2,
 	/* 121 */ KEY_PgDown,
-	/* 122 */ KEY_F1
+	/* 122 */ KEY_F1,
+	/* 123 */ KEY_NOTUSED,
+	/* 124 */ KEY_NOTUSED,
+	/* 125 */ KEY_NOTUSED,
+	/* 126 */ KEY_NOTUSED,
+	/* 127 */ KEY_Power
 };
 #define WS_ADB_MAP_SIZE (sizeof(wsAdbMap)/sizeof(unsigned char))
 
@@ -678,10 +686,10 @@ TransMapRec wsAdb = {
 
 static CARD8 wsSunMap[] = {
 	/* 0x00 */ KEY_NOTUSED,
-	/* 0x01 */ KEY_NOTUSED,		/* stop */
-	/* 0x02 */ KEY_NOTUSED,		/* BrightnessDown / S-VolumeDown */
-	/* 0x03 */ KEY_NOTUSED,		/* again */
-	/* 0x04 */ KEY_NOTUSED,		/* BridgtnessUp / S-VolumeUp */
+	/* 0x01 */ KEY_L1,		/* stop */
+	/* 0x02 */ KEY_AudioLower,	/* BrightnessDown / S-VolumeDown */
+	/* 0x03 */ KEY_L2,		/* again */
+	/* 0x04 */ KEY_AudioRaise,		/* BridgtnessUp / S-VolumeUp */
 	/* 0x05 */ KEY_F1,
 	/* 0x06 */ KEY_F2,
 	/* 0x07 */ KEY_F10,
@@ -700,10 +708,10 @@ static CARD8 wsSunMap[] = {
 	/* 0x14 */ KEY_Up,
 	/* 0x15 */ KEY_Pause,
 	/* 0x16 */ KEY_Print,
-	/* 0x17 */ KEY_NOTUSED,		/* props */
+	/* 0x17 */ KEY_ScrollLock,
 	/* 0x18 */ KEY_Left,
-	/* 0x19 */ KEY_ScrollLock,
-	/* 0x1a */ KEY_NOTUSED,		/* undo */
+	/* 0x19 */ KEY_L3,		/* props */
+	/* 0x1a */ KEY_L4,		/* undo */
 	/* 0x1b */ KEY_Down,
 	/* 0x1c */ KEY_Right,
 	/* 0x1d */ KEY_Escape,
@@ -725,10 +733,10 @@ static CARD8 wsSunMap[] = {
 	/* 0x2d */ KEY_KP_Equal,
 	/* 0x2e */ KEY_KP_Divide,
 	/* 0x2f */ KEY_KP_Multiply,
-	/* 0x30 */ KEY_NOTUSED,
-	/* 0x31 */ KEY_NOTUSED,		/* front */
+	/* 0x30 */ KEY_Power,
+	/* 0x31 */ KEY_L5,		/* front */
 	/* 0x32 */ KEY_KP_Decimal,
-	/* 0x33 */ KEY_NOTUSED,		/* copy */
+	/* 0x33 */ KEY_L6,		/* copy */
 	/* 0x34 */ KEY_Home,
 	/* 0x35 */ KEY_Tab,
 	/* 0x36 */ KEY_Q,
@@ -744,13 +752,13 @@ static CARD8 wsSunMap[] = {
 	/* 0x40 */ KEY_LBrace,
 	/* 0x41 */ KEY_RBrace,
 	/* 0x42 */ KEY_Delete,
-	/* 0x43 */ KEY_NOTUSED,		/* compose */
+	/* 0x43 */ KEY_Compose,		/* compose */
 	/* 0x44 */ KEY_KP_7,
 	/* 0x45 */ KEY_KP_8,
 	/* 0x46 */ KEY_KP_9,
 	/* 0x47 */ KEY_KP_Minus,
-	/* 0x48 */ KEY_NOTUSED,		/* open */
-	/* 0x49 */ KEY_NOTUSED,		/* paste */
+	/* 0x48 */ KEY_L7,		/* open */
+	/* 0x49 */ KEY_L8,		/* paste */
 	/* 0x4a */ KEY_End,
 	/* 0x4b */ KEY_NOTUSED,
 	/* 0x4c */ KEY_LCtrl,
@@ -772,9 +780,9 @@ static CARD8 wsSunMap[] = {
 	/* 0x5c */ KEY_KP_5,
 	/* 0x5d */ KEY_KP_6,
 	/* 0x5e */ KEY_KP_0,
-	/* 0x5f */ KEY_NOTUSED,		/* find */
+	/* 0x5f */ KEY_L9,		/* find */
 	/* 0x60 */ KEY_PgUp,
-	/* 0x61 */ KEY_NOTUSED,		/* cut */
+	/* 0x61 */ KEY_L10,		/* cut */
 	/* 0x62 */ KEY_NumLock,
 	/* 0x63 */ KEY_ShiftL,
 	/* 0x64 */ KEY_Z,
@@ -795,13 +803,13 @@ static CARD8 wsSunMap[] = {
 	/* 0x73 */ KEY_NOTUSED,
 	/* 0x74 */ KEY_NOTUSED,
 	/* 0x75 */ KEY_NOTUSED,
-	/* 0x76 */ KEY_NOTUSED,		/* help */
+	/* 0x76 */ KEY_Help,		/* help */
 	/* 0x77 */ KEY_CapsLock,
 	/* 0x78 */ KEY_LMeta,
 	/* 0x79 */ KEY_Space,
 	/* 0x7a */ KEY_RMeta,
 	/* 0x7b */ KEY_PgDown,
-	/* 0x7c */ KEY_NOTUSED,
+	/* 0x7c */ KEY_Less,
 	/* 0x7d */ KEY_KP_Plus,
 	/* 0x7e */ KEY_NOTUSED,
 	/* 0x7f */ KEY_NOTUSED
@@ -1057,19 +1065,49 @@ KbdGetMapping (InputInfoPtr pInfo, KeySymsPtr pKeySyms, CARD8 *pModMap)
                     break;
 #ifdef WSKBD_TYPE_ADB	
 	       case WSKBD_TYPE_ADB:
-                    pKbd->scancodeMap = &wsAdb; 
+	            pKbd->RemapScanCode = ADBScanCode;
                     break;
 #endif
 #ifdef WSKBD_TYPE_SUN
+#ifdef WSKBD_TYPE_SUN5
+	       case WSKBD_TYPE_SUN5:
+#endif /* WSKBD_TYPE_SUN5 */
 	       case WSKBD_TYPE_SUN:
                     pKbd->scancodeMap = &wsSun;
                     break;
-#endif
+#endif /* WSKBD_TYPE_SUN */
 	       default:
-		    ErrorF("Unknown wskbd type %d\n", pKbd->wsKbdType);
+                    pKbd->RemapScanCode = ATScancode;
+                    break;
            }
       break;
 #endif
   }
   return;
+}
+
+Bool
+ADBScanCode(InputInfoPtr pInfo, int *scanCode)
+{
+    KbdDevPtr pKbd = (KbdDevPtr) pInfo->private;
+
+    /*
+     * we abuse pKbd->scanPrefix to record each scancode so we can weed out the
+     * 0 following every caps-lock which would otherwise result in spurious 'A's
+     */
+    if (*scanCode == 0) {
+        /* drop this event when the previous one was caps-lock */
+        if (pKbd->scanPrefix == 57) {
+	    pKbd->scanPrefix = 0;
+	    return TRUE;	/* let the input handler stop right here */
+	}
+    }
+    
+    /* record the scancode */
+    pKbd->scanPrefix = (*scanCode) & 0x7f;
+    
+    /* do the normal remapping */
+    if (*scanCode >= wsAdb.begin && *scanCode < wsAdb.end)
+        *scanCode = wsAdb.map[*scanCode - wsAdb.begin];
+    return FALSE;	/* continue normal processing */
 }

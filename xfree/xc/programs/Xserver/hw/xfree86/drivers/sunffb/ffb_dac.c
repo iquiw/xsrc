@@ -88,33 +88,45 @@ FFBDacCursorEnableDisable(FFBPtr pFfb, int enable)
 	DACCUR_WRITE(dac, FFBDAC_CUR_CTRL, val);
 }
 
+#define MEMBAR __asm__("membar #MemIssue;")
+
 void
 FFBDacCursorLoadBitmap(FFBPtr pFfb, int xshift, int yshift, unsigned int *bitmap)
 {
-	ffb_dacPtr dac = pFfb->dac;
-	int i, j;
+	volatile ffb_dacPtr dac = pFfb->dac;
+	int i, j, sync[]={FFBDAC_CUR_BITMAP_P0, FFBDAC_CUR_BITMAP_P1};
 
 	dac->cur = FFBDAC_CUR_BITMAP_P0;
 	for (j = 0; j < 2; j++) {
+		dac->cur = sync[j];
+		MEMBAR;
 		bitmap += yshift * 2;
 		if (!xshift) {
-			for (i = yshift * 2; i < 128; i++)
+			for (i = yshift * 2; i < 128; i++) {
 				dac->curdata = *bitmap++;
+				MEMBAR;
+			}
 		} else if (xshift < 32) {
 			for (i = yshift; i < 64; i++, bitmap += 2) {
 				dac->curdata = (bitmap[0] << xshift) |
 					(bitmap[1] >> (32 - xshift));
+				MEMBAR;
 				dac->curdata = bitmap[1] << xshift;
+				MEMBAR;
 			}
 		} else {
 			for (i = yshift; i < 64; i++, bitmap += 2) {
 				dac->curdata = bitmap[1] << (xshift - 32);
+				MEMBAR;
 				dac->curdata = 0;
+				MEMBAR;
 			}
 		}
 
-		for (i = 0; i < yshift * 2; i++)
+		for (i = 0; i < yshift * 2; i++) {
 			dac->curdata = 0;
+			MEMBAR;
+		}
 	}
 }
 
@@ -523,11 +535,19 @@ SPIN(ffb_dacPtr d, int count) {
 
 /*  Screen save (blank) restore */
 Bool
-FFBDacSaveScreen(FFBPtr pFfb, int mode) {
-  int tmp;
+FFBDacSaveScreen(ScreenPtr pScreen, FFBPtr pFfb, int mode) {
+  unsigned int tmp;
+  Bool redraw = FALSE;
+  ScrnInfoRec *si = xf86Screens[pScreen->myNum];
   ffb_dacPtr dac;
   if(!pFfb) return FALSE;   /* Is there any way at all this could happen? */
   else dac = pFfb -> dac;
+
+  /* 
+   * there seems to be a bug in ffb1 hardware which causes screen corruption 
+   * when (un)blanking - so we disable/enable screen access to cause a
+   * full redraw.
+   */
 
   tmp = DACCFG_READ(dac, FFBDAC_CFG_TGEN);  /* Get the timing information */
 
@@ -540,13 +560,24 @@ FFBDacSaveScreen(FFBPtr pFfb, int mode) {
     case SCREEN_SAVER_OFF:
     case SCREEN_SAVER_FORCER:
       tmp |= FFBDAC_CFG_TGEN_VIDE;  /* Turn the video on */
+      if (pFfb->ffb_type < ffb2_prototype)
+        redraw = TRUE;
       break;
 
     default:
       return FALSE;  /* Don't know what to do; gently fail. */
-  }
-  DACCFG_WRITE(dac, FFBDAC_CFG_TGEN, tmp);  /* Restore timing register, video set as asked */
+    }
+    
+  /* Restore timing register, video set as asked */
+  DACCFG_WRITE(dac, FFBDAC_CFG_TGEN, tmp);  
   SPIN(dac, DPMS_SPIN_COUNT/10);
+
+  if (redraw) {
+    /* this causes a complete redraw of the screen */
+    si->EnableDisableFBAccess(pScreen->myNum, FALSE);
+    si->EnableDisableFBAccess(pScreen->myNum, TRUE);
+  }
+
   return TRUE;
 }
 

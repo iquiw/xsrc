@@ -64,11 +64,13 @@ struct vis_identifier {
 };
 # endif
 #else
-# ifndef CSRG_BASED
-#  include <sun/fbio.h>
-# else
-#  include <machine/fbio.h>
-# endif
+# ifndef __NetBSD__
+#  ifdef CSRG_BASED
+#   include <sun/fbio.h>
+#  else
+#   include <machine/fbio.h>
+#  endif
+# endif 
 #endif
 
 static int wu_fbid(char *devname, char **fbname, int *fbtype);
@@ -98,6 +100,26 @@ main(int argc, char **argv)
     putchar ('\n');
     return error;
 }
+#include <sys/ioctl.h>
+#include <sys/file.h>
+#if defined(SVR4) || defined(__bsdi__)
+#include <fcntl.h>
+#include <sys/fbio.h>
+#if defined(SVR4) && defined(sun)
+/* VIS_GETIDENTIFIER ioctl added in Solaris 2.3 */
+#include <sys/visual_io.h>
+#endif
+#else
+#ifndef CSRG_BASED
+#include <sun/fbio.h>
+#else
+#  ifdef __NetBSD__
+#   include <dev/sun/fbio.h>	/* -wsr */
+#  else
+#   include <machine/fbio.h>
+#  endif
+#endif
+#endif
 
 static char *decode_fb[] = {
     "bw1",	/* FBTYPE_SUN1BW */

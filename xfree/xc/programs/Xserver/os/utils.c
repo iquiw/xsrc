@@ -473,29 +473,6 @@ GiveUp(int sig)
     errno = olderrno;
 }
 
-#ifndef DDXTIME
-CARD32
-GetTimeInMillis(void)
-{
-    struct timeval  tp;
-    register CARD32 val;
-    register INT32 diff;
-    static CARD32 oldval = 0;
-    static CARD32 time = 0;
-
-    X_GETTIMEOFDAY(&tp);
-    val = (tp.tv_sec * 1000) + (tp.tv_usec / 1000);
-    if (oldval) {
-	diff = val - oldval;
-	if (diff > 0)
-	    time += diff;
-    }
-    oldval = val;
-
-    return time;
-}
-#endif
-
 void
 AdjustWaitForDelay (pointer waitTime, unsigned long newdelay)
 {
@@ -1243,19 +1220,19 @@ set_font_authorizations(char **authorizations, int *authlen, pointer client)
 void * 
 Xalloc(unsigned long amount)
 {
-    register pointer  ptr;
-	
-    if ((long)amount <= 0)
-	return NULL;
+    pointer ptr;
 
     /* aligned extra on long word boundary */
     amount = (amount + (sizeof(long) - 1)) & ~(sizeof(long) - 1);
+
+    if ((long)amount <= 0)
+	return NULL;
 #ifdef MEMBUG
     if (!Must_have_memory && Memory_fail &&
 	((random() % MEM_FAIL_SCALE) < Memory_fail))
 	return NULL;
 #endif
-    if ((ptr = (pointer)malloc(amount))) {
+    if ((ptr = malloc(amount))) {
 	return ptr;
     }
     if (Must_have_memory)
@@ -1273,12 +1250,16 @@ XNFalloc(unsigned long amount)
 {
     register pointer ptr;
 
-    if ((long)amount <= 0)
-        return NULL;
+    if (amount == 0)
+	return NULL;
 
     /* aligned extra on long word boundary */
     amount = (amount + (sizeof(long) - 1)) & ~(sizeof(long) - 1);
-    ptr = (pointer)malloc(amount);
+
+    if ((long)amount <= 0)
+        FatalError("Bad request for memory");
+
+    ptr = malloc(amount);
     if (!ptr)
         FatalError("Out of memory");
 
@@ -1292,11 +1273,11 @@ XNFalloc(unsigned long amount)
 void *
 Xcalloc(unsigned long amount)
 {
-    unsigned long   *ret;
+    pointer ret;
 
-    ret = Xalloc (amount);
+    ret = Xalloc(amount);
     if (ret)
-	bzero ((void *) ret, (int) amount);
+	bzero (ret, (int) amount);
     return ret;
 }
 
@@ -1307,13 +1288,17 @@ Xcalloc(unsigned long amount)
 void *
 XNFcalloc(unsigned long amount)
 {
-    unsigned long   *ret;
+    pointer ret;
 
-    ret = Xalloc (amount);
-    if (ret)
-	bzero ((char *) ret, (int) amount);
-    else if ((long)amount > 0)
+    if (amount == 0)
+	return NULL;
+
+    ret = Xalloc(amount);
+    if (!ret)
         FatalError("Out of memory");
+
+    bzero (ret, (int) amount);
+
     return ret;
 }
 
@@ -1336,10 +1321,12 @@ Xrealloc(pointer ptr, unsigned long amount)
 	return NULL;
     }
     amount = (amount + (sizeof(long) - 1)) & ~(sizeof(long) - 1);
+    if ((long)amount <= 0)
+	return NULL;
     if (ptr)
-        ptr = (pointer)realloc((char *)ptr, amount);
+        ptr = realloc(ptr, amount);
     else
-	ptr = (pointer)malloc(amount);
+	ptr = malloc(amount);
     if (ptr)
         return ptr;
     if (Must_have_memory)
@@ -1355,12 +1342,12 @@ Xrealloc(pointer ptr, unsigned long amount)
 void *
 XNFrealloc(pointer ptr, unsigned long amount)
 {
-    if (( ptr = (pointer)Xrealloc( ptr, amount ) ) == NULL)
+    if ((ptr = Xrealloc(ptr, amount)) == NULL)
     {
-	if ((long)amount > 0)
+	if (amount != 0)
             FatalError( "Out of memory" );
     }
-    return ((unsigned long *)ptr);
+    return ptr;
 }
 
 /*****************
@@ -2127,7 +2114,11 @@ CheckUserParameters(int argc, char **argv, char **envp)
 
 #ifdef USE_PAM
 #include <security/pam_appl.h>
+#ifndef _OPENPAM
 #include <security/pam_misc.h>
+#else
+#include <security/openpam.h>
+#endif
 #include <pwd.h>
 #endif /* USE_PAM */
 
@@ -2136,7 +2127,11 @@ CheckUserAuthorization(void)
 {
 #ifdef USE_PAM
     static struct pam_conv conv = {
+#ifndef _OPENPAM
 	misc_conv,
+#else
+	openpam_ttyconv,
+#endif
 	NULL
     };
 
