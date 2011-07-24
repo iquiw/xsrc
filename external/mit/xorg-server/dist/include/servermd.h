@@ -68,15 +68,23 @@ SOFTWARE.
  * GLYPHPADBYTES is used.
  */
 
-#ifdef __avr32__
+#if defined(vax) || defined(__vax__)
+#define IMAGE_BYTE_ORDER	LSBFirst        /* Values for the VAX only */
+#define BITMAP_BIT_ORDER	LSBFirst
+#define	GLYPHPADBYTES		4
+#define GETLEFTBITS_ALIGNMENT	1
+#define FAST_UNALIGNED_READS
+#endif /* __vax__ */ 
 
+#ifdef __avr32__
 #define IMAGE_BYTE_ORDER        MSBFirst
 #define BITMAP_BIT_ORDER        MSBFirst
 #define GLYPHPADBYTES           4
 
 #endif /* __avr32__ */ 
 
-#ifdef __arm32__
+/* XXX arm is not always LE */
+#if defined(__arm32__) || defined(__arm__)
 
 #define IMAGE_BYTE_ORDER        LSBFirst
 #define BITMAP_BIT_ORDER        LSBFirst

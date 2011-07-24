@@ -595,6 +595,17 @@ XAAFillImageWriteRects(
     PixmapPtr pPix
 );
 
+void 
+XAAFillScanlineImageWriteRects(
+    ScrnInfoPtr pScrn,
+    int rop,
+    unsigned int planemask,
+    int nBox,
+    BoxPtr pBox,
+    int xorg, int yorg,
+    PixmapPtr pPix
+);
+
 extern _X_EXPORT void
 XAAPolyFillRect(
     DrawablePtr pDraw,
@@ -1692,6 +1703,9 @@ extern _X_EXPORT CARD32 XAAReverseBitOrder(CARD32 data);
 #define IS_OFFSCREEN_PIXMAP(pPix)\
         ((XAA_GET_PIXMAP_PRIVATE((PixmapPtr)(pPix)))->offscreenArea)	
 
+#define PIXMAP_IS_SCREEN(pDraw)\
+        (pDraw == (void *)pDraw->pScreen->GetScreenPixmap(pDraw->pScreen))
+ 
 #define PIXMAP_IS_SHARED(pPix)\
         ((XAA_GET_PIXMAP_PRIVATE((PixmapPtr)(pPix)))->flags & SHARED_PIXMAP)
 

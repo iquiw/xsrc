@@ -605,6 +605,7 @@ xf86OpenPcvt()
 	    xf86Msg(X_PROBED, "Using pcvt driver (version %d.%d)\n",
 		    pcvt_version.rmajor, pcvt_version.rminor);
 #endif
+	    xf86Msg(X_PROBED, "using VT number %d\n\n", xf86Info.vtno);
 	}
 	else
 	{
@@ -659,7 +660,9 @@ xf86CloseConsole()
     struct vt_mode   VT;
 #endif
 
+#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT)
     if (ShareVTs) return;
+#endif
 
     switch (xf86Info.consType)
     {
