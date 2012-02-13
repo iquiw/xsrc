@@ -62,6 +62,8 @@
 
 #include "fb.h"
 
+#include "inputstr.h"
+
 #include "xf86DDC.h"
 
 #undef LG_DEBUG

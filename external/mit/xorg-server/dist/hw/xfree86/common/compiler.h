@@ -469,7 +469,7 @@ inl(unsigned short port)
    return ret;
 }
 
-#   elif (defined(linux) || defined(sun) || defined(__OpenBSD__) || defined(__FreeBSD__)) && defined(__sparc__)
+#   elif (defined(linux) || defined(sun) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__FreeBSD__)) && defined(__sparc__)
 
 #     ifndef ASI_PL
 #      define ASI_PL 0x88
@@ -707,7 +707,7 @@ xf86WriteMmio32LeNB(__volatile__ void *base, const unsigned long offset,
 			     : "r" (val), "r" (addr), "i" (ASI_PL));
 }
 
-#   elif defined(__mips__) || (defined(__arm32__) && !defined(__linux__))
+#   elif defined(__mips__) || ((defined(__arm32__) || defined(__arm__)) && !defined(__linux__))
 #    ifdef __arm32__
 #     define PORT_SIZE long
 #    else

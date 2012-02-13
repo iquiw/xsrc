@@ -83,6 +83,9 @@ typedef struct _NewClientRec *NewClientPtr;
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
+#include <strings.h>
+
 
 #ifdef DDXBEFORERESET
 extern void ddxBeforeReset (void);
@@ -215,6 +218,14 @@ extern _X_EXPORT int set_font_authorizations(
 
 #ifndef _HAVE_XALLOC_DECLS
 #define _HAVE_XALLOC_DECLS
+
+/*
+ * These causes all sorts of warnings->errors in the xsrc build.
+ */
+#ifdef __NetBSD__
+#undef _X_DEPRECATED
+#define _X_DEPRECATED
+#endif
 
 /*
  * Use malloc(3) instead.

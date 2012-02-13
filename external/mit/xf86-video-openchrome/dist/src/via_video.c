@@ -51,6 +51,7 @@
 #include <X11/extensions/Xv.h>
 #include "xaa.h"
 #include "xaalocal.h"
+#include "damage.h"
 #include "dixstruct.h"
 #include "via_xvpriv.h"
 #include "via_swov.h"
@@ -757,13 +758,14 @@ viaPaintColorkey(ScrnInfoPtr pScrn, viaPortPrivPtr pPriv, RegionPtr clipBoxes,
             pBox++;
         }
 
-        DamageDamageRegion(pPix, clipBoxes);
+        DamageDamageRegion((DrawablePtr)pPix, clipBoxes);
     }
 
     return 0;
 }
 
 
+#if 0
 /*
  * This one gets called, for example, on panning.
  */
@@ -823,6 +825,7 @@ viaReputImage(ScrnInfoPtr pScrn,
     viaXvError(pScrn, pPriv, xve_none);
     return Success;
 }
+#endif
 
 static unsigned
 viaSetupAdaptors(ScreenPtr pScreen, XF86VideoAdaptorPtr ** adaptors)
@@ -884,7 +887,7 @@ viaSetupAdaptors(ScreenPtr pScreen, XF86VideoAdaptorPtr ** adaptors)
         viaAdaptPtr[i]->GetPortAttribute = viaGetPortAttribute;
         viaAdaptPtr[i]->SetPortAttribute = viaSetPortAttribute;
         viaAdaptPtr[i]->PutImage = viaPutImage;
-        viaAdaptPtr[i]->ReputImage = viaReputImage;
+        viaAdaptPtr[i]->ReputImage = NULL;
         viaAdaptPtr[i]->QueryImageAttributes = viaQueryImageAttributes;
         for (j = 0; j < numPorts; ++j) {
             viaPortPriv[j].dmaBounceBuffer = NULL;

@@ -35,6 +35,11 @@
 #include "main/compiler.h"
 #endif
 
+#if 0
+#include "main/compiler.h"
+#include "glthread.h"
+#include "main/glheader.h"
+#endif
 #include "glapi/glthread.h"
 
 

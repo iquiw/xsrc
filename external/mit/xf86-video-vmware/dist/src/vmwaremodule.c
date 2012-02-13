@@ -26,6 +26,7 @@
 #include <xorg-server.h>
 #include <xf86.h>
 
+#undef PACKAGE	/* XXX MRG */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -172,7 +173,7 @@ vmware_chain_module(pointer opts)
     int vmware_devices;
     int matched;
     char *driver_name;
-    GDevPtr *gdevs;
+    GDevPtr *gdevs = NULL;
     GDevPtr gdev;
     int i;
     pointer ret;

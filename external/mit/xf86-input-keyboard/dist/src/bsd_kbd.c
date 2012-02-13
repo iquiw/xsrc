@@ -189,7 +189,6 @@ KbdOn(InputInfoPtr pInfo, int what)
 		 ioctl(pInfo->fd, KDSKBMODE, K_RAW);
 #endif
 	         break;
-#endif
 #ifdef WSCONS_SUPPORT
             case WSCONS:
                  option = WSKBD_RAW;
@@ -204,6 +203,7 @@ KbdOn(InputInfoPtr pInfo, int what)
 		 break;
 #endif
         }
+#endif
     }
     return Success;
 }
@@ -321,9 +321,9 @@ WSReadInput(InputInfoPtr pInfo)
 }
 
 static void
-printWsType(char *type, char *devname)
+printWsType(const char *type, char *name)
 {
-    xf86Msg(X_PROBED, "%s: Keyboard type: %s\n", devname, type); 
+    xf86Msg(X_PROBED, "%s: Keyboard type: %s\n", name, type); 
 }
 #endif
 
@@ -359,20 +359,18 @@ OpenKeyboard(InputInfoPtr pInfo)
     }
     free(s);
 
-    s = xf86SetStrOption(pInfo->options, "Device", NULL);
+    if (prot == PROT_WSCONS) {
+	s = xf86SetStrOption(pInfo->options, "Device", "/dev/wskbd");
+    } else
+	s = xf86SetStrOption(pInfo->options, "Device", NULL);
+
     if (s == NULL) {
-       if (prot == PROT_WSCONS) {
-           xf86Msg(X_ERROR,"A \"device\" option is required with"
-                                  " the \"wskbd\" keyboard protocol\n");
-           return FALSE;
-       } else {
-           pInfo->fd = xf86Info.consoleFd;
-           pKbd->isConsole = TRUE;
-           pKbd->consType = xf86Info.consType;
-       }
+	pInfo->fd = xf86Info.consoleFd;
+	pKbd->isConsole = TRUE;
+	pKbd->consType = xf86Info.consType;
     } else {
 	pInfo->fd = open(s, O_RDONLY | O_NONBLOCK | O_EXCL);
-       if (pInfo->fd == -1) {
+	if (pInfo->fd == -1) {
            xf86Msg(X_ERROR, "%s: cannot open \"%s\"\n", pInfo->name, s);
            free(s);
            return FALSE;
@@ -385,6 +383,13 @@ OpenKeyboard(InputInfoPtr pInfo)
 #ifdef WSCONS_SUPPORT
     if( prot == PROT_WSCONS) {
        pKbd->consType = WSCONS;
+#ifdef WSKBDIO_SETVERSION
+       int version = WSKBDIO_EVENT_VERSION;
+       if (ioctl(pInfo->fd, WSKBDIO_SETVERSION, &version) == -1) {
+           xf86Msg(X_WARNING, "%s: cannot set version\n", pInfo->name);
+           return FALSE;
+       }
+#endif 
        /* Find out keyboard type */
        if (ioctl(pInfo->fd, WSKBDIO_GTYPE, &(pKbd->wsKbdType)) == -1) {
            xf86Msg(X_ERROR, "%s: cannot get keyboard type", pInfo->name);
@@ -406,6 +411,11 @@ OpenKeyboard(InputInfoPtr pInfo)
                printWsType("ADB", pInfo->name);
                break;
 #endif
+#ifdef WSKBD_TYPE_MAPLE
+           case WSKBD_TYPE_MAPLE:
+               printWsType("Maple", pInfo->name);
+               break;
+#endif
 #ifdef WSKBD_TYPE_SUN
            case WSKBD_TYPE_SUN:
                printWsType("Sun", pInfo->name);
@@ -424,6 +434,16 @@ OpenKeyboard(InputInfoPtr pInfo)
        }
     }
 #endif
+
+#if 0	/* no more vtSwitchSupported in xf86-input-keyboard-1.6.0 */
+#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT) || defined (WSCONS_SUPPORT)
+    if ((pKbd->isConsole &&
+         ((pKbd->consType == SYSCONS) || (pKbd->consType == PCVT))) ||
+	(pKbd->consType == WSCONS))
+        pKbd->vtSwitchSupported = TRUE;
+#endif
+#endif
+
     return TRUE;
 }
 

@@ -45,11 +45,13 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <errno.h>
 #include <dev/wscons/wsconsio.h>
 
 /* All drivers need this. */
 #include "xf86.h"
 #include "xf86_OSproc.h"
+#include "xf86_OSlib.h"
 
 #include "mipointer.h"
 #include "mibstore.h"
@@ -60,12 +62,6 @@
 #include "dgaproc.h"
 
 /* For visuals */
-#ifdef HAVE_XF1BPP
-# include "xf1bpp.h"
-#endif
-#ifdef HAVE_XF4BPP
-# include "xf4bpp.h"
-#endif
 #include "fb.h"
 
 #if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 6
@@ -77,6 +73,12 @@
 #include "xf86xv.h"
 #endif
 
+#include "wsfb.h"
+
+/* #include "wsconsio.h" */
+
+#include <sys/mman.h>
+
 #ifdef X_PRIVSEP
 extern int priv_open_device(const char *);
 #else
@@ -87,6 +89,12 @@ extern int priv_open_device(const char *);
 #define WSFB_DEFAULT_DEV "/dev/ttyE0"
 #else
 #define WSFB_DEFAULT_DEV "/dev/ttyC0"
+#endif
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#define xf86LoaderReqSymbols(...) do {} while (0)
 #endif
 
 #define DEBUG 0
@@ -176,13 +184,38 @@ static SymTabRec WsfbChipsets[] = {
 /* Supported options */
 typedef enum {
 	OPTION_SHADOW_FB,
-	OPTION_ROTATE
+	OPTION_ROTATE,
+	OPTION_HW_CURSOR,
+	OPTION_SW_CURSOR
 } WsfbOpts;
 
 static const OptionInfoRec WsfbOptions[] = {
 	{ OPTION_SHADOW_FB, "ShadowFB", OPTV_BOOLEAN, {0}, FALSE},
 	{ OPTION_ROTATE, "Rotate", OPTV_STRING, {0}, FALSE},
 	{ -1, NULL, OPTV_NONE, {0}, FALSE}
+};
+
+/* Symbols needed from other modules */
+static const char *fbSymbols[] = {
+	"fbPictureInit",
+	"fbScreenInit",
+	NULL
+};
+static const char *shadowSymbols[] = {
+	"shadowAdd",
+	"shadowSetup",
+	"shadowUpdatePacked",
+	"shadowUpdatePackedWeak",
+	"shadowUpdateRotatePacked",
+	"shadowUpdateRotatePackedWeak",
+	NULL
+};
+
+static const char *ramdacSymbols[] = {
+	"xf86CreateCursorInfoRec",
+	"xf86DestroyCursorInfoRec",
+	"xf86InitCursor",
+	NULL
 };
 
 #ifdef XFree86LOADER
@@ -222,6 +255,8 @@ WsfbSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 	if (!setupDone) {
 		setupDone = TRUE;
 		xf86AddDriver(&WSFB, module, HaveDriverFuncs);
+		LoaderRefSymLists(fbSymbols, shadowSymbols, ramdacSymbols,
+		    NULL);
 		return (pointer)1;
 	} else {
 		if (errmaj != NULL)
@@ -230,33 +265,6 @@ WsfbSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 	}
 }
 #endif /* XFree86LOADER */
-
-/* Private data */
-typedef struct {
-	int			fd; /* File descriptor of open device. */
-	struct wsdisplay_fbinfo info; /* Frame buffer characteristics. */
-	int			linebytes; /* Number of bytes per row. */
-	unsigned char*		fbstart;
-	unsigned char*		fbmem;
-	size_t			fbmem_len;
-	int			rotate;
-	Bool			shadowFB;
-	void *			shadow;
-	CloseScreenProcPtr	CloseScreen;
-	CreateScreenResourcesProcPtr CreateScreenResources;
-	void			(*PointerMoved)(int, int, int);
-	EntityInfoPtr		pEnt;
-	struct wsdisplay_cmap	saved_cmap;
-
-#ifdef XFreeXDGA
-	/* DGA info */
-	DGAModePtr		pDGAMode;
-	int			nDGAMode;
-#endif
-	OptionInfoPtr		Options;
-} WsfbRec, *WsfbPtr;
-
-#define WSFBPTR(p) ((WsfbPtr)((p)->driverPrivate))
 
 static Bool
 WsfbGetRec(ScrnInfoPtr pScrn)
@@ -333,7 +341,7 @@ wsfb_mmap(size_t len, off_t off, int fd)
 	mapaddr = (pointer) mmap(addr, mapsize,
 				 PROT_READ | PROT_WRITE, MAP_SHARED,
 				 fd, off);
-	if (mapaddr == (pointer) -1) {
+	if (mapaddr == MAP_FAILED) {
 		mapaddr = NULL;
 	}
 #if DEBUG
@@ -404,6 +412,7 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 	const char *reqSym = NULL;
 	Gamma zeros = {0.0, 0.0, 0.0};
 	DisplayModePtr mode;
+	MessageType from;
 
 	if (flags & PROBE_DETECT) return FALSE;
 
@@ -506,7 +515,8 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 		    wstype == WSDISPLAY_TYPE_SUNCG12 ||
 		    wstype == WSDISPLAY_TYPE_SUNCG14 ||
 		    wstype == WSDISPLAY_TYPE_SUNTCX ||
-		    wstype == WSDISPLAY_TYPE_SUNFFB) {
+		    wstype == WSDISPLAY_TYPE_SUNFFB ||
+		    wstype == WSDISPLAY_TYPE_XVR1000) {
 			masks.red = 0x0000ff;
 			masks.green = 0x00ff00;
 			masks.blue = 0xff0000;
@@ -536,7 +546,7 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 	xf86SetGamma(pScrn,zeros);
 
 	pScrn->progClock = TRUE;
-	pScrn->rgbBits   = 8;
+	pScrn->rgbBits   = (pScrn->depth >= 8) ? 8 : pScrn->depth;
 	pScrn->chipset   = "wsfb";
 	pScrn->videoRam  = fPtr->linebytes * fPtr->info.height;
 
@@ -626,20 +636,21 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 	/* Set the display resolution. */
 	xf86SetDpi(pScrn, 0, 0);
 
+	from = X_DEFAULT;
+	fPtr->HWCursor = TRUE;
+	if (xf86GetOptValBool(fPtr->Options, OPTION_HW_CURSOR, &fPtr->HWCursor))
+		from = X_CONFIG;
+	if (xf86ReturnOptValBool(fPtr->Options, OPTION_SW_CURSOR, FALSE)) {
+		from = X_CONFIG;
+		fPtr->HWCursor = FALSE;
+	}
+	xf86DrvMsg(pScrn->scrnIndex, from, "Using %s cursor\n",
+		fPtr->HWCursor ? "HW" : "SW");
+
 	/* Load bpp-specific modules. */
 	switch(pScrn->bitsPerPixel) {
-#ifdef HAVE_XF1BPP
 	case 1:
-		mod = "xf1bpp";
-		reqSym = "xf1bppScreenInit";
-		break;
-#endif
-#ifdef HAVE_XF4BPP
 	case 4:
-		mod = "xf4bpp";
-		reqSym = "xf4bppScreenInit";
-		break;
-#endif
 	default:
 		mod = "fb";
 		break;
@@ -655,9 +666,23 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 			return FALSE;
 		}
 	}
+
 	if (mod && xf86LoadSubModule(pScrn, mod) == NULL) {
 		WsfbFreeRec(pScrn);
 		return FALSE;
+	}
+
+	if (xf86LoadSubModule(pScrn, "ramdac") == NULL) {
+		WsfbFreeRec(pScrn);
+		return FALSE;
+        }
+
+	if (mod) {
+		if (reqSym) {
+			xf86LoaderReqSymbols(reqSym, NULL);
+		} else {
+			xf86LoaderReqSymLists(fbSymbols, NULL);
+		}
 	}
 	TRACE_EXIT("PreInit");
 	return TRUE;
@@ -711,6 +736,7 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	VisualPtr visual;
 	int ret, flags, ncolors;
 	int wsmode = WSDISPLAYIO_MODE_DUMBFB;
+	int wstype;
 	size_t len;
 
 	TRACE_ENTER("WsfbScreenInit");
@@ -762,6 +788,13 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 			   strerror(errno));
 		return FALSE;
 	}
+	/* Get wsdisplay type to handle quirks */
+	if (ioctl(fPtr->fd, WSDISPLAYIO_GTYPE, &wstype) == -1) {
+		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+			   "ioctl WSDISPLAY_GTYPE: %s\n",
+			   strerror(errno));
+		return FALSE;
+	}
 	fPtr->fbmem = wsfb_mmap(len, 0, fPtr->fd);
 
 	if (fPtr->fbmem == NULL) {
@@ -801,6 +834,17 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	}
 
 	fPtr->fbstart = fPtr->fbmem;
+#ifdef	WSDISPLAY_TYPE_LUNA
+	if (wstype == WSDISPLAY_TYPE_LUNA) {
+		/*
+		 * XXX
+		 * LUNA's FB seems to have 64 dot (8 byte) offset.
+		 * This might be able to be changed in kernel lunafb driver,
+		 * but current setting was pulled from 4.4BSD-Lite2/luna68k.
+		 */
+		fPtr->fbstart += 8;
+	}
+#endif
 
 	if (fPtr->shadowFB) {
 		fPtr->shadow = xcalloc(1, pScrn->virtualX * pScrn->virtualY *
@@ -815,21 +859,13 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	switch (pScrn->bitsPerPixel) {
 	case 1:
-#ifdef HAVE_XF1BPP
-		ret = xf1bppScreenInit(pScreen, fPtr->fbstart,
-				       pScrn->virtualX, pScrn->virtualY,
-				       pScrn->xDpi, pScrn->yDpi,
-				       pScrn->displayWidth);
+		ret = fbScreenInit(pScreen,
+		    fPtr->fbstart,
+		    pScrn->virtualX, pScrn->virtualY,
+		    pScrn->xDpi, pScrn->yDpi,
+		    fPtr->linebytes * 8, pScrn->bitsPerPixel);
 		break;
-#endif
 	case 4:
-#ifdef HAVE_XF4BPP
-		ret = xf4bppScreenInit(pScreen, fPtr->fbstart,
-				       pScrn->virtualX, pScrn->virtualY,
-				       pScrn->xDpi, pScrn->yDpi,
-				       pScrn->displayWidth);
-		break;
-#endif
 	case 8:
 	case 16:
 	case 24:
@@ -897,6 +933,10 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	/* Software cursor. */
 	miDCInitialize(pScreen, xf86GetPointerScreenFuncs());
+
+	/* check for hardware cursor support */
+	if (fPtr->HWCursor)
+		WsfbSetupCursor(pScreen);
 
 	/*
 	 * Colormap

@@ -200,7 +200,9 @@ FT_BEGIN_HEADER
   /*                                                                       */
   /*   Define this macro if you want to enable this `feature'.             */
   /*                                                                       */
-/* #define FT_CONFIG_OPTION_USE_BZIP2 */
+#ifndef FT_CONFIG_OPTION_DISABLE_BZIP2
+#define FT_CONFIG_OPTION_USE_BZIP2
+#endif
 
 
   /*************************************************************************/

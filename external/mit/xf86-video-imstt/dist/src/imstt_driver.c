@@ -39,7 +39,6 @@
 #include "xf86_OSproc.h"
 #include "xf86PciInfo.h"
 #include "xf86Pci.h"
-#include "xf86Version.h"
 #include "xf86Resources.h"
 #include "xf86fbman.h"
 #include "compiler.h"
@@ -55,6 +54,11 @@
 
 #include "imstt.h"
 #include "imstt_reg.h"
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#endif
 
 
 /* To get it to build on non-PPC */

@@ -39,6 +39,11 @@
 
 #include "xf86int10.h"
 
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#endif
+
 /*
  * Forward definitions for the functions that make up the driver.
  */

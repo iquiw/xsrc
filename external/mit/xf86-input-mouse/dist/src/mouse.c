@@ -63,6 +63,12 @@
 #include "xf86Xinput.h"
 #include "xf86_OSproc.h"
 
+#ifdef __NetBSD__
+#include <time.h>
+#include <dev/wscons/wsconsio.h>
+#include <sys/ioctl.h>
+#endif
+
 #include "compiler.h"
 
 #include "xisb.h"
@@ -267,7 +273,7 @@ MouseCommonOptions(InputInfoPtr pInfo)
     MessageType buttons_from = X_CONFIG;
     char *s;
     int origButtons;
-    int i;
+    int btn;
 
     pMse = pInfo->private;
 
@@ -577,8 +583,8 @@ MouseCommonOptions(InputInfoPtr pInfo)
        free(s);
     }
     /* get maximum of mapped buttons */
-    for (i = pMse->buttons-1; i >= 0; i--) {
-	int f = ffs (pMse->buttonMap[i]);
+    for (btn = pMse->buttons-1; btn >= 0; btn--) {
+	int f = ffs (pMse->buttonMap[btn]);
 	if (f > pMse->buttons)
 	    pMse->buttons = f;
     }
@@ -1621,6 +1627,11 @@ MouseProc(DeviceIntPtr device, int what)
 	if (pInfo->fd == -1)
 	    xf86Msg(X_WARNING, "%s: cannot open input device\n", pInfo->name);
 	else {
+#if defined(__NetBSD__) && defined(WSCONS_SUPPORT) && defined(WSMOUSEIO_SETVERSION)
+	     int version = WSMOUSE_EVENT_VERSION;
+	     if (ioctl(pInfo->fd, WSMOUSEIO_SETVERSION, &version) == -1)
+	         xf86Msg(X_WARNING, "%s: cannot set version\n", pInfo->name);
+#endif
 	    if (pMse->xisbscale)
 		pMse->buffer = XisbNew(pInfo->fd, pMse->xisbscale * 4);
 	    else
@@ -1904,6 +1915,19 @@ Emulate3ButtonsSoft(InputInfoPtr pInfo)
 
     if (!pMse->emulate3ButtonsSoft)
 	return TRUE;
+
+#if defined(__NetBSD__) && defined(WSCONS_SUPPORT)
+   /*
+    * XXXX - check for pMse->protocolID being wsmouse? Why doesn't it
+    * have it's own ID?
+    * On NetBSD a wsmouse is a multiplexed device. Imagine a notebook
+    * with two-button mousepad, and an external USB mouse plugged in
+    * temporarily. After using button 3 on the external mouse and
+    * unplugging it again, the mousepad will still need to emulate
+    * 3 buttons.
+    */
+   return TRUE;
+#endif
 
     pMse->emulate3Buttons = FALSE;
     
@@ -3463,21 +3487,21 @@ autoProbeMouse(InputInfoPtr pInfo, Bool inSync, Bool lostSync)
 	}
 	case AUTOPROBE_SWITCH_PROTOCOL:
 	{
-	    MouseProtocolID proto;
+	    MouseProtocolID protoid;
 	    void *defaults;
 	    AP_DBG(("State SWITCH_PROTOCOL\n"));
-	    proto = mPriv->protoList[mPriv->protocolID++];
-	    if (proto == PROT_UNKNOWN) 
+	    protoid = mPriv->protoList[mPriv->protocolID++];
+	    if (protoid == PROT_UNKNOWN) 
 		mPriv->autoState = AUTOPROBE_SWITCHSERIAL;
-	    else if (!(defaults = GetProtocol(proto)->defaults)
+	    else if (!(defaults = GetProtocol(protoid)->defaults)
 		       || (mPriv->serialDefaultsNum == -1 
 			   && (defaults == msDefaults))
 		       || (mPriv->serialDefaultsNum != -1
 			   && serialDefaultsList[mPriv->serialDefaultsNum]
 			   == defaults)) {
 		AP_DBG(("Changing Protocol to %s\n",
-			ProtocolIDToName(proto)));
-		SetMouseProto(pMse,proto);
+			ProtocolIDToName(protoid)));
+		SetMouseProto(pMse,protoid);
 		FlushButtons(pMse);
 		RESET_VALIDATION;
 		mPriv->autoState = AUTOPROBE_VALIDATE2;

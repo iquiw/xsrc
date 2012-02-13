@@ -127,6 +127,10 @@ static char tmpname3[32];
 static int oper = OPLOAD;
 static char *editFile = NULL;
 static const char *cpp_program = NULL;
+#ifndef CPP_ARGS
+#define CPP_ARGS	NULL
+#endif
+static const char *cpp_args = CPP_ARGS;
 static const char* const cpp_locations[] = { CPP };
 static char *backup_suffix = BACKUP_SUFFIX;
 static Bool dont_execute = False;
@@ -886,6 +890,10 @@ main(int argc, char *argv[])
 		if (++i >= argc) Syntax ();
 		cpp_program = argv[i];
 		continue;
+	    } else if (isabbreviation ("-cppargs", arg, 2)) {
+		if (++i >= argc) Syntax ();
+		cpp_args = argv[i];
+		continue;
 	    } else if (!strcmp ("-n", arg)) {
 		dont_execute = True;
 		continue;
@@ -1230,7 +1238,10 @@ Process(int scrno, Bool doScreen, Bool execute)
 	    fprintf(input, "\n#include \"%s\"\n", filename);
 	    fclose(input);
 	    (void) mktemp(tmpname3);
-	    if (asprintf(&cmd, "%s -P%s %s > %s", cpp_program, includes.val,
+	    if (asprintf(&cmd, "%s%s%s -P%s %s > %s", cpp_program,
+		         cpp_args ? " " : "",
+		         cpp_args ? cpp_args : "",
+			 includes.val,
 			 tmpname2, tmpname3) == -1)
 		fatal("%s: Out of memory\n", ProgramName);
 	    if (system(cmd) < 0)
@@ -1245,7 +1256,10 @@ Process(int scrno, Bool doScreen, Bool execute)
 	    fprintf(stdin, "\n#include \"%s\"\n", filename);
 	    fflush(stdin);
 	    fseek(stdin, 0, 0);
-	    if (asprintf(&cmd, "%s -P%s", cpp_program, includes.val) == -1)
+	    if (asprintf(&cmd, "%s%s%s -P%s", cpp_program,
+		         cpp_args ? " " : "",
+		         cpp_args ? cpp_args : "",
+			 includes.val) == -1)
 		fatal("%s: Out of memory\n", ProgramName);
 	    if (!(input = popen(cmd, "r")))
 		fatal("%s: cannot run '%s'\n", ProgramName, cmd);
@@ -1260,7 +1274,9 @@ Process(int scrno, Bool doScreen, Bool execute)
 	if (cpp_program) {
 #ifdef WIN32
 	    (void) mktemp(tmpname3);
-	    if (asprintf(&cmd, "%s -P%s %s %s > %s", cpp_program,
+	    if (asprintf(&cmd, "%s%s%s -P%s %s %s > %s", cpp_program,
+		         cpp_args ? " " : "",
+		         cpp_args ? cpp_args : "",
 			 includes.val, defines.val,
 			 filename ? filename : "", tmpname3) == -1)
 		fatal("%s: Out of memory\n", ProgramName);
@@ -1270,7 +1286,9 @@ Process(int scrno, Bool doScreen, Bool execute)
 	    if (!(input = fopen(tmpname3, "r")))
 		fatal("%s: can't open file '%s'\n", ProgramName, tmpname3);
 #else
-	    if (asprintf(&cmd, "%s -P%s %s %s", cpp_program,
+	    if (asprintf(&cmd, "%s%s%s -P%s %s %s", cpp_program,
+		         cpp_args ? " " : "",
+		         cpp_args ? cpp_args : "",
 			 includes.val, defines.val,
 			 filename ? filename : "") == -1)
 		fatal("%s: Out of memory\n", ProgramName);

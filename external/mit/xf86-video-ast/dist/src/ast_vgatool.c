@@ -36,6 +36,7 @@
 #include "regionstr.h"
 #include "xf86xv.h"
 #include <X11/extensions/Xv.h>
+#include <X11/Xos.h>
 #include "vbe.h"
 
 #include "xf86PciInfo.h"
@@ -2648,7 +2649,7 @@ void vGetDefaultSettings(ScrnInfoPtr pScrn)
 Bool InitVGA(ScrnInfoPtr pScrn, ULONG Flags)
 {
    ASTRecPtr pAST;
-   ULONG ulData;
+   uint32_t ulData;
 
    pAST = ASTPTR(pScrn);
 
@@ -2944,7 +2945,7 @@ GetVGAEDID(ScrnInfoPtr pScrn, unsigned char *pEDIDBuffer)
 Bool bInitAST1180(ScrnInfoPtr pScrn)
 {
     ASTRecPtr pAST;	
-    ULONG ulData;
+    uint32_t ulData;
 
     pAST = ASTPTR(pScrn);    
 

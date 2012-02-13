@@ -71,6 +71,7 @@
 #define R128_MMIOSIZE  0x4000
 
 #define R128_VBIOS_SIZE 0x00010000
+#define R128_NAME "R128"
 
 #if R128_DEBUG
 #define R128TRACE(x)                                          \
@@ -169,6 +170,7 @@ typedef struct {
 				/* PLL registers */
     CARD32     ppll_ref_div;
     CARD32     ppll_div_3;
+    CARD32     ppll_div_0;
     CARD32     htotal_cntl;
 
 				/* Computed values for PLL2 */
@@ -230,7 +232,9 @@ typedef struct {
     int               Chipset;
     Bool              Primary;
 
+#ifndef AVOID_FBDEV
     Bool              FBDev;
+#endif
 
     unsigned long     LinearAddr;   /* Frame buffer physical address         */
     unsigned long     MMIOAddr;     /* MMIO region physical address          */

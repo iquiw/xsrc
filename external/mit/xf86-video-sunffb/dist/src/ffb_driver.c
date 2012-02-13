@@ -65,6 +65,9 @@ extern void FFB_InitDGA(ScreenPtr pScreen);
 
 void FFBSync(ScrnInfoPtr pScrn);
 
+static Bool FFBDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+				pointer ptr);
+
 #define FFB_VERSION 4000
 #define FFB_NAME "SUNFFB"
 #define FFB_DRIVER_NAME "sunffb"
@@ -87,7 +90,8 @@ _X_EXPORT DriverRec SUNFFB = {
     FFBProbe,
     FFBAvailableOptions,
     NULL,
-    0
+    0,
+    FFBDriverFunc
 };
 
 typedef enum {
@@ -130,7 +134,7 @@ ffbSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 
     if (!setupDone) {
 	setupDone = TRUE;
-	xf86AddDriver(&SUNFFB, module, 0);
+	xf86AddDriver(&SUNFFB, module, HaveDriverFuncs);
 
 	/*
 	 * Modules that this driver always requires can be loaded here
@@ -698,7 +702,8 @@ FFBScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     }
 
     /* Darken the screen for aesthetic reasons and set the viewport */
-    FFBSaveScreen(pScreen, SCREEN_SAVER_ON);
+    /* XXX can't do this yet */
+    /* FFBSaveScreen(pScreen, SCREEN_SAVER_ON);*/
 
     /*
      * The next step is to setup the screen's visuals, and initialise the
@@ -813,7 +818,8 @@ FFBScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     }
 
     /* unblank the screen */
-    FFBSaveScreen(pScreen, SCREEN_SAVER_OFF);
+    /* XXX since we didn't blank it we don't need to unblank it here */
+    /* FFBSaveScreen(pScreen, SCREEN_SAVER_OFF); */
 
     /* Done */
     return TRUE;
@@ -900,6 +906,7 @@ FFBCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
 	FFBPtr pFfb = GET_FFB_FROM_SCRN(pScrn);
 
+	FFBDacCursorEnableDisable(pFfb, 0);
 	/* Restore kernel ramdac state before we unmap registers. */
 	FFBDacFini(pFfb);
 
@@ -957,9 +964,8 @@ FFBSaveScreen(ScreenPtr pScreen, int mode)
        done in "ffb_dac.c" `for aesthetic reasons.'
     */
 {
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
 
-    return FFBDacSaveScreen(GET_FFB_FROM_SCRN(pScrn), mode);
+    return FFBDacSaveScreen(pScreen, mode);
 }
 
 static void
@@ -988,3 +994,20 @@ FFBDPMSMode(ScrnInfoPtr pScrn, int DPMSMode, int flags)
 {
   FFBDacDPMSMode(GET_FFB_FROM_SCRN(pScrn), DPMSMode, flags);
 }
+
+static Bool
+FFBDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+    pointer ptr)
+{
+	xorgHWFlags *flag;
+	
+	switch (op) {
+	case GET_REQUIRED_HW_INTERFACES:
+		flag = (CARD32*)ptr;
+		(*flag) = HW_MMIO;
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
+
