@@ -30,7 +30,6 @@
 #include "xf86.h"
 #include "xf86_OSproc.h"
 #include "mipointer.h"
-#include "mibstore.h"
 #include "micmap.h"
 
 #include "fb.h"
@@ -41,22 +40,21 @@ static const OptionInfoRec * TCXAvailableOptions(int chipid, int busid);
 static void	TCXIdentify(int flags);
 static Bool	TCXProbe(DriverPtr drv, int flags);
 static Bool	TCXPreInit(ScrnInfoPtr pScrn, int flags);
-static Bool	TCXScreenInit(int Index, ScreenPtr pScreen, int argc,
-			      char **argv);
-static Bool	TCXEnterVT(int scrnIndex, int flags);
-static void	TCXLeaveVT(int scrnIndex, int flags);
-static Bool	TCXCloseScreen(int scrnIndex, ScreenPtr pScreen);
+static Bool	TCXScreenInit(SCREEN_INIT_ARGS_DECL);
+static Bool	TCXEnterVT(VT_FUNC_ARGS_DECL);
+static void	TCXLeaveVT(VT_FUNC_ARGS_DECL);
+static Bool	TCXCloseScreen(CLOSE_SCREEN_ARGS_DECL);
 static Bool	TCXSaveScreen(ScreenPtr pScreen, int mode);
 static void	TCXInitCplane24(ScrnInfoPtr pScrn);
 
 /* Required if the driver supports mode switching */
-static Bool	TCXSwitchMode(int scrnIndex, DisplayModePtr mode, int flags);
+static Bool	TCXSwitchMode(SWITCH_MODE_ARGS_DECL);
 /* Required if the driver supports moving the viewport */
-static void	TCXAdjustFrame(int scrnIndex, int x, int y, int flags);
+static void	TCXAdjustFrame(ADJUST_FRAME_ARGS_DECL);
 
 /* Optional functions */
-static void	TCXFreeScreen(int scrnIndex, int flags);
-static ModeStatus TCXValidMode(int scrnIndex, DisplayModePtr mode,
+static void	TCXFreeScreen(FREE_SCREEN_ARGS_DECL);
+static ModeStatus TCXValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode,
 			       Bool verbose, int flags);
 
 void TCXSync(ScrnInfoPtr pScrn);
@@ -169,7 +167,7 @@ TCXFreeRec(ScrnInfoPtr pScrn)
 
     pTcx = GET_TCX_FROM_SCRN(pScrn);
 
-    xfree(pScrn->driverPrivate);
+    free(pScrn->driverPrivate);
     pScrn->driverPrivate = NULL;
 
     return;
@@ -239,7 +237,7 @@ TCXProbe(DriverPtr drv, int flags)
 		   devSections, numDevSections,
 		   drv, &usedChips);
 				    
-    xfree(devSections);
+    free(devSections);
     if (numUsed <= 0)
 	return FALSE;
 
@@ -273,9 +271,9 @@ TCXProbe(DriverPtr drv, int flags)
 	    xf86AddEntityToScreen(pScrn, pEnt->index);
 	    foundScreen = TRUE;
 	}
-	xfree(pEnt);
+	free(pEnt);
     }
-    xfree(usedChips);
+    free(usedChips);
     return foundScreen;
 }
 
@@ -373,7 +371,7 @@ TCXPreInit(ScrnInfoPtr pScrn, int flags)
     /* Collect all of the relevant option flags (fill in pScrn->options) */
     xf86CollectOptions(pScrn, NULL);
     /* Process the options */
-    if (!(pTcx->Options = xalloc(sizeof(TCXOptions))))
+    if (!(pTcx->Options = malloc(sizeof(TCXOptions))))
 	return FALSE;
     memcpy(pTcx->Options, TCXOptions, sizeof(TCXOptions));
     xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, pTcx->Options);
@@ -471,7 +469,7 @@ TCXPreInit(ScrnInfoPtr pScrn, int flags)
 /* This gets called at the start of each server generation */
 
 static Bool
-TCXScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
+TCXScreenInit(SCREEN_INIT_ARGS_DECL)
 {
     ScrnInfoPtr pScrn;
     TcxPtr pTcx;
@@ -481,7 +479,7 @@ TCXScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     /* 
      * First get the ScrnInfoRec
      */
-    pScrn = xf86Screens[pScreen->myNum];
+    pScrn = xf86ScreenToScrn(pScreen);
 
     pTcx = GET_TCX_FROM_SCRN(pScrn);
 
@@ -576,7 +574,6 @@ TCXScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     fbPictureInit (pScreen, 0, 0);
 #endif
 
-    miInitializeBackingStore(pScreen);
     xf86SetBackingStore(pScreen);
     xf86SetSilkenMouse(pScreen);
 
@@ -622,7 +619,7 @@ TCXScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 /* Usually mandatory */
 static Bool
-TCXSwitchMode(int scrnIndex, DisplayModePtr mode, int flags)
+TCXSwitchMode(SWITCH_MODE_ARGS_DECL)
 {
     return TRUE;
 }
@@ -634,7 +631,7 @@ TCXSwitchMode(int scrnIndex, DisplayModePtr mode, int flags)
  */
 /* Usually mandatory */
 static void 
-TCXAdjustFrame(int scrnIndex, int x, int y, int flags)
+TCXAdjustFrame(ADJUST_FRAME_ARGS_DECL)
 {
     /* we don't support virtual desktops */
     return;
@@ -647,9 +644,9 @@ TCXAdjustFrame(int scrnIndex, int x, int y, int flags)
 
 /* Mandatory */
 static Bool
-TCXEnterVT(int scrnIndex, int flags)
+TCXEnterVT(VT_FUNC_ARGS_DECL)
 {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    SCRN_INFO_PTR(arg);
     TcxPtr pTcx = GET_TCX_FROM_SCRN(pScrn);
 
     if (pTcx->HWCursor) {
@@ -670,7 +667,7 @@ TCXEnterVT(int scrnIndex, int flags)
 
 /* Mandatory */
 static void
-TCXLeaveVT(int scrnIndex, int flags)
+TCXLeaveVT(VT_FUNC_ARGS_DECL)
 {
     return;
 }
@@ -683,9 +680,9 @@ TCXLeaveVT(int scrnIndex, int flags)
 
 /* Mandatory */
 static Bool
-TCXCloseScreen(int scrnIndex, ScreenPtr pScreen)
+TCXCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
-    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     TcxPtr pTcx = GET_TCX_FROM_SCRN(pScrn);
 
     pScrn->vtSema = FALSE;
@@ -705,7 +702,7 @@ TCXCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	xf86SbusHideOsHwCursor (pTcx->psdp);
 
     pScreen->CloseScreen = pTcx->CloseScreen;
-    return (*pScreen->CloseScreen)(scrnIndex, pScreen);
+    return (*pScreen->CloseScreen)(CLOSE_SCREEN_ARGS);
     return FALSE;
 }
 
@@ -714,9 +711,10 @@ TCXCloseScreen(int scrnIndex, ScreenPtr pScreen)
 
 /* Optional */
 static void
-TCXFreeScreen(int scrnIndex, int flags)
+TCXFreeScreen(FREE_SCREEN_ARGS_DECL)
 {
-    TCXFreeRec(xf86Screens[scrnIndex]);
+    SCRN_INFO_PTR(arg);
+    TCXFreeRec(pScrn);
 }
 
 
@@ -724,7 +722,7 @@ TCXFreeScreen(int scrnIndex, int flags)
 
 /* Optional */
 static ModeStatus
-TCXValidMode(int scrnIndex, DisplayModePtr mode, Bool verbose, int flags)
+TCXValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode, Bool verbose, int flags)
 {
     if (mode->Flags & V_INTERLACE)
 	return(MODE_BAD);
