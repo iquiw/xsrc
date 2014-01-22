@@ -62,8 +62,8 @@ XRRGetCrtcInfo (Display *dpy, XRRScreenResources *resources, RRCrtc crtc)
     nbytesRead = (long) (rep.nOutput * 4 +
 			 rep.nPossibleOutput * 4);
 
-    /* 
-     * first we must compute how much space to allocate for 
+    /*
+     * first we must compute how much space to allocate for
      * randr library's use; we'll allocate the structures in a single
      * allocation, on cleanlyness grounds.
      */
@@ -74,7 +74,7 @@ XRRGetCrtcInfo (Display *dpy, XRRScreenResources *resources, RRCrtc crtc)
 
     xci = (XRRCrtcInfo *) Xmalloc(rbytes);
     if (xci == NULL) {
-	_XEatData (dpy, (unsigned long) nbytes);
+	_XEatDataWords (dpy, rep.length);
 	UnlockDisplay (dpy);
 	SyncHandle ();
 	return NULL;
@@ -95,13 +95,13 @@ XRRGetCrtcInfo (Display *dpy, XRRScreenResources *resources, RRCrtc crtc)
 
     _XRead32 (dpy, xci->outputs, rep.nOutput << 2);
     _XRead32 (dpy, xci->possible, rep.nPossibleOutput << 2);
-    
+
     /*
      * Skip any extra data
      */
     if (nbytes > nbytesRead)
 	_XEatData (dpy, (unsigned long) (nbytes - nbytesRead));
-    
+
     UnlockDisplay (dpy);
     SyncHandle ();
     return (XRRCrtcInfo *) xci;
@@ -195,21 +195,21 @@ XRRGetCrtcGamma (Display *dpy, RRCrtc crtc)
 	goto out;
 
     nbytes = (long) rep.length << 2;
-    
+
     /* three channels of CARD16 data */
     nbytesRead = (rep.size * 2 * 3);
 
     crtc_gamma = XRRAllocGamma (rep.size);
-    
+
     if (!crtc_gamma)
     {
-	_XEatData (dpy, (unsigned long) nbytes);
+	_XEatDataWords (dpy, rep.length);
 	goto out;
     }
     _XRead16 (dpy, crtc_gamma->red, rep.size * 2);
     _XRead16 (dpy, crtc_gamma->green, rep.size * 2);
     _XRead16 (dpy, crtc_gamma->blue, rep.size * 2);
-    
+
     if (nbytes > nbytesRead)
 	_XEatData (dpy, (unsigned long) (nbytes - nbytesRead));
 
@@ -255,7 +255,7 @@ XRRSetCrtcGamma (Display *dpy, RRCrtc crtc, XRRCrtcGamma *crtc_gamma)
      * otherwise the channels might not be contiguous
      */
     Data16 (dpy, crtc_gamma->red, crtc_gamma->size * 2 * 3);
-    
+
     UnlockDisplay (dpy);
     SyncHandle ();
 }
@@ -304,9 +304,9 @@ xRenderTransform_from_XTransform (xRenderTransform *render,
 
 void
 XRRSetCrtcTransform (Display	*dpy,
-		     RRCrtc	crtc, 
+		     RRCrtc	crtc,
 		     XTransform	*transform,
-		     char	*filter,
+		     _Xconst char *filter,
 		     XFixed	*params,
 		     int	nparams)
 {
@@ -334,7 +334,7 @@ XRRSetCrtcTransform (Display	*dpy,
 }
 
 #define CrtcTransformExtra	(SIZEOF(xRRGetCrtcTransformReply) - 32)
-				
+
 static const xRenderTransform identity = {
     0x10000, 0, 0,
     0, 0x10000, 0,
@@ -364,7 +364,7 @@ XRRGetCrtcTransform (Display	*dpy,
 
     RRCheckExtension (dpy, info, False);
 
-    if (!XRRQueryVersion (dpy, &major_version, &minor_version) || 
+    if (!XRRQueryVersion (dpy, &major_version, &minor_version) ||
 	!_XRRHasTransform (major_version, minor_version))
     {
 	/* For pre-1.3 servers, just report identity matrices everywhere */
@@ -382,7 +382,7 @@ XRRGetCrtcTransform (Display	*dpy,
 	req->reqType = info->codes->major_opcode;
 	req->randrReqType = X_RRGetCrtcTransform;
 	req->crtc = crtc;
-    
+
 	if (!_XReply (dpy, (xReply *) &rep, CrtcTransformExtra >> 2, xFalse))
 	{
 	    rep.pendingTransform = identity;
@@ -397,7 +397,7 @@ XRRGetCrtcTransform (Display	*dpy,
 	    int extraBytes = rep.length * 4 - CrtcTransformExtra;
 	    extra = Xmalloc (extraBytes);
 	    if (!extra) {
-		_XEatData (dpy, extraBytes);
+		_XEatDataWords (dpy, rep.length - (CrtcTransformExtra >> 2));
 		UnlockDisplay (dpy);
 		SyncHandle ();
 		return False;

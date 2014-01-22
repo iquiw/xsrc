@@ -5,10 +5,8 @@
  * Script 'fuzzer-find-diff.pl' can be used to narrow down the problem in
  * the case of test failure.
  */
-#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <config.h>
 #include "utils.h"
 
 static pixman_indexed_t rgb_palette[9];
@@ -27,7 +25,7 @@ create_random_image (pixman_format_code_t *allowed_formats,
 		     int                   max_extra_stride,
 		     pixman_format_code_t *used_fmt)
 {
-    int n = 0, i, width, height, stride;
+    int n = 0, width, height, stride;
     pixman_format_code_t fmt;
     uint32_t *buf;
     pixman_image_t *img;
@@ -35,27 +33,28 @@ create_random_image (pixman_format_code_t *allowed_formats,
     while (allowed_formats[n] != PIXMAN_null)
 	n++;
 
-    if (n > N_MOST_LIKELY_FORMATS && lcg_rand_n (4) != 0)
+    if (n > N_MOST_LIKELY_FORMATS && prng_rand_n (4) != 0)
 	n = N_MOST_LIKELY_FORMATS;
-    fmt = allowed_formats[lcg_rand_n (n)];
+    fmt = allowed_formats[prng_rand_n (n)];
 
-    width = lcg_rand_n (max_width) + 1;
-    height = lcg_rand_n (max_height) + 1;
+    width = prng_rand_n (max_width) + 1;
+    height = prng_rand_n (max_height) + 1;
     stride = (width * PIXMAN_FORMAT_BPP (fmt) + 7) / 8 +
-	lcg_rand_n (max_extra_stride + 1);
+	prng_rand_n (max_extra_stride + 1);
     stride = (stride + 3) & ~3;
 
     /* do the allocation */
     buf = aligned_malloc (64, stride * height);
 
-    /* initialize image with random data */
-    for (i = 0; i < stride * height; i++)
+    if (prng_rand_n (4) == 0)
     {
-	/* generation is biased to having more 0 or 255 bytes as
-	 * they are more likely to be special-cased in code
-	 */
-	*((uint8_t *)buf + i) = lcg_rand_n (4) ? lcg_rand_n (256) :
-	    (lcg_rand_n (2) ? 0 : 255);
+	/* uniform distribution */
+	prng_randmemset (buf, stride * height, 0);
+    }
+    else
+    {
+	/* significantly increased probability for 0x00 and 0xFF */
+	prng_randmemset (buf, stride * height, RANDMEMSET_MORE_00_AND_FF);
     }
 
     img = pixman_image_create_bits (fmt, width, height, buf, stride);
@@ -68,6 +67,9 @@ create_random_image (pixman_format_code_t *allowed_formats,
     {
 	pixman_image_set_indexed (img, &(y_palette[PIXMAN_FORMAT_BPP (fmt)]));
     }
+
+    if (prng_rand_n (16) == 0)
+	pixman_image_set_filter (img, PIXMAN_FILTER_BILINEAR, NULL, 0);
 
     image_endian_swap (img);
 
@@ -82,39 +84,10 @@ free_random_image (uint32_t initcrc,
 		   pixman_format_code_t fmt)
 {
     uint32_t crc32 = 0;
-    int stride = pixman_image_get_stride (img);
     uint32_t *data = pixman_image_get_data (img);
-    int height = pixman_image_get_height (img);
 
     if (fmt != PIXMAN_null)
-    {
-	/* mask unused 'x' part */
-	if (PIXMAN_FORMAT_BPP (fmt) - PIXMAN_FORMAT_DEPTH (fmt) &&
-	    PIXMAN_FORMAT_DEPTH (fmt) != 0)
-	{
-	    int i;
-	    uint32_t *data = pixman_image_get_data (img);
-	    uint32_t mask = (1 << PIXMAN_FORMAT_DEPTH (fmt)) - 1;
-
-	    if (PIXMAN_FORMAT_TYPE (fmt) == PIXMAN_TYPE_BGRA ||
-		PIXMAN_FORMAT_TYPE (fmt) == PIXMAN_TYPE_RGBA)
-	    {
-		mask <<= (PIXMAN_FORMAT_BPP (fmt) - PIXMAN_FORMAT_DEPTH (fmt));
-	    }
-
-	    for (i = 0; i < 32; i++)
-		mask |= mask << (i * PIXMAN_FORMAT_BPP (fmt));
-
-	    for (i = 0; i < stride * height / 4; i++)
-		data[i] &= mask;
-	}
-
-	/* swap endiannes in order to provide identical results on both big
-	 * and litte endian systems
-	 */
-	image_endian_swap (img);
-	crc32 = compute_crc32 (initcrc, data, stride * height);
-    }
+	crc32 = compute_crc32_for_image (initcrc, img);
 
     pixman_image_unref (img);
     free (data);
@@ -200,10 +173,12 @@ static pixman_format_code_t img_fmt_list[] = {
     PIXMAN_x14r6g6b6,
     PIXMAN_r8g8b8,
     PIXMAN_b8g8r8,
+#if 0 /* These are going to use floating point in the near future */
     PIXMAN_x2r10g10b10,
     PIXMAN_a2r10g10b10,
     PIXMAN_x2b10g10r10,
     PIXMAN_a2b10g10r10,
+#endif
     PIXMAN_a1r5g5b5,
     PIXMAN_x1r5g5b5,
     PIXMAN_a1b5g5r5,
@@ -277,11 +252,11 @@ test_composite (int testnum, int verbose)
     if (max_extra_stride > 8)
 	max_extra_stride = 8;
 
-    lcg_srand (testnum);
+    prng_srand (testnum);
 
-    op = op_list[lcg_rand_n (sizeof (op_list) / sizeof (op_list[0]))];
+    op = op_list[prng_rand_n (ARRAY_LENGTH (op_list))];
 
-    if (lcg_rand_n (8))
+    if (prng_rand_n (8))
     {
 	/* normal image */
 	src_img = create_random_image (img_fmt_list, max_width, max_height,
@@ -310,10 +285,10 @@ test_composite (int testnum, int verbose)
     dstbuf = pixman_image_get_data (dst_img);
     srcbuf = pixman_image_get_data (src_img);
 
-    src_x = lcg_rand_n (src_width);
-    src_y = lcg_rand_n (src_height);
-    dst_x = lcg_rand_n (dst_width);
-    dst_y = lcg_rand_n (dst_height);
+    src_x = prng_rand_n (src_width);
+    src_y = prng_rand_n (src_height);
+    dst_x = prng_rand_n (dst_width);
+    dst_y = prng_rand_n (dst_height);
 
     mask_img = NULL;
     mask_fmt = PIXMAN_null;
@@ -322,10 +297,10 @@ test_composite (int testnum, int verbose)
     maskbuf = NULL;
 
     if ((src_fmt == PIXMAN_x8r8g8b8 || src_fmt == PIXMAN_x8b8g8r8) &&
-	(lcg_rand_n (4) == 0))
+	(prng_rand_n (4) == 0))
     {
 	/* PIXBUF */
-	mask_fmt = lcg_rand_n (2) ? PIXMAN_a8r8g8b8 : PIXMAN_a8b8g8r8;
+	mask_fmt = prng_rand_n (2) ? PIXMAN_a8r8g8b8 : PIXMAN_a8b8g8r8;
 	mask_img = pixman_image_create_bits (mask_fmt,
 	                                     src_width,
 	                                     src_height,
@@ -335,9 +310,9 @@ test_composite (int testnum, int verbose)
 	mask_y = src_y;
 	maskbuf = srcbuf;
     }
-    else if (lcg_rand_n (2))
+    else if (prng_rand_n (2))
     {
-	if (lcg_rand_n (2))
+	if (prng_rand_n (2))
 	{
 	    mask_img = create_random_image (mask_fmt_list, max_width, max_height,
 					   max_extra_stride, &mask_fmt);
@@ -350,21 +325,23 @@ test_composite (int testnum, int verbose)
 	    pixman_image_set_repeat (mask_img, PIXMAN_REPEAT_NORMAL);
 	}
 
-	if (lcg_rand_n (2))
+	if (prng_rand_n (2))
 	    pixman_image_set_component_alpha (mask_img, 1);
 
-	mask_x = lcg_rand_n (pixman_image_get_width (mask_img));
-	mask_y = lcg_rand_n (pixman_image_get_height (mask_img));
+	mask_x = prng_rand_n (pixman_image_get_width (mask_img));
+	mask_y = prng_rand_n (pixman_image_get_height (mask_img));
     }
 
 
-    w = lcg_rand_n (dst_width - dst_x + 1);
-    h = lcg_rand_n (dst_height - dst_y + 1);
+    w = prng_rand_n (dst_width - dst_x + 1);
+    h = prng_rand_n (dst_height - dst_y + 1);
 
     if (verbose)
     {
-	printf ("op=%d, src_fmt=%08X, dst_fmt=%08X, mask_fmt=%08X\n",
-	    op, src_fmt, dst_fmt, mask_fmt);
+        printf ("op=%s\n", operator_name (op));
+	printf ("src_fmt=%s, dst_fmt=%s, mask_fmt=%s\n",
+	    format_name (src_fmt), format_name (dst_fmt),
+	    format_name (mask_fmt));
 	printf ("src_width=%d, src_height=%d, dst_width=%d, dst_height=%d\n",
 	    src_width, src_height, dst_width, dst_height);
 	printf ("src_x=%d, src_y=%d, dst_x=%d, dst_y=%d\n",
@@ -416,6 +393,8 @@ main (int argc, const char *argv[])
 {
     int i;
 
+    prng_srand (0);
+
     for (i = 1; i <= 8; i++)
     {
 	initialize_palette (&(rgb_palette[i]), i, TRUE);
@@ -423,6 +402,6 @@ main (int argc, const char *argv[])
     }
 
     return fuzzer_test_main("blitters", 2000000,
-			    0xB610300B,
+			    0x0CF3283B,
 			    test_composite, argc, argv);
 }

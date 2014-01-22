@@ -20,7 +20,6 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-/* $XFree86: xc/programs/Xserver/hw/xfree86/drivers/suncg14/cg14.h,v 1.2 2001/03/03 22:41:33 tsi Exp $ */
 
 #ifndef CG14_H
 #define CG14_H
@@ -31,6 +30,7 @@
 #include <X11/Xmd.h>
 #include "gcstruct.h"
 #include "xf86sbusBus.h"
+#include "exa.h"
 
 /* Various offsets in virtual (ie. mmap()) spaces Linux and Solaris support. */
 #define CG14_REGS_VOFF		0x00000000	/* registers */
@@ -50,6 +50,11 @@
 #define CG14_B32_VOFF		0xa0000000
 #define CG14_G32_VOFF		0xb0000000
 #define CG14_R32_VOFF		0xc0000000
+
+/* these two are NetBSD specific */
+#define CG14_SXREG_VOFF		0x00010000	/* SX userspace registers */
+#define CG14_SXIO_VOFF		0xd0000000
+
 
 /* Hardware cursor map */
 #define CG14_CURS_SIZE		32
@@ -77,6 +82,7 @@ typedef struct {
 	int		width;
 	int		height;
 	int		use_shadow;
+	int		memsize;
 	int		HWCursor;
 	void *		shadow;
 	sbusDevicePtr	psdp;
@@ -84,9 +90,62 @@ typedef struct {
 	CreateScreenResourcesProcPtr CreateScreenResources;
 	OptionInfoPtr	Options;
 	xf86CursorInfoPtr	CursorInfoRec;
+	/* SX accel stuff */
+	void		*sxreg, *sxio;
+	int		use_accel, use_xrender;
+	uint32_t	last_mask;
+	uint32_t	last_rop;
+	uint32_t	srcoff, srcpitch, mskoff, mskpitch;
+	uint32_t	srcformat, dstformat, mskformat;
+	uint32_t	fillcolour;
+	int		op;
+	Bool		source_is_solid, no_source_pixmap;
+	int		xdir, ydir;	
+	ExaDriverPtr 	pExa;
 } Cg14Rec, *Cg14Ptr;
 
+/* SX stuff */
+/* write an SX register */
+static inline void
+write_sx_reg(Cg14Ptr p, int reg, uint32_t val)
+{
+	*(volatile uint32_t *)(p->sxreg + reg) = val;
+}
+
+/* read an SX register */
+static inline uint32_t
+read_sx_reg(Cg14Ptr p, int reg)
+{
+	return *(volatile uint32_t *)(p->sxreg + reg);
+}
+
+/* write a memory referencing instruction */
+static inline void
+write_sx_io(Cg14Ptr p, int reg, uint32_t val)
+{
+	*(volatile uint32_t *)(p->sxio + reg) = val;
+}
+
 Bool CG14SetupCursor(ScreenPtr);
+Bool CG14InitAccel(ScreenPtr);
+
+/* xrender ops */
+void CG14Comp_Over8Solid(Cg14Ptr, uint32_t, uint32_t, uint32_t, uint32_t,
+                   int, int);
+void CG14Comp_Over32Solid(Cg14Ptr, uint32_t, uint32_t, uint32_t, uint32_t,
+                   int, int);
+void CG14Comp_Over32(Cg14Ptr, uint32_t, uint32_t, uint32_t, uint32_t,
+                   int, int);
+void CG14Comp_Over32Mask(Cg14Ptr, uint32_t, uint32_t, uint32_t, uint32_t,
+                   uint32_t, uint32_t, int, int);
+void CG14Comp_Over32Mask_noalpha(Cg14Ptr, uint32_t, uint32_t, uint32_t,
+		   uint32_t, uint32_t, uint32_t, int, int);
+void CG14Comp_Over32Mask32_noalpha(Cg14Ptr, uint32_t, uint32_t, uint32_t,
+		   uint32_t, uint32_t, uint32_t, int, int);
+void CG14Comp_Add8(Cg14Ptr, uint32_t, uint32_t, uint32_t, uint32_t,
+                   int, int);
+void CG14Comp_Add32(Cg14Ptr, uint32_t, uint32_t, uint32_t, uint32_t,
+                   int, int);
 
 #define GET_CG14_FROM_SCRN(p)    ((Cg14Ptr)((p)->driverPrivate))
 

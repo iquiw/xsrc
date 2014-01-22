@@ -75,7 +75,7 @@ static int nbuses = 0;		/* number of buses found */
  * With all this we should be able to use any PCI graphics device on any PCI
  * bus on any architecture as long as Xorg has a driver, without allowing
  * arbitrary mappings via /dev/mem and without userland having to know or care
- * about translating bus addresses to physical addresses or the other way 
+ * about translating bus addresses to physical addresses or the other way
  * around.
  */
 
@@ -285,6 +285,35 @@ pci_device_netbsd_boot_vga(struct pci_device *dev)
 	return 1;
 }
 
+static int
+pci_device_netbsd_map_legacy(struct pci_device *dev, pciaddr_t base,
+				  pciaddr_t size, unsigned map_flags, void **addr)
+{
+	struct pci_device_mapping map;
+	int err;
+
+	map.base = base;
+	map.size = size;
+	map.flags = map_flags;
+	map.memory = NULL;
+	err = pci_device_netbsd_map_range(dev, &map);
+	*addr = map.memory;
+
+	return err;
+}
+
+static int
+pci_device_netbsd_unmap_legacy(struct pci_device *dev, void *addr, pciaddr_t size)
+{
+	struct pci_device_mapping map;
+
+	map.memory = addr;
+	map.size = size;
+	map.flags = 0;
+	return pci_device_netbsd_unmap_range(dev, &map);
+}
+
+
 static void
 pci_system_netbsd_destroy(void)
 {
@@ -474,10 +503,10 @@ pci_device_netbsd_read_rom(struct pci_device *dev, void *buffer)
 	}
     }
 
-    fprintf(stderr, "Using rom_base = 0x%lx 0x%lx (pci_rom=%d)\n", 
+    fprintf(stderr, "Using rom_base = 0x%lx 0x%lx (pci_rom=%d)\n",
         (long)rom_base, (long)rom_size, pci_rom);
 
-    bios = mmap(NULL, rom_size, PROT_READ, MAP_SHARED, buses[dev->domain].fd, 
+    bios = mmap(NULL, rom_size, PROT_READ, MAP_SHARED, buses[dev->domain].fd,
         (off_t)rom_base);
     if (bios == MAP_FAILED) {
 	int serrno = errno;
@@ -519,6 +548,8 @@ static const struct pci_system_methods netbsd_pci_methods = {
 	.write = pci_device_netbsd_write,
 	.fill_capabilities = pci_fill_capabilities_generic,
 	.boot_vga = pci_device_netbsd_boot_vga,
+	.map_legacy = pci_device_netbsd_map_legacy,
+	.unmap_legacy = pci_device_netbsd_unmap_legacy,
 };
 
 int
@@ -537,7 +568,7 @@ pci_system_netbsd_create(void)
 	ndevs = 0;
 	nbuses = 0;
 	snprintf(netbsd_devname, 32, "/dev/pci%d", nbuses);
-	pcifd = open(netbsd_devname, O_RDWR);
+	pcifd = open(netbsd_devname, O_RDWR | O_CLOEXEC);
 	while (pcifd > 0) {
 		ioctl(pcifd, PCI_IOC_BUSINFO, &businfo);
 		buses[nbuses].fd = pcifd;

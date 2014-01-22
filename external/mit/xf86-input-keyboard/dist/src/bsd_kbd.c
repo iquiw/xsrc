@@ -204,6 +204,24 @@ KbdOn(InputInfoPtr pInfo, int what)
 #endif
         }
 #endif
+    } else {
+        switch (pKbd->consType) {
+#ifdef WSCONS_SUPPORT
+            case WSCONS:
+            	 if ((pKbd->wsKbdDev[0] != 0) && (pInfo->fd == -1)) {
+            	 	xf86Msg(X_INFO, "opening %s\n", pKbd->wsKbdDev);
+            	 	pInfo->fd = open(pKbd->wsKbdDev, O_RDONLY | O_NONBLOCK | O_EXCL);
+#ifdef WSKBDIO_SETVERSION
+		       int version = WSKBDIO_EVENT_VERSION;
+		       if (ioctl(pInfo->fd, WSKBDIO_SETVERSION, &version) == -1) {
+		           xf86Msg(X_WARNING, "%s: cannot set version\n", pInfo->name);
+		           return FALSE;
+		       }
+#endif 
+            	 }
+	     break;
+#endif
+	}
     }
     return Success;
 }
@@ -238,7 +256,20 @@ KbdOff(InputInfoPtr pInfo, int what)
 	         break;
 #endif
         }
-    }
+    } else {
+         switch (pKbd->consType) {
+#ifdef WSCONS_SUPPORT
+            case WSCONS:
+                 if ((pKbd->wsKbdDev[0] != 0) && (pInfo->fd != -1)) {
+                 	xf86Msg(X_INFO, "closing %s\n", pKbd->wsKbdDev);
+                 	/* need to close the fd while we're gone */
+                 	close(pInfo->fd);
+                 	pInfo->fd = -1;
+                 }
+	         break;
+#endif
+        }
+    }   	
     return Success;
 }
 
@@ -368,6 +399,7 @@ OpenKeyboard(InputInfoPtr pInfo)
 	pInfo->fd = xf86Info.consoleFd;
 	pKbd->isConsole = TRUE;
 	pKbd->consType = xf86Info.consType;
+	pKbd->wsKbdDev[0] = 0;
     } else {
 	pInfo->fd = open(s, O_RDONLY | O_NONBLOCK | O_EXCL);
 	if (pInfo->fd == -1) {
@@ -376,6 +408,7 @@ OpenKeyboard(InputInfoPtr pInfo)
            return FALSE;
        }
        pKbd->isConsole = FALSE;
+       strncpy(pKbd->wsKbdDev, s, 256);
        pKbd->consType = xf86Info.consType;
        free(s);
     }
@@ -396,6 +429,12 @@ OpenKeyboard(InputInfoPtr pInfo)
            close(pInfo->fd);
            return FALSE;
        }
+       /* If wsKbdType==0, no keyboard attached to the mux. Assume USB. */
+       if (pKbd->wsKbdType == 0) {
+           xf86Msg(X_WARNING, "%s: No keyboard attached, assuming USB\n",
+                                  pInfo->name);
+           pKbd->wsKbdType = WSKBD_TYPE_USB;
+       }
        switch (pKbd->wsKbdType) {
            case WSKBD_TYPE_PC_XT:
                printWsType("XT", pInfo->name);
@@ -409,6 +448,11 @@ OpenKeyboard(InputInfoPtr pInfo)
 #ifdef WSKBD_TYPE_ADB
            case WSKBD_TYPE_ADB:
                printWsType("ADB", pInfo->name);
+               break;
+#endif
+#ifdef WSKBD_TYPE_LK201
+           case WSKBD_TYPE_LK201:
+               printWsType("LK201", pInfo->name);
                break;
 #endif
 #ifdef WSKBD_TYPE_MAPLE
@@ -427,10 +471,10 @@ OpenKeyboard(InputInfoPtr pInfo)
                break;
 #endif
            default:
-               xf86Msg(X_ERROR, "%s: Unsupported wskbd type \"%d\"",
-                                pInfo->name, pKbd->wsKbdType);
-               close(pInfo->fd);
-               return FALSE;
+               xf86Msg(X_WARNING, "%s: Unsupported wskbd type \"%d\"\n",
+                                  pInfo->name, pKbd->wsKbdType);
+               printWsType("Unknown wskbd", pInfo->name);
+               break;
        }
     }
 #endif

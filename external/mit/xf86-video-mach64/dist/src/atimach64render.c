@@ -209,22 +209,7 @@ Mach64PixelARGB(PixmapPtr pPixmap, CARD32 format, CARD32 *argb)
     CARD8  comp;
     int    bits, shift;
 
-    /* Ensure that texture drawing has completed. */
-    exaWaitSync(pPixmap->drawable.pScreen);
-
-    /* exaGetPixmapFirstPixel() */
-
-    switch (pPixmap->drawable.bitsPerPixel) {
-    case 32:
-        pixel = *(CARD32 *)(pPixmap->devPrivate.ptr);
-        break;
-    case 16:
-        pixel = *(CARD16 *)(pPixmap->devPrivate.ptr);
-        break;
-    default:
-        pixel = *(CARD8 *)(pPixmap->devPrivate.ptr);
-        break;
-    }
+    pixel = exaGetPixmapFirstPixel(pPixmap);
 
     /* exaGetRGBAFromPixel()/viaPixelARGB8888() */
 
@@ -354,9 +339,14 @@ Mach64GetOrder(int val, int *shift)
 static Bool
 Mach64CheckTexture(PicturePtr pPict)
 {
-    int w = pPict->pDrawable->width;
-    int h = pPict->pDrawable->height;
+    int h, w;
     int l2w, l2h, level, i;
+
+    if  (pPict->pDrawable == NULL)
+    	return FALSE;
+
+    w = pPict->pDrawable->width;
+    h = pPict->pDrawable->height;
 
     for (i = 0; i < MACH64_NR_TEX_FORMATS; i++) {
         if (Mach64TexFormats[i].pictFormat == pPict->format)
@@ -583,7 +573,7 @@ Mach64BlendCntl(Mach64ContextRegs3D *m3d, int op)
 static Bool
 Mach64PrepareTexture(PicturePtr pPict, PixmapPtr pPix)
 {
-    ScrnInfoPtr pScreenInfo = xf86Screens[pPix->drawable.pScreen->myNum];
+    ScrnInfoPtr pScreenInfo = xf86ScreenToScrn(pPix->drawable.pScreen);
     ATIPtr pATI = ATIPTR(pScreenInfo);
     Mach64ContextRegs3D *m3d = &pATI->m3d;
 
@@ -671,7 +661,7 @@ Mach64PrepareComposite
     PixmapPtr  pDst
 )
 {
-    ScrnInfoPtr pScreenInfo = xf86Screens[pDst->drawable.pScreen->myNum];
+    ScrnInfoPtr pScreenInfo = xf86ScreenToScrn(pDst->drawable.pScreen);
     ATIPtr pATI = ATIPTR(pScreenInfo);
     Mach64ContextRegs3D *m3d = &pATI->m3d;
 
@@ -818,7 +808,7 @@ Mach64Composite
     int       h
 )
 {
-    ScrnInfoPtr pScreenInfo = xf86Screens[pDst->drawable.pScreen->myNum];
+    ScrnInfoPtr pScreenInfo = xf86ScreenToScrn(pDst->drawable.pScreen);
     ATIPtr pATI = ATIPTR(pScreenInfo);
     Mach64ContextRegs3D *m3d = &pATI->m3d;
 
@@ -895,7 +885,7 @@ Mach64Composite
 void
 Mach64DoneComposite(PixmapPtr pDst)
 {
-    ScrnInfoPtr pScreenInfo = xf86Screens[pDst->drawable.pScreen->myNum];
+    ScrnInfoPtr pScreenInfo = xf86ScreenToScrn(pDst->drawable.pScreen);
     ATIPtr pATI = ATIPTR(pScreenInfo);
 
     ATIDRISync(pScreenInfo);

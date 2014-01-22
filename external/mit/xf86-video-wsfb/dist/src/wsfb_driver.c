@@ -1,6 +1,5 @@
-/* $OpenBSD: wsfb_driver.c,v 1.16 2009/09/13 19:33:49 matthieu Exp $ */
 /*
- * Copyright (c) 2001 Matthieu Herrb
+ * Copyright © 2001-2012 Matthieu Herrb
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,6 +41,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -110,9 +111,7 @@ extern int priv_open_device(const char *);
 #endif
 
 /* Prototypes */
-#ifdef XFree86LOADER
 static pointer WsfbSetup(pointer, pointer, int *, int *);
-#endif
 static Bool WsfbGetRec(ScrnInfoPtr);
 static void WsfbFreeRec(ScrnInfoPtr);
 static const OptionInfoRec * WsfbAvailableOptions(int, int);
@@ -145,7 +144,7 @@ static Bool WsfbDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 				pointer ptr);
 
 /* Helper functions */
-static int wsfb_open(char *);
+static int wsfb_open(const char *);
 static pointer wsfb_mmap(size_t, off_t, int);
 
 enum { WSFB_ROTATE_NONE = 0,
@@ -155,7 +154,7 @@ enum { WSFB_ROTATE_NONE = 0,
 };
 
 /*
- * This is intentionally screen-independent. 
+ * This is intentionally screen-independent.
  * It indicates the binding choice made in the first PreInit.
  */
 static int pix24bpp = 0;
@@ -192,9 +191,11 @@ typedef enum {
 static const OptionInfoRec WsfbOptions[] = {
 	{ OPTION_SHADOW_FB, "ShadowFB", OPTV_BOOLEAN, {0}, FALSE},
 	{ OPTION_ROTATE, "Rotate", OPTV_STRING, {0}, FALSE},
+	{ OPTION_HW_CURSOR, "HWCursor", OPTV_BOOLEAN, {1}, FALSE},
 	{ -1, NULL, OPTV_NONE, {0}, FALSE}
 };
 
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) <= 6
 /* Symbols needed from other modules */
 static const char *fbSymbols[] = {
 	"fbPictureInit",
@@ -217,16 +218,16 @@ static const char *ramdacSymbols[] = {
 	"xf86InitCursor",
 	NULL
 };
+#endif
 
-#ifdef XFree86LOADER
 static XF86ModuleVersionInfo WsfbVersRec = {
 	"wsfb",
 	MODULEVENDORSTRING,
 	MODINFOSTRING1,
 	MODINFOSTRING2,
 	XORG_VERSION_CURRENT,
-	PACKAGE_VERSION_MAJOR, 
-	PACKAGE_VERSION_MINOR, 
+	PACKAGE_VERSION_MAJOR,
+	PACKAGE_VERSION_MINOR,
 	PACKAGE_VERSION_PATCHLEVEL,
 	ABI_CLASS_VIDEODRV,
 	ABI_VIDEODRV_VERSION,
@@ -264,7 +265,6 @@ WsfbSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 		return NULL;
 	}
 }
-#endif /* XFree86LOADER */
 
 static Bool
 WsfbGetRec(ScrnInfoPtr pScrn)
@@ -283,7 +283,7 @@ WsfbFreeRec(ScrnInfoPtr pScrn)
 
 	if (pScrn->driverPrivate == NULL)
 		return;
-	xfree(pScrn->driverPrivate);
+	free(pScrn->driverPrivate);
 	pScrn->driverPrivate = NULL;
 }
 
@@ -302,11 +302,11 @@ WsfbIdentify(int flags)
 
 /* Open the framebuffer device. */
 static int
-wsfb_open(char *dev)
+wsfb_open(const char *dev)
 {
 	int fd = -1;
 
-	/* Try argument from XF86Config first. */
+	/* Try argument from xorg.conf first. */
 	if (dev == NULL || ((fd = priv_open_device(dev)) == -1)) {
 		/* Second: environment variable. */
 		dev = getenv("XDEVICE");
@@ -356,7 +356,7 @@ WsfbProbe(DriverPtr drv, int flags)
 	int i, fd, entity;
        	GDevPtr *devSections;
 	int numDevSections;
-	char *dev;
+	const char *dev;
 	Bool foundScreen = FALSE;
 
 	TRACE("probe start");
@@ -397,7 +397,7 @@ WsfbProbe(DriverPtr drv, int flags)
 			}
 		}
 	}
-	xfree(devSections);
+	free(devSections);
 	TRACE("probe done");
 	return foundScreen;
 }
@@ -407,8 +407,8 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 {
 	WsfbPtr fPtr;
 	int default_depth, wstype;
-	char *dev, *s;
-	char *mod = NULL;
+	const char *dev;
+	char *mod = NULL, *s;
 	const char *reqSym = NULL;
 	Gamma zeros = {0.0, 0.0, 0.0};
 	DisplayModePtr mode;
@@ -438,67 +438,115 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 		return FALSE;
 	}
 
-	if (ioctl(fPtr->fd, WSDISPLAYIO_GINFO, &fPtr->info) == -1) {
-		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "ioctl WSDISPLAY_GINFO: %s\n",
-			   strerror(errno));
-		return FALSE;
-	}
-	if (ioctl(fPtr->fd, WSDISPLAYIO_GTYPE, &wstype) == -1) {
-		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "ioctl WSDISPLAY_GTYPE: %s\n",
-			   strerror(errno));
-		return FALSE;
-	}
-	if (ioctl(fPtr->fd, WSDISPLAYIO_LINEBYTES, &fPtr->linebytes) == -1) {
-		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "ioctl WSDISPLAYIO_LINEBYTES: %s\n",
-			   strerror(errno));
-		return FALSE;
+	if (ioctl(fPtr->fd, WSDISPLAYIO_GET_FBINFO, &fPtr->fbi) != 0) {
+		struct wsdisplay_fbinfo info;
+		struct wsdisplayio_fbinfo *fbi = &fPtr->fbi;
+		int lb;
+
+		xf86Msg(X_WARNING, "ioctl(WSDISPLAYIO_GET_FBINFO) failed, " \
+			"falling back to old method\n");
+		if (ioctl(fPtr->fd, WSDISPLAYIO_GINFO, &info) == -1) {
+			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+				   "ioctl WSDISPLAY_GINFO: %s\n",
+				   strerror(errno));
+			return FALSE;
+		}
+		if (ioctl(fPtr->fd, WSDISPLAYIO_GTYPE, &wstype) == -1) {
+			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+				   "ioctl WSDISPLAY_GTYPE: %s\n",
+				   strerror(errno));
+			return FALSE;
+		}
+		if (ioctl(fPtr->fd, WSDISPLAYIO_LINEBYTES, &lb) == -1) {
+			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+				   "ioctl WSDISPLAYIO_LINEBYTES: %s\n",
+				   strerror(errno));
+			return FALSE;
+		}
+		/* ok, fake up a new style fbinfo */
+		fbi->fbi_width = info.width;
+		fbi->fbi_height = info.height;
+		fbi->fbi_stride = lb;
+		fbi->fbi_bitsperpixel = info.depth;
+		if (info.depth > 16) {
+			fbi->fbi_pixeltype = WSFB_RGB;
+			if (wstype == WSDISPLAY_TYPE_SUN24 ||
+			    wstype == WSDISPLAY_TYPE_SUNCG12 ||
+			    wstype == WSDISPLAY_TYPE_SUNCG14 ||
+			    wstype == WSDISPLAY_TYPE_SUNTCX ||
+			    wstype == WSDISPLAY_TYPE_SUNFFB ||
+			    wstype == WSDISPLAY_TYPE_XVR1000 ||
+			    wstype == WSDISPLAY_TYPE_VC4) {
+				fbi->fbi_subtype.fbi_rgbmasks.red_offset = 0;
+				fbi->fbi_subtype.fbi_rgbmasks.red_size = 8;
+				fbi->fbi_subtype.fbi_rgbmasks.green_offset = 8;
+				fbi->fbi_subtype.fbi_rgbmasks.green_size = 8;
+				fbi->fbi_subtype.fbi_rgbmasks.blue_offset = 16;
+				fbi->fbi_subtype.fbi_rgbmasks.blue_size = 8;
+			} else {
+				fbi->fbi_subtype.fbi_rgbmasks.red_offset = 16;
+				fbi->fbi_subtype.fbi_rgbmasks.red_size = 8;
+				fbi->fbi_subtype.fbi_rgbmasks.green_offset = 8;
+				fbi->fbi_subtype.fbi_rgbmasks.green_size = 8;
+				fbi->fbi_subtype.fbi_rgbmasks.blue_offset = 0;
+				fbi->fbi_subtype.fbi_rgbmasks.blue_size = 8;
+			}
+			fbi->fbi_subtype.fbi_rgbmasks.alpha_offset = 0;
+			fbi->fbi_subtype.fbi_rgbmasks.alpha_size = 0;
+		} else if (info.depth <= 8) {
+			fbi->fbi_pixeltype = WSFB_CI;
+			fbi->fbi_subtype.fbi_cmapinfo.cmap_entries = info.cmsize;
+		}
+		fbi->fbi_flags = 0;
+		fbi->fbi_fbsize = info.width * lb;
+
 	}
 	/*
 	 * Allocate room for saving the colormap.
 	 */
-	if (fPtr->info.cmsize != 0) {
+	if (fPtr->fbi.fbi_pixeltype == WSFB_CI) {
 		fPtr->saved_cmap.red =
-		    (unsigned char *)xalloc(fPtr->info.cmsize);
+		    (unsigned char *)malloc(fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries);
 		if (fPtr->saved_cmap.red == NULL) {
 			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			    "Cannot malloc %d bytes\n", fPtr->info.cmsize);
+			    "Cannot malloc %d bytes\n",
+			    fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries);
 			return FALSE;
 		}
 		fPtr->saved_cmap.green =
-		    (unsigned char *)xalloc(fPtr->info.cmsize);
+		    (unsigned char *)malloc(fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries);
 		if (fPtr->saved_cmap.green == NULL) {
 			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			    "Cannot malloc %d bytes\n", fPtr->info.cmsize);
-			xfree(fPtr->saved_cmap.red);
+			    "Cannot malloc %d bytes\n",
+			    fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries);
+			free(fPtr->saved_cmap.red);
 			return FALSE;
 		}
 		fPtr->saved_cmap.blue =
-		    (unsigned char *)xalloc(fPtr->info.cmsize);
+		    (unsigned char *)malloc(fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries);
 		if (fPtr->saved_cmap.blue == NULL) {
 			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			    "Cannot malloc %d bytes\n", fPtr->info.cmsize);
-			xfree(fPtr->saved_cmap.red);
-			xfree(fPtr->saved_cmap.green);
+			    "Cannot malloc %d bytes\n",
+			    fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries);
+			free(fPtr->saved_cmap.red);
+			free(fPtr->saved_cmap.green);
 			return FALSE;
 		}
 	}
 
 	/* Handle depth */
-	default_depth = fPtr->info.depth <= 24 ? fPtr->info.depth : 24;
+	default_depth = fPtr->fbi.fbi_bitsperpixel <= 24 ? fPtr->fbi.fbi_bitsperpixel : 24;
 	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth,
-		fPtr->info.depth,
-		fPtr->info.depth >= 24 ? Support24bppFb|Support32bppFb : 0))
+		fPtr->fbi.fbi_bitsperpixel,
+		fPtr->fbi.fbi_bitsperpixel >= 24 ? Support24bppFb|Support32bppFb : 0))
 		return FALSE;
 
 	/* Check consistency. */
-	if (pScrn->bitsPerPixel != fPtr->info.depth) {
+	if (pScrn->bitsPerPixel != fPtr->fbi.fbi_bitsperpixel) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 		    "specified depth (%d) or bpp (%d) doesn't match "
-		    "framebuffer depth (%d)\n", pScrn->depth, 
-		    pScrn->bitsPerPixel, fPtr->info.depth);
+		    "framebuffer depth (%d)\n", pScrn->depth,
+		    pScrn->bitsPerPixel, fPtr->fbi.fbi_bitsperpixel);
 		return FALSE;
 	}
 	xf86PrintDepthBpp(pScrn);
@@ -508,18 +556,30 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 		pix24bpp = xf86GetBppFromDepth(pScrn, 24);
 
 	/* Color weight */
-	if (pScrn->depth > 8) {
+	if (fPtr->fbi.fbi_pixeltype == WSFB_RGB) {
 		rgb zeros = { 0, 0, 0 }, masks;
 
-		if (wstype == WSDISPLAY_TYPE_SUN24 ||
-		    wstype == WSDISPLAY_TYPE_SUNCG12 ||
-		    wstype == WSDISPLAY_TYPE_SUNCG14 ||
-		    wstype == WSDISPLAY_TYPE_SUNTCX ||
-		    wstype == WSDISPLAY_TYPE_SUNFFB ||
-		    wstype == WSDISPLAY_TYPE_XVR1000) {
-			masks.red = 0x0000ff;
-			masks.green = 0x00ff00;
-			masks.blue = 0xff0000;
+		if (fPtr->fbi.fbi_subtype.fbi_rgbmasks.red_size > 0) {
+			uint32_t msk;
+
+			msk = 0xffffffff;
+			msk = msk << fPtr->fbi.fbi_subtype.fbi_rgbmasks.red_size;
+			msk = ~msk;
+			masks.red = msk << fPtr->fbi.fbi_subtype.fbi_rgbmasks.red_offset; 
+
+			msk = 0xffffffff;
+			msk = msk << fPtr->fbi.fbi_subtype.fbi_rgbmasks.green_size;
+			msk = ~msk;
+			masks.green = msk << fPtr->fbi.fbi_subtype.fbi_rgbmasks.green_offset; 
+
+			msk = 0xffffffff;
+			msk = msk << fPtr->fbi.fbi_subtype.fbi_rgbmasks.blue_size;
+			msk = ~msk;
+			masks.blue = msk << fPtr->fbi.fbi_subtype.fbi_rgbmasks.blue_offset; 
+			xf86Msg(X_INFO, "masks generated: %08lx %08lx %08lx\n",
+			    (unsigned long)masks.red,
+			    (unsigned long)masks.green,
+			    (unsigned long)masks.blue);
 		} else {
 			masks.red = 0;
 			masks.green = 0;
@@ -548,24 +608,27 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 	pScrn->progClock = TRUE;
 	pScrn->rgbBits   = (pScrn->depth >= 8) ? 8 : pScrn->depth;
 	pScrn->chipset   = "wsfb";
-	pScrn->videoRam  = fPtr->linebytes * fPtr->info.height;
+	pScrn->videoRam  = fPtr->fbi.fbi_fbsize;
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Vidmem: %dk\n",
 		   pScrn->videoRam/1024);
 
 	/* Handle options. */
 	xf86CollectOptions(pScrn, NULL);
-	if (!(fPtr->Options = xalloc(sizeof(WsfbOptions))))
+	fPtr->Options = (OptionInfoRec *)malloc(sizeof(WsfbOptions));
+	if (fPtr->Options == NULL)
 		return FALSE;
 	memcpy(fPtr->Options, WsfbOptions, sizeof(WsfbOptions));
 	xf86ProcessOptions(pScrn->scrnIndex, fPtr->pEnt->device->options,
 			   fPtr->Options);
 
 	/* Use shadow framebuffer by default, on depth >= 8 */
-	if (pScrn->depth >= 8)
+	xf86Msg(X_INFO, "fbi_flags: %x\n", fPtr->fbi.fbi_flags);
+	if ((pScrn->depth >= 8) &&
+	   ((fPtr->fbi.fbi_flags & WSFB_VRAM_IS_RAM) == 0)) {
 		fPtr->shadowFB = xf86ReturnOptValBool(fPtr->Options,
 						      OPTION_SHADOW_FB, TRUE);
-	else
+	} else
 		if (xf86ReturnOptValBool(fPtr->Options,
 					 OPTION_SHADOW_FB, FALSE)) {
 			xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
@@ -604,21 +667,21 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 			    "Option \"Rotate\" ignored on depth < 8");
 		}
 	}
-	
+
 	/* Fake video mode struct. */
-	mode = (DisplayModePtr)xalloc(sizeof(DisplayModeRec));
+	mode = (DisplayModePtr)malloc(sizeof(DisplayModeRec));
 	mode->prev = mode;
 	mode->next = mode;
 	mode->name = "wsfb current mode";
 	mode->status = MODE_OK;
 	mode->type = M_T_BUILTIN;
 	mode->Clock = 0;
-	mode->HDisplay = fPtr->info.width;
+	mode->HDisplay = fPtr->fbi.fbi_width;
 	mode->HSyncStart = 0;
 	mode->HSyncEnd = 0;
 	mode->HTotal = 0;
 	mode->HSkew = 0;
-	mode->VDisplay = fPtr->info.height;
+	mode->VDisplay = fPtr->fbi.fbi_height;
 	mode->VSyncStart = 0;
 	mode->VSyncEnd = 0;
 	mode->VTotal = 0;
@@ -629,8 +692,8 @@ WsfbPreInit(ScrnInfoPtr pScrn, int flags)
 		   "Ignoring mode specification from screen section\n");
 	}
 	pScrn->currentMode = pScrn->modes = mode;
-	pScrn->virtualX = fPtr->info.width;
-	pScrn->virtualY = fPtr->info.height;
+	pScrn->virtualX = fPtr->fbi.fbi_width;
+	pScrn->virtualY = fPtr->fbi.fbi_height;
 	pScrn->displayWidth = pScrn->virtualX;
 
 	/* Set the display resolution. */
@@ -749,36 +812,39 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	       pScrn->mask.red,pScrn->mask.green,pScrn->mask.blue,
 	       pScrn->offset.red,pScrn->offset.green,pScrn->offset.blue);
 #endif
-	switch (fPtr->info.depth) {
+	switch (fPtr->fbi.fbi_bitsperpixel) {
 	case 1:
 	case 4:
 	case 8:
-		len = fPtr->linebytes*fPtr->info.height;
+		len = fPtr->fbi.fbi_stride * fPtr->fbi.fbi_height;
 		break;
 	case 16:
-		if (fPtr->linebytes == fPtr->info.width) {
-			len = fPtr->info.width*fPtr->info.height*sizeof(short);
+		if (fPtr->fbi.fbi_stride == fPtr->fbi.fbi_width) {
+			xf86Msg(X_ERROR, "Bogus stride == width in 16bit colour\n");
+			len = fPtr->fbi.fbi_width * fPtr->fbi.fbi_height * sizeof(short);
 		} else {
-			len = fPtr->linebytes*fPtr->info.height;
+			len = fPtr->fbi.fbi_stride * fPtr->fbi.fbi_height;
 		}
 		break;
 	case 24:
-		if (fPtr->linebytes == fPtr->info.width) {
-			len = fPtr->info.width*fPtr->info.height*3;
+		if (fPtr->fbi.fbi_stride == fPtr->fbi.fbi_width) {
+			xf86Msg(X_ERROR, "Bogus stride == width in 24bit colour\n");
+			len = fPtr->fbi.fbi_width * fPtr->fbi.fbi_height * 3;
 		} else {
-			len = fPtr->linebytes*fPtr->info.height;
+			len = fPtr->fbi.fbi_stride * fPtr->fbi.fbi_height;
 		}
 		break;
 	case 32:
-		if (fPtr->linebytes == fPtr->info.width) {
-			len = fPtr->info.width*fPtr->info.height*sizeof(int);
+		if (fPtr->fbi.fbi_stride == fPtr->fbi.fbi_width) {
+			xf86Msg(X_ERROR, "Bogus stride == width in 32bit colour\n");
+			len = fPtr->fbi.fbi_width * fPtr->fbi.fbi_height * sizeof(int);
 		} else {
-			len = fPtr->linebytes*fPtr->info.height;
+			len = fPtr->fbi.fbi_stride * fPtr->fbi.fbi_height;
 		}
 		break;
 	default:
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "unsupported depth %d\n", fPtr->info.depth);
+			   "unsupported depth %d\n", fPtr->fbi.fbi_bitsperpixel);
 		return FALSE;
 	}
 	/* Switch to graphics mode - required before mmap. */
@@ -822,7 +888,7 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	if (!miSetPixmapDepths())
 		return FALSE;
 
-	if (fPtr->rotate == WSFB_ROTATE_CW 
+	if (fPtr->rotate == WSFB_ROTATE_CW
 	    || fPtr->rotate == WSFB_ROTATE_CCW) {
 		int tmp = pScrn->virtualX;
 		pScrn->virtualX = pScrn->displayWidth = pScrn->virtualY;
@@ -847,9 +913,9 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 #endif
 
 	if (fPtr->shadowFB) {
-		fPtr->shadow = xcalloc(1, pScrn->virtualX * pScrn->virtualY *
-		    pScrn->bitsPerPixel);
-		
+		fPtr->shadow = calloc(1, pScrn->virtualX * pScrn->virtualY *
+		    pScrn->bitsPerPixel/8);
+
 		if (!fPtr->shadow) {
 			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 			    "Failed to allocate shadow framebuffer\n");
@@ -863,7 +929,7 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		    fPtr->fbstart,
 		    pScrn->virtualX, pScrn->virtualY,
 		    pScrn->xDpi, pScrn->yDpi,
-		    fPtr->linebytes * 8, pScrn->bitsPerPixel);
+		    fPtr->fbi.fbi_stride * 8, pScrn->bitsPerPixel);
 		break;
 	case 4:
 	case 8:
@@ -912,9 +978,9 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	}
 
 #ifdef XFreeXDGA
-	if (!fPtr->rotate) 
+	if (!fPtr->rotate)
 		WsfbDGAInit(pScrn, pScreen);
-	else 
+	else
 		xf86DrvMsg(scrnIndex, X_INFO, "Rotated display, "
 		    "disabling DGA\n");
 #endif
@@ -922,8 +988,8 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		xf86DrvMsg(scrnIndex, X_INFO, "Enabling Driver Rotation, "
 		    "disabling RandR\n");
 		xf86DisableRandR();
-		if (pScrn->bitsPerPixel == 24) 
-			xf86DrvMsg(scrnIndex, X_WARNING, 
+		if (pScrn->bitsPerPixel == 24)
+			xf86DrvMsg(scrnIndex, X_WARNING,
 			    "Rotation might be broken in 24 bpp\n");
 	}
 
@@ -949,10 +1015,16 @@ WsfbScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	if (!miCreateDefColormap(pScreen))
 		return FALSE;
 	flags = CMAP_RELOAD_ON_MODE_SWITCH;
-	ncolors = fPtr->info.cmsize;
+
+	ncolors = 0;
+	if (fPtr->fbi.fbi_pixeltype == WSFB_CI) {
+		ncolors = fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries;
+	}
+
 	/* On StaticGray visuals, fake a 256 entries colormap. */
 	if (ncolors == 0)
 		ncolors = 256;
+
 	if(!xf86HandleColormaps(pScreen, ncolors, 8, WsfbLoadPalette,
 				NULL, flags))
 		return FALSE;
@@ -989,7 +1061,8 @@ WsfbCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	TRACE_ENTER("WsfbCloseScreen");
 
 	pPixmap = pScreen->GetScreenPixmap(pScreen);
-	shadowRemove(pScreen, pPixmap);
+	if (fPtr->shadowFB)
+		shadowRemove(pScreen, pPixmap);
 
 	if (pScrn->vtSema) {
 		WsfbRestore(pScrn);
@@ -1002,7 +1075,7 @@ WsfbCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	}
 #ifdef XFreeXDGA
 	if (fPtr->pDGAMode) {
-		xfree(fPtr->pDGAMode);
+		free(fPtr->pDGAMode);
 		fPtr->pDGAMode = NULL;
 		fPtr->nDGAMode = 0;
 	}
@@ -1022,14 +1095,18 @@ WsfbWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
 	ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
 	WsfbPtr fPtr = WSFBPTR(pScrn);
 
-	if (fPtr->linebytes)
-		*size = fPtr->linebytes;
+	/*
+	 * XXX
+	 * This should never happen. Is it really necessary?
+	 */
+	if (fPtr->fbi.fbi_stride)
+		*size = fPtr->fbi.fbi_stride;
 	else {
 		if (ioctl(fPtr->fd, WSDISPLAYIO_LINEBYTES, size) == -1)
 			return NULL;
-		fPtr->linebytes = *size;
+		fPtr->fbi.fbi_stride = *size;
 	}
-	return ((CARD8 *)fPtr->fbmem + row *fPtr->linebytes + offset);
+	return ((CARD8 *)fPtr->fbmem + row * fPtr->fbi.fbi_stride + offset);
 }
 
 static void
@@ -1074,9 +1151,19 @@ static Bool
 WsfbEnterVT(int scrnIndex, int flags)
 {
 	ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+	WsfbPtr fPtr = WSFBPTR(pScrn);
+	int mode;
 
 	TRACE_ENTER("EnterVT");
 	pScrn->vtSema = TRUE;
+
+	/* Restore the graphics mode. */
+	mode = WSDISPLAYIO_MODE_DUMBFB;
+	if (ioctl(fPtr->fd, WSDISPLAYIO_SMODE, &mode) == -1) {
+		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+			   "error setting graphics mode %s\n", strerror(errno));
+	}
+
 	TRACE_EXIT("EnterVT");
 	return TRUE;
 }
@@ -1084,11 +1171,39 @@ WsfbEnterVT(int scrnIndex, int flags)
 static void
 WsfbLeaveVT(int scrnIndex, int flags)
 {
-#if DEBUG
 	ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
-#endif
+	WsfbPtr fPtr = WSFBPTR(pScrn);
+	int mode;
 
 	TRACE_ENTER("LeaveVT");
+
+	/*
+	 * stuff to do:
+	 * - turn off hw cursor
+	 * - restore colour map if WSFB_CI
+	 * - ioctl(WSDISPLAYIO_MODE_EMUL) to notify the kernel driver that
+	 *   we're backing off
+	 */
+
+	if (fPtr->fbi.fbi_pixeltype == WSFB_CI) {
+		/* reset colormap for text mode */
+		if (ioctl(fPtr->fd, WSDISPLAYIO_PUTCMAP,
+			  &(fPtr->saved_cmap)) == -1) {
+			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+				   "error restoring colormap %s\n",
+				   strerror(errno));
+		}
+	}
+
+	/* Restore the text mode. */
+	mode = WSDISPLAYIO_MODE_EMUL;
+	if (ioctl(fPtr->fd, WSDISPLAYIO_SMODE, &mode) == -1) {
+		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+			   "error setting text mode %s\n", strerror(errno));
+	}
+
+	pScrn->vtSema = FALSE;
+	TRACE_EXIT("LeaveVT");
 }
 
 static Bool
@@ -1200,11 +1315,12 @@ WsfbSave(ScrnInfoPtr pScrn)
 
 	TRACE_ENTER("WsfbSave");
 
-	if (fPtr->info.cmsize == 0)
+	/* nothing to save if we don't run in colour-indexed mode */
+	if (fPtr->fbi.fbi_pixeltype != WSFB_CI)
 		return;
 
 	fPtr->saved_cmap.index = 0;
-	fPtr->saved_cmap.count = fPtr->info.cmsize;
+	fPtr->saved_cmap.count = fPtr->fbi.fbi_subtype.fbi_cmapinfo.cmap_entries;
 	if (ioctl(fPtr->fd, WSDISPLAYIO_GETCMAP,
 		  &(fPtr->saved_cmap)) == -1) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -1222,7 +1338,7 @@ WsfbRestore(ScrnInfoPtr pScrn)
 
 	TRACE_ENTER("WsfbRestore");
 
-	if (fPtr->info.cmsize != 0) {
+	if (fPtr->fbi.fbi_pixeltype == WSFB_CI) {
 		/* reset colormap for text mode */
 		if (ioctl(fPtr->fd, WSDISPLAYIO_PUTCMAP,
 			  &(fPtr->saved_cmap)) == -1) {
@@ -1321,7 +1437,7 @@ WsfbDGAAddModes(ScrnInfoPtr pScrn)
 	DGAModePtr pDGAMode;
 
 	do {
-		pDGAMode = xrealloc(fPtr->pDGAMode,
+		pDGAMode = realloc(fPtr->pDGAMode,
 				    (fPtr->nDGAMode + 1) * sizeof(DGAModeRec));
 		if (!pDGAMode)
 			break;
@@ -1346,12 +1462,12 @@ WsfbDGAAddModes(ScrnInfoPtr pScrn)
 		pDGAMode->viewportWidth = pMode->HDisplay;
 		pDGAMode->viewportHeight = pMode->VDisplay;
 
-		if (fPtr->linebytes)
-			pDGAMode->bytesPerScanline = fPtr->linebytes;
+		if (fPtr->fbi.fbi_stride)
+			pDGAMode->bytesPerScanline = fPtr->fbi.fbi_stride;
 		else {
 			ioctl(fPtr->fd, WSDISPLAYIO_LINEBYTES,
-			      &fPtr->linebytes);
-			pDGAMode->bytesPerScanline = fPtr->linebytes;
+			      &fPtr->fbi.fbi_stride);
+			pDGAMode->bytesPerScanline = fPtr->fbi.fbi_stride;
 		}
 
 		pDGAMode->imageWidth = pMode->HDisplay;
@@ -1390,7 +1506,7 @@ WsfbDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
     pointer ptr)
 {
 	xorgHWFlags *flag;
-	
+
 	switch (op) {
 	case GET_REQUIRED_HW_INTERFACES:
 		flag = (CARD32*)ptr;

@@ -49,6 +49,9 @@ from The Open Group.
  * By Stephen Gildea, X Consortium, and Martha Zimet, NCD.
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <stdio.h>
 #include <assert.h>
 #include <X11/Xlibint.h>
@@ -56,10 +59,22 @@ from The Open Group.
 #include <X11/extensions/extutil.h>
 #include <X11/extensions/recordproto.h>
 #include <X11/extensions/record.h>
+#include <limits.h>
+
+#ifndef HAVE__XEATDATAWORDS
+static inline void _XEatDataWords(Display *dpy, unsigned long n)
+{
+# ifndef LONG64
+    if (n >= (ULONG_MAX >> 2))
+        _XIOError(dpy);
+# endif
+    _XEatData (dpy, n << 2);
+}
+#endif
 
 static XExtensionInfo _xrecord_info_data;
 static XExtensionInfo *xrecord_info = &_xrecord_info_data;
-static /* const */ char *xrecord_extension_name = RECORD_NAME;
+static const char *xrecord_extension_name = RECORD_NAME;
 
 #define XRecordCheckExtension(dpy,i,val) \
     XextCheckExtension(dpy, i, xrecord_extension_name, val)
@@ -160,7 +175,7 @@ static int close_display(
 static XPointer alloc_mem_cache(void)
 {
     struct mem_cache_str *cache;
-    
+
     /* note that an error will go unnoticed */
     cache = (struct mem_cache_str *) Xmalloc(sizeof(struct mem_cache_str));
     if (cache) {
@@ -234,7 +249,7 @@ SendRange(
        xrange.errorsLast = (*range_item)->errors.last;
        xrange.clientStarted = (*range_item)->client_started;
        xrange.clientDied = (*range_item)->client_died;
- 
+
        Data(dpy, (char *)&xrange, rlen);
        range_item++;
     }
@@ -405,11 +420,9 @@ XRecordGetContext(Display *dpy, XRecordContext context,
     XExtDisplayInfo 	*info = find_display (dpy);
     register 		xRecordGetContextReq   	*req;
     xRecordGetContextReply 	rep;
-    int			count, i, rn;
+    unsigned int	count, i, rn;
     xRecordRange   	xrange;
-    XRecordRange	*ranges = NULL;
     xRecordClientInfo   xclient_inf;
-    XRecordClientInfo	**client_inf, *client_inf_str = NULL;
     XRecordState	*ret;
 
     XRecordCheckExtension (dpy, info, 0);
@@ -427,7 +440,7 @@ XRecordGetContext(Display *dpy, XRecordContext context,
 
     ret = (XRecordState*)Xmalloc(sizeof(XRecordState));
     if (!ret) {
-	/* XXX - eat data */
+	_XEatDataWords (dpy, rep.length);
 	UnlockDisplay(dpy);
 	SyncHandle();
 	return 0;
@@ -439,18 +452,19 @@ XRecordGetContext(Display *dpy, XRecordContext context,
 
     if (count)
     {
-     	client_inf = (XRecordClientInfo **) Xcalloc(count, sizeof(XRecordClientInfo*));
-	ret->client_info = client_inf;
-	if (client_inf != NULL) {
-	    client_inf_str = (XRecordClientInfo *) Xmalloc(count*sizeof(XRecordClientInfo));
+	XRecordClientInfo	**client_inf = NULL;
+	XRecordClientInfo	*client_inf_str = NULL;
+
+	if (count < (INT_MAX / sizeof(XRecordClientInfo))) {
+	    client_inf = Xcalloc(count, sizeof(XRecordClientInfo *));
+	    if (client_inf != NULL)
+		client_inf_str = Xmalloc(count * sizeof(XRecordClientInfo));
 	}
+	ret->client_info = client_inf;
         if (!client_inf || !client_inf_str)
         {
-           for(i = 0; i < count; i++)
-           {
-	        _XEatData (dpy, sizeof(xRecordClientInfo));
-                _XEatData (dpy, SIZEOF(xRecordRange)); /* XXX - don't know how many */
-           }
+	   free(client_inf);
+	   _XEatDataWords (dpy, rep.length);
 	   UnlockDisplay(dpy);
 	   XRecordFreeState(ret);
 	   SyncHandle();
@@ -465,11 +479,18 @@ XRecordGetContext(Display *dpy, XRecordContext context,
 
 	    if (xclient_inf.nRanges)
 	    {
-		client_inf_str[i].ranges = (XRecordRange**) Xcalloc(xclient_inf.nRanges, sizeof(XRecordRange*));
-		if (client_inf_str[i].ranges != NULL) {
-		    ranges = (XRecordRange*)
-			Xmalloc(xclient_inf.nRanges * sizeof(XRecordRange));
+		XRecordRange	*ranges = NULL;
+
+		if (xclient_inf.nRanges < (INT_MAX / sizeof(XRecordRange))) {
+		    client_inf_str[i].ranges =
+			Xcalloc(xclient_inf.nRanges, sizeof(XRecordRange *));
+		    if (client_inf_str[i].ranges != NULL)
+			ranges =
+			    Xmalloc(xclient_inf.nRanges * sizeof(XRecordRange));
 		}
+		else
+		    client_inf_str[i].ranges = NULL;
+
 		if (!client_inf_str[i].ranges || !ranges) {
 		    /* XXX eat data */
 		    UnlockDisplay(dpy);
@@ -727,7 +748,7 @@ parse_reply_call_callback(
 	data = alloc_inter_data(info);
 	if (!data)
 	    return Error;
-	
+
 	data->id_base = rep->idBase;
 	data->category = rep->category;
 	data->client_swapped = rep->clientSwapped;
@@ -795,7 +816,7 @@ parse_reply_call_callback(
 	case XRecordEndOfData:
 	    datum_bytes = 0;
 	}
-	
+
 	if (datum_bytes > 0) {
 	    if (current_index + datum_bytes > rep->length << 2)
 		fprintf(stderr,
@@ -805,7 +826,7 @@ parse_reply_call_callback(
 	    /*
 	     * This assignment (and indeed the whole buffer sharing
 	     * scheme) assumes arbitrary 4-byte boundaries are
-	     * addressable. 
+	     * addressable.
 	     */
 	    data->data = reply->buf+current_index;
 	    reply->ref_count++;
@@ -813,9 +834,9 @@ parse_reply_call_callback(
 	    data->data = NULL;
 	}
 	data->data_len = datum_bytes >> 2;
-	
+
 	(*callback)(closure, data);
-	
+
 	current_index += datum_bytes;
     } while (current_index<rep->length<<2);
 
@@ -931,7 +952,7 @@ record_async_handler(
 	    Xfree(state->async);
 	    return False;
 	}
-	
+
 	_XGetAsyncData(dpy, (char *)reply->buf, buf, len,
 		       SIZEOF(xRecordEnableContextReply),
 		       rep->generic.length << 2, 0);
@@ -939,8 +960,8 @@ record_async_handler(
 	reply = NULL;
     }
 
-    status = parse_reply_call_callback(dpy, state->info, 
-				       (xRecordEnableContextReply*) rep, 
+    status = parse_reply_call_callback(dpy, state->info,
+				       (xRecordEnableContextReply*) rep,
 				       reply, state->callback, state->closure);
 
     if (status != Continue)

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2000, Compaq Computer Corporation, 
+ * Copyright © 2000, Compaq Computer Corporation,
  * Copyright © 2002, Hewlett Packard, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
@@ -16,7 +16,7 @@
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL HP
  * BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  * Author:  Jim Gettys, HP Labs, Hewlett-Packard, Inc.
@@ -42,8 +42,21 @@ extern char XRRExtensionName[];
 
 XExtDisplayInfo *XRRFindDisplay (Display *dpy);
 
+#ifndef HAVE__XEATDATAWORDS
+#include <X11/Xmd.h>  /* for LONG64 on 64-bit platforms */
+#include <limits.h>
 
-/* deliberately opaque internal data structure; can be extended, 
+static inline void _XEatDataWords(Display *dpy, unsigned long n)
+{
+# ifndef LONG64
+    if (n >= (ULONG_MAX >> 2))
+        _XIOError(dpy);
+# endif
+    _XEatData (dpy, n << 2);
+}
+#endif
+
+/* deliberately opaque internal data structure; can be extended,
    but not reordered */
 struct _XRRScreenConfiguration {
   Screen *screen;	/* the root window in GetScreenInfo */
@@ -69,7 +82,7 @@ struct _XRRScreenConfiguration {
  * when next used.  Returns invalid status if not an event type
  * the library routine understand.
  */
- 
+
 /* we cache one screen configuration/screen */
 
 typedef struct _XRandRInfo {

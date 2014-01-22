@@ -21,7 +21,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/* $NetBSD: tcx_accel.c,v 1.5 2009/11/25 05:24:44 macallan Exp $ */
+/* $NetBSD: tcx_accel.c,v 1.7 2013/06/04 22:58:31 mrg Exp $ */
 
 #include <sys/types.h>
 

@@ -136,7 +136,7 @@ static Bool G80ReadPortMapping(int scrnIndex, G80Ptr pNv)
                                "VGA%d: unrecognized port %d\n", or, port);
                     break;
                 }
-                if(pNv->i2cMap[port].dac != -1) {
+                if(pNv->i2cMap[port].dac != (ORNum)-1) {
                     xf86DrvMsg(scrnIndex, X_WARNING,
                                "DDC routing table corrupt!  DAC %i -> %i for "
                                "port %i\n", or, pNv->i2cMap[port].dac, port);
@@ -167,7 +167,7 @@ static Bool G80ReadPortMapping(int scrnIndex, G80Ptr pNv)
                                "DVI%d: unrecognized port %d\n", or, port);
                     break;
                 }
-                if(pNv->i2cMap[port].sor != -1)
+                if(pNv->i2cMap[port].sor != (ORNum)-1)
                     xf86DrvMsg(scrnIndex, X_WARNING,
                                "DDC routing table corrupt!  SOR %i -> %i for "
                                "port %i\n", or, pNv->i2cMap[port].sor, port);
@@ -226,9 +226,9 @@ static Bool G80ReadPortMapping(int scrnIndex, G80Ptr pNv)
             xf86DrvMsg(scrnIndex, X_PROBED, "  [N/A] -> SOR%i (LVDS)\n", pNv->lvds.or);
     }
     for(i = 0; i < G80_NUM_I2C_PORTS; i++) {
-        if(pNv->i2cMap[i].dac != -1)
+        if(pNv->i2cMap[i].dac != (ORNum)-1)
             xf86DrvMsg(scrnIndex, X_PROBED, "  Bus %i -> DAC%i\n", i, pNv->i2cMap[i].dac);
-        if(pNv->i2cMap[i].sor != -1)
+        if(pNv->i2cMap[i].sor != (ORNum)-1)
             xf86DrvMsg(scrnIndex, X_PROBED, "  Bus %i -> SOR%i\n", i, pNv->i2cMap[i].sor);
     }
 
@@ -254,13 +254,21 @@ static CARD32 i2cAddr(const int port)
 
 static void G80_I2CPutBits(I2CBusPtr b, int clock, int data)
 {
+#ifdef XF86_SCRN_INTERFACE
+    G80Ptr pNv = G80PTR(b->pScrn);
+#else
     G80Ptr pNv = G80PTR(xf86Screens[b->scrnIndex]);
+#endif
     pNv->reg[i2cAddr(b->DriverPrivate.val)/4] = 4 | clock | data << 1;
 }
 
 static void G80_I2CGetBits(I2CBusPtr b, int *clock, int *data)
 {
+#ifdef XF86_SCRN_INTERFACE
+    G80Ptr pNv = G80PTR(b->pScrn);
+#else
     G80Ptr pNv = G80PTR(xf86Screens[b->scrnIndex]);
+#endif
     unsigned char val;
 
     val = pNv->reg[i2cAddr(b->DriverPrivate.val)/4];
@@ -279,6 +287,9 @@ G80I2CInit(ScrnInfoPtr pScrn, const char *name, const int port)
 
     i2c->BusName = strdup(name);
     i2c->scrnIndex = pScrn->scrnIndex;
+#ifdef XF86_SCRN_INTERFACE
+    i2c->pScrn = pScrn;
+#endif
     i2c->I2CPutBits = G80_I2CPutBits;
     i2c->I2CGetBits = G80_I2CGetBits;
     i2c->ByteTimeout = 2200; /* VESA DDC spec 3 p. 43 (+10 %) */
@@ -339,9 +350,9 @@ ProbeDDC(I2CBusPtr i2c)
     pNv->reg[addr/4] = 7;
     /* Should probably use xf86OutputGetEDID here */
 #ifdef EDID_COMPLETE_RAWDATA
-    monInfo = xf86DoEEDID(pScrn->scrnIndex, i2c, TRUE);
+    monInfo = xf86DoEEDID(XF86_SCRN_ARG(pScrn), i2c, TRUE);
 #else
-    monInfo = xf86DoEDID_DDC2(pScrn->scrnIndex, i2c);
+    monInfo = xf86DoEDID_DDC2(XF86_SCRN_ARG(pScrn), i2c);
 #endif
     pNv->reg[addr/4] = 3;
 
@@ -445,7 +456,7 @@ G80CreateOutputs(ScrnInfoPtr pScrn)
         I2CBusPtr i2c;
         char i2cName[16];
 
-        if(pNv->i2cMap[i].dac == -1 && pNv->i2cMap[i].sor == -1)
+        if(pNv->i2cMap[i].dac == (ORNum)-1 && pNv->i2cMap[i].sor == (ORNum)-1)
             /* No outputs on this port */
             continue;
 
@@ -458,9 +469,9 @@ G80CreateOutputs(ScrnInfoPtr pScrn)
             continue;
         }
 
-        if(pNv->i2cMap[i].dac != -1)
+        if(pNv->i2cMap[i].dac != (ORNum)-1)
             dac = G80CreateDac(pScrn, pNv->i2cMap[i].dac);
-        if(pNv->i2cMap[i].sor != -1)
+        if(pNv->i2cMap[i].sor != (ORNum)-1)
             sor = G80CreateSor(pScrn, pNv->i2cMap[i].sor, TMDS);
 
         if(dac) {
