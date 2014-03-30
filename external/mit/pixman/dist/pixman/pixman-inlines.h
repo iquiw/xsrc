@@ -124,7 +124,7 @@ bilinear_interpolation (uint32_t tl, uint32_t tr,
 }
 
 #else
-#if SIZEOF_LONG > 4
+#ifdef _LP64
 
 static force_inline uint32_t
 bilinear_interpolation (uint32_t tl, uint32_t tr,

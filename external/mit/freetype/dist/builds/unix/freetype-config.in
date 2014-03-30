@@ -142,6 +142,10 @@ if test "$echo_cflags" = "yes" ; then
 fi
 
 if test "$echo_libs" = "yes" ; then
+  rpath=
+  if test "$enable_shared" = "yes" ; then
+    eval "rpath=\"$hardcode_libdir_flag_spec\""
+  fi
   libs="%LIBS_CONFIG%"
   staticlibs="%LIBSSTATIC_CONFIG%"
   if test "$show_static" = "yes" ; then
@@ -149,9 +153,9 @@ if test "$echo_libs" = "yes" ; then
   fi
   if test "${SYSROOT}$libdir" != "/usr/lib"  &&
      test "${SYSROOT}$libdir" != "/usr/lib64"; then
-    echo -L${SYSROOT}$libdir $libs
+    echo -L${SYSROOT}$libdir $libs $rpath
   else
-    echo $libs
+    echo $libs $rpath
   fi
 fi
 

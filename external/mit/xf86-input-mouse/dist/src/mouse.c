@@ -67,6 +67,12 @@
 #include "xserver-properties.h"
 #include "xf86-mouse-properties.h"
 
+#ifdef __NetBSD__
+#include <time.h>
+#include <dev/wscons/wsconsio.h>
+#include <sys/ioctl.h>
+#endif
+
 #include "compiler.h"
 
 #include "xisb.h"
@@ -1729,57 +1735,63 @@ MouseProc(DeviceIntPtr device, int what)
         break;
 
     case DEVICE_ON:
-        pInfo->fd = xf86OpenSerial(pInfo->options);
-        if (pInfo->fd == -1)
-            xf86Msg(X_WARNING, "%s: cannot open input device\n", pInfo->name);
-        else {
-            if (pMse->xisbscale)
-                pMse->buffer = XisbNew(pInfo->fd, pMse->xisbscale * 4);
-            else
-                pMse->buffer = XisbNew(pInfo->fd, 64);
-            if (!pMse->buffer) {
-                xf86CloseSerial(pInfo->fd);
-                pInfo->fd = -1;
-            } else {
-                if (!SetupMouse(pInfo)) {
-                    xf86CloseSerial(pInfo->fd);
-                    pInfo->fd = -1;
-                    XisbFree(pMse->buffer);
-                    pMse->buffer = NULL;
-                } else {
-                    mPriv = (mousePrivPtr)pMse->mousePriv;
-                    if (mPriv != NULL) {
-                        if ( pMse->protocolID != PROT_AUTO) {
-                            pMse->inSync = TRUE; /* @@@ */
-                            if (mPriv->soft)
-                                mPriv->autoState = AUTOPROBE_GOOD;
-                            else
-                                mPriv->autoState = AUTOPROBE_H_GOOD;
-                        } else {
-                            if (mPriv->soft)
-                                mPriv->autoState = AUTOPROBE_NOPROTO;
-                            else
-                                mPriv->autoState = AUTOPROBE_H_NOPROTO;
-                        }
-                    }
-                    xf86FlushInput(pInfo->fd);
-                    xf86AddEnabledDevice(pInfo);
-                    if (pMse->emulate3Buttons || pMse->emulate3ButtonsSoft) {
-                        RegisterBlockAndWakeupHandlers (MouseBlockHandler,
-                                                        MouseWakeupHandler,
-                                                        (pointer) pInfo);
-                    }
-                }
-            }
-        }
-        pMse->lastButtons = 0;
-        pMse->lastMappedButtons = 0;
-        pMse->emulateState = 0;
-        pMse->emulate3Pending = FALSE;
-        pMse->wheelButtonExpires = GetTimeInMillis ();
-        device->public.on = TRUE;
-        FlushButtons(pMse);
-        break;
+	    
+	pInfo->fd = xf86OpenSerial(pInfo->options);
+	if (pInfo->fd == -1)
+	    xf86Msg(X_WARNING, "%s: cannot open input device\n", pInfo->name);
+	else {
+#if defined(__NetBSD__) && defined(WSCONS_SUPPORT) && defined(WSMOUSEIO_SETVERSION)
+	     int version = WSMOUSE_EVENT_VERSION;
+	     if (ioctl(pInfo->fd, WSMOUSEIO_SETVERSION, &version) == -1)
+	         xf86Msg(X_WARNING, "%s: cannot set version\n", pInfo->name);
+#endif
+	    if (pMse->xisbscale)
+		pMse->buffer = XisbNew(pInfo->fd, pMse->xisbscale * 4);
+	    else
+		pMse->buffer = XisbNew(pInfo->fd, 64);
+	    if (!pMse->buffer) {
+		xf86CloseSerial(pInfo->fd);
+		pInfo->fd = -1;
+	    } else {
+		if (!SetupMouse(pInfo)) {
+		    xf86CloseSerial(pInfo->fd);
+		    pInfo->fd = -1;
+		    XisbFree(pMse->buffer);
+		    pMse->buffer = NULL;
+		} else {
+		    mPriv = (mousePrivPtr)pMse->mousePriv;
+		    if (mPriv != NULL) {
+			if ( pMse->protocolID != PROT_AUTO) {
+			    pMse->inSync = TRUE; /* @@@ */
+			    if (mPriv->soft)
+				mPriv->autoState = AUTOPROBE_GOOD;
+			    else
+				mPriv->autoState = AUTOPROBE_H_GOOD;
+			} else {
+			    if (mPriv->soft)
+				mPriv->autoState = AUTOPROBE_NOPROTO;
+			    else
+				mPriv->autoState = AUTOPROBE_H_NOPROTO;
+			}
+		    }
+		    xf86FlushInput(pInfo->fd);
+		    xf86AddEnabledDevice(pInfo);
+		    if (pMse->emulate3Buttons || pMse->emulate3ButtonsSoft) {
+			RegisterBlockAndWakeupHandlers (MouseBlockHandler,
+							MouseWakeupHandler,
+							(pointer) pInfo);
+		    }
+		}
+	    }
+	}
+	pMse->lastButtons = 0;
+	pMse->lastMappedButtons = 0;
+	pMse->emulateState = 0;
+	pMse->emulate3Pending = FALSE;
+	pMse->wheelButtonExpires = GetTimeInMillis ();
+	device->public.on = TRUE;
+	FlushButtons(pMse);
+	break;
 
     case DEVICE_OFF:
         if (pInfo->fd != -1) {
@@ -2045,6 +2057,22 @@ Emulate3ButtonsSoft(InputInfoPtr pInfo)
 
     if (!pMse->emulate3ButtonsSoft)
         return TRUE;
+
+#if defined(__NetBSD__) && defined(WSCONS_SUPPORT)
+   /*
+    * XXXX - check for pMse->protocolID being wsmouse? Why doesn't it
+    * have it's own ID?
+    * On NetBSD a wsmouse is a multiplexed device. Imagine a notebook
+    * with two-button mousepad, and an external USB mouse plugged in
+    * temporarily. After using button 3 on the external mouse and
+    * unplugging it again, the mousepad will still need to emulate
+    * 3 buttons.
+    */
+   return TRUE;
+#endif
+    
+    if (pMse->emulate3Pending)
+	buttonTimer(pInfo);
 
     LogMessageVerbSigSafe(X_INFO, 4, "mouse: 3rd Button detected: disabling emulate3Button\n");
 

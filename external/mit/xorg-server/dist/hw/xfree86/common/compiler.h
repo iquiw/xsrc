@@ -469,7 +469,7 @@ inl(unsigned short port)
    return ret;
 }
 
-#   elif (defined(linux) || defined(sun) || defined(__OpenBSD__) || defined(__FreeBSD__)) && defined(__sparc__)
+#   elif (defined(linux) || defined(sun) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__FreeBSD__)) && defined(__sparc__)
 
 #     ifndef ASI_PL
 #      define ASI_PL 0x88
@@ -707,7 +707,7 @@ xf86WriteMmio32LeNB(__volatile__ void *base, const unsigned long offset,
 			     : "r" (val), "r" (addr), "i" (ASI_PL));
 }
 
-#   elif defined(__mips__) || (defined(__arm32__) && !defined(__linux__))
+#   elif defined(__mips__) || ((defined(__arm32__) || defined(__arm__)) && !defined(__linux__))
 #    ifdef __arm32__
 #     define PORT_SIZE long
 #    else
@@ -1370,7 +1370,7 @@ static __inline__ void stl_u(unsigned long val, unsigned int *p)
 #   else /* ix86 */
 
 #    if !defined(__SUNPRO_C)
-#    if !defined(FAKEIT) && !defined(__mc68000__) && !defined(__arm__) && !defined(__sh__) && !defined(__hppa__) && !defined(__s390__) && !defined(__m32r__)
+#    if !defined(FAKEIT) && !defined(__mc68000__) && !defined(__arm__) && !defined(__sh__) && !defined(__hppa__) && !defined(__s390__) && !defined(__m32r__) && !defined(__vax__)
 #     ifdef GCCUSESGAS
 
 /*
@@ -1479,7 +1479,7 @@ inl(unsigned short port)
 
 #     endif /* GCCUSESGAS */
 
-#    else /* !defined(FAKEIT) && !defined(__mc68000__)  && !defined(__arm__) && !defined(__sh__) && !defined(__hppa__) && !defined(__m32r__) */
+#    else /* !defined(FAKEIT) && !defined(__mc68000__)  && !defined(__arm__) && !defined(__sh__) && !defined(__hppa__) && !defined(__m32r__) && !defined(__vax__) */
 
 static __inline__ void
 outb(unsigned short port, unsigned char val)
@@ -1525,11 +1525,11 @@ inl(unsigned short port)
 #      define asm __asm
 #     endif
 #    endif
-#     if !defined(__SUNPRO_C)
+#     if !defined(__SUNPRO_C) && !defined(__lint__)
 #      include <sys/inline.h>
 #     endif
 #    if !defined(__HIGHC__) && !defined(__SUNPRO_C) || \
-	defined(__USLC__)
+	defined(__USLC__) && !defined(__lint__)
 #     pragma asm partial_optimization outl
 #     pragma asm partial_optimization outw
 #     pragma asm partial_optimization outb

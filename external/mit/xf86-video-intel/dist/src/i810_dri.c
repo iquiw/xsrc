@@ -272,6 +272,7 @@ I810InitVisualConfigs(ScreenPtr pScreen)
    pI810->pVisualConfigs = pConfigs;
    pI810->pVisualConfigsPriv = pI810Configs;
    GlxSetVisualConfigs(numConfigs, pConfigs, (void **)pI810ConfigPtrs);
+   xfree(pI810ConfigPtrs);
    return TRUE;
 }
 
@@ -1117,7 +1118,7 @@ I810DRIFinishScreenInit(ScreenPtr pScreen)
    ScrnInfoPtr        pScrn = xf86Screens[pScreen->myNum];
    I810Ptr info  = I810PTR(pScrn);
 
-   memset(sPriv, 0, sizeof(sPriv));
+   memset(sPriv, 0, sizeof(*sPriv));
 
    /* Have shadow run only while there is 3d active.
     */
@@ -1244,10 +1245,17 @@ I810DRIMoveBuffers(WindowPtr pParent, DDXPointRec ptOldOrg,
 	    while ((pboxNext >= pbox) && (pboxBase->y1 == pboxNext->y1))
 	       pboxNext--;
 	    pboxTmp = pboxNext + 1;
-	    pptTmp = pptSrc + (pboxTmp - pbox);
-	    while (pboxTmp <= pboxBase) {
-	       *pboxNew1++ = *pboxTmp++;
-	       *pptNew1++ = *pptTmp++;
+	    if (pptSrc == &ptOldOrg) {
+		if (pboxTmp <= pboxBase) {
+	          *pboxNew1++ = *pboxTmp;
+	          *pptNew1++ = *pptSrc;
+		}
+	    } else {
+	       pptTmp = pptSrc + (pboxTmp - pbox);
+	       while (pboxTmp <= pboxBase) {
+	          *pboxNew1++ = *pboxTmp++;
+	          *pptNew1++ = *pptTmp++;
+	       }
 	    }
 	    pboxBase = pboxNext;
 	 }

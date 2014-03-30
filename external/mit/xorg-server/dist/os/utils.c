@@ -521,6 +521,7 @@ void UseMsg(void)
     ErrorF("r                      turns on auto-repeat \n");
     ErrorF("-render [default|mono|gray|color] set render color alloc policy\n");
     ErrorF("-retro                 start with classic stipple and cursor\n");
+    ErrorF("-noretro               start with black background and no cursor\n");
     ErrorF("-s #                   screen-saver timeout (minutes)\n");
     ErrorF("-t #                   default pointer threshold (pixels/t)\n");
     ErrorF("-terminate             terminate at server reset\n");
@@ -805,6 +806,8 @@ ProcessCommandLine(int argc, char *argv[])
 	    defaultKeyboardControl.autoRepeat = FALSE;
 	else if ( strcmp( argv[i], "-retro") == 0)
 	    party_like_its_1989 = TRUE;
+	else if ( strcmp( argv[i], "-noretro") == 0)
+	    party_like_its_1989 = FALSE;
 	else if ( strcmp( argv[i], "-s") == 0)
 	{
 	    if(++i < argc)

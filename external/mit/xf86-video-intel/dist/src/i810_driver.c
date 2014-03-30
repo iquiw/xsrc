@@ -69,8 +69,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "xf86.h"
 #include "xf86_OSproc.h"
-#include "xf86Resources.h"
-#include "xf86RAC.h"
 #include "xf86cmap.h"
 #include "compiler.h"
 #include "mibstore.h"
@@ -89,6 +87,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifdef XF86DRI
 #include "dri.h"
+#endif
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
 #endif
 
 /* Required Functions: */
@@ -878,9 +881,11 @@ I810PreInit(ScrnInfoPtr pScrn, int flags)
 			  pI810->PciInfo->func);
 #endif
 
+#if 0
    if (xf86RegisterResources(pI810->pEnt->index, NULL, ResNone))
       return FALSE;
    pScrn->racMemFlags = RAC_FB | RAC_COLORMAP;
+#endif
 
    /* Set pScrn->monitor */
    pScrn->monitor = pScrn->confScreen->monitor;
@@ -1320,8 +1325,10 @@ I810PreInit(ScrnInfoPtr pScrn, int flags)
 
    /*  We won't be using the VGA access after the probe */
    I810SetMMIOAccess(pI810);
+#if 0
    xf86SetOperatingState(resVgaIo, pI810->pEnt->index, ResUnusedOpr);
    xf86SetOperatingState(resVgaMem, pI810->pEnt->index, ResDisableOpr);
+#endif
 
    return TRUE;
 }

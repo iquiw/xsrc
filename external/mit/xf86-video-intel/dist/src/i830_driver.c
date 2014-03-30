@@ -175,8 +175,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "xf86.h"
 #include "xf86_OSproc.h"
-#include "xf86Resources.h"
-#include "xf86RAC.h"
 #include "xf86Priv.h"
 #include "xf86cmap.h"
 #include "compiler.h"
@@ -216,6 +214,11 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <xf86drmMode.h>
 #endif
 
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#else
+
 #ifdef I830_USE_EXA
 const char *I830exaSymbols[] = {
     "exaGetVersion",
@@ -226,6 +229,7 @@ const char *I830exaSymbols[] = {
     "exaWaitSync",
     NULL
 };
+#endif
 #endif
 
 #define BIT(x) (1 << (x))
@@ -1854,12 +1858,14 @@ I830PreInit(ScrnInfoPtr pScrn, int flags)
 			  pI830->PciInfo->func);
 #endif
 
+#if 0
    if (xf86RegisterResources(pI830->pEnt->index, NULL, ResNone)) {
       PreInitCleanup(pScrn);
       return FALSE;
    }
 
    pScrn->racMemFlags = RAC_FB | RAC_COLORMAP;
+#endif
    pScrn->monitor = pScrn->confScreen->monitor;
    pScrn->progClock = TRUE;
    pScrn->rgbBits = 8;
@@ -1988,8 +1994,10 @@ I830PreInit(ScrnInfoPtr pScrn, int flags)
 
        /*  We won't be using the VGA access after the probe. */
        I830SetMMIOAccess(pI830);
+#if 0
        xf86SetOperatingState(resVgaIo, pI830->pEnt->index, ResUnusedOpr);
        xf86SetOperatingState(resVgaMem, pI830->pEnt->index, ResDisableOpr);
+#endif
    }
 
 #if defined(XF86DRI)

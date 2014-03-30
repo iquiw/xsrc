@@ -23,6 +23,8 @@
  */
 
 #include "fcint.h"
+#include <float.h>
+
 
 static double
 FcCompareNumber (FcValue *value1, FcValue *value2)
@@ -334,9 +336,9 @@ FcCompareValueList (FcObject	     object,
 	return FcTrue;
     }
 
-    best = 1e99;
-    bestStrong = 1e99;
-    bestWeak = 1e99;
+    best = DBL_MAX;
+    bestStrong = DBL_MAX;
+    bestWeak = DBL_MAX;
     j = 1;
     for (v1 = v1orig; v1; v1 = FcValueListNext(v1))
     {

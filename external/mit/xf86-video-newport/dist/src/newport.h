@@ -23,7 +23,9 @@
 #include "xf86.h"
 #include "xf86_OSproc.h"
 #include "compiler.h"
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 6
 #include "xf86Resources.h"
+#endif
 
 #include "xf86cmap.h"
 
@@ -35,6 +37,7 @@
 /* register definitions of the Newport card */
 #include "newport_regs.h"
 
+#define NEWPORT_REGISTERS   0xf0000
 #define NEWPORT_BASE_ADDR0  0x1f0f0000
 #define NEWPORT_BASE_OFFSET 0x00400000
 #define NEWPORT_MAX_BOARDS 4

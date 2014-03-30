@@ -163,8 +163,11 @@ FcDirChecksumScandirFilter(const struct dirent *entry)
 
 #ifdef HAVE_SCANDIR
 static int
-FcDirChecksumScandirSorter(const struct dirent **lhs, const struct dirent **rhs)
+FcDirChecksumScandirSorter(const void *arg1, const void *arg2)
 {
+    const struct dirent * const *lhs = arg1;
+    const struct dirent * const *rhs = arg2;
+
     return strcmp((*lhs)->d_name, (*rhs)->d_name);
 }
 #elif HAVE_SCANDIR_VOID_P

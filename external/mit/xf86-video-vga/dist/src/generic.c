@@ -50,9 +50,6 @@
 
 #include "fb.h"
 
-#include "xf4bpp.h"
-#include "xf1bpp.h"
-
 #include "shadowfb.h"
 
 #include "mipointer.h"
@@ -61,6 +58,11 @@
 #include "xf86RAC.h"
 #include "xf86Resources.h"
 #include "xf86int10.h"
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#endif
 
 /* Some systems #define VGA for their own purposes */
 #undef VGA
@@ -242,11 +244,13 @@ static PciChipsets GenericPCIchipsets[] =
     {-1,               -1,           RES_UNDEFINED},
 };
 
+#if 0
 static IsaChipsets GenericISAchipsets[] =
 {
     {CHIP_VGA_GENERIC, RES_EXCLUSIVE_VGA},
     {-1,               0}
 };
+#endif
 
 static void
 GenericIdentify(int flags)
@@ -325,6 +329,7 @@ GenericProbe(DriverPtr drv, int flags)
 	}
     }
 
+#if 0
     /* Isa Bus */
     numUsed = xf86MatchIsaInstances(VGA_NAME, GenericChipsets,
 				    GenericISAchipsets, drv,
@@ -360,6 +365,7 @@ GenericProbe(DriverPtr drv, int flags)
 	    xfree(usedChips);
 	}
     }
+#endif
 
     xfree(devSections);
     return foundScreen;
