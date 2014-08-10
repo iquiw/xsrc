@@ -35,6 +35,7 @@ in this Software without prior written authorization from the XFree86 Project.
 #include "miline.h"
 	/* fb includes are in s3v.h */
 #include "xaarop.h"
+#include <X11/Xos.h>
 
 #include "servermd.h" /* LOG2_BYTES_PER_SCANLINE_PAD */
 

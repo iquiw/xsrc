@@ -235,7 +235,7 @@ FcHashGetSHA256DigestFromFile (const FcChar8 *filename)
 		memset (ibuf, 0, 64);
 	    }
 	    /* set input size at the end */
-	    v = (long)st.st_size * 8;
+	    v = (uint64_t)st.st_size * 8;
 	    ibuf[63 - 0] =  v        & 0xff;
 	    ibuf[63 - 1] = (v >>  8) & 0xff;
 	    ibuf[63 - 2] = (v >> 16) & 0xff;

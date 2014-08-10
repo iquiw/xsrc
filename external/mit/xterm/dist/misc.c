@@ -3585,10 +3585,12 @@ do_osc(XtermWidget xw, Char *oscbuf, size_t len, int final)
 	ChangeTitle(xw, buf);
 	break;
 
+#ifdef notdef
     case 3:			/* change X property */
 	if (AllowWindowOps(xw, ewSetXprop))
 	    ChangeXprop(buf);
 	break;
+#endif
 #if OPT_ISO_COLORS
     case 5:
 	ansi_colors = NUM_ANSI_COLORS;

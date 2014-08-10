@@ -519,4 +519,8 @@ Bool VIADRIBufferInit(ScrnInfoPtr pScrn);
 
 #endif /* HAVE_DRI */
 
+int viaOffScreenLinear(struct buffer_object *obj, ScrnInfoPtr pScrn, unsigned long size);
+void ViaDisplaySetStreamOnDFP(ScrnInfoPtr pScrn, Bool primary);
+void ViaDisplayEnableSimultaneous(ScrnInfoPtr pScrn);
+
 #endif /* _VIA_DRIVER_H_ */

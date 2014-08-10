@@ -28,6 +28,7 @@
 #endif
 
 #include <X11/X.h>
+#include <machine/param.h>
 #include "xf86.h"
 #include "xf86Priv.h"
 
@@ -76,7 +77,7 @@ ppcMapVidMem(int ScreenNum, unsigned long Base, unsigned long Size, int flags)
 	int fd = xf86Info.screenFd;
 	pointer base;
 #ifdef DEBUG
-	xf86MsgVerb(X_INFO, 3, "mapVidMem %lx, %lx, fd = %d", 
+	xf86MsgVerb(X_INFO, 3, "%s %lx, %lx, fd = %d", __func__, 
 		    Base, Size, fd);
 #endif
 
@@ -85,8 +86,9 @@ ppcMapVidMem(int ScreenNum, unsigned long Base, unsigned long Size, int flags)
 		     PROT_READ : (PROT_READ | PROT_WRITE),
 		    MAP_SHARED, fd, Base);
 	if (base == MAP_FAILED)
-		FatalError("%s: could not mmap screen [s=%x,a=%x] (%s)",
-			   "xf86MapVidMem", Size, Base, strerror(errno));
+		xf86Msg(X_WARNING, 
+		    "%s: could not mmap screen [s=%lx,a=%lx] (%s)",
+		    "xf86MapVidMem", Size, Base, strerror(errno));
 
 	return base;
 }
@@ -107,7 +109,8 @@ xf86ReadBIOS(unsigned long Base, unsigned long Offset, unsigned char *Buf,
 	if (kmem == -1) {
 		kmem = open(DEV_MEM, 2);
 		if (kmem == -1) {
-			FatalError("xf86ReadBIOS: open %s", DEV_MEM);
+			xf86Msg(X_ERROR, "xf86ReadBIOS: open %s", DEV_MEM);
+			return 0;
 		}
 	}
 
@@ -123,31 +126,65 @@ xf86ReadBIOS(unsigned long Base, unsigned long Offset, unsigned char *Buf,
 	return rv;
 }
 
+/***************************************************************************/
+/* Interrupt Handling section                                              */
+/***************************************************************************/
+
+_X_EXPORT Bool
+xf86DisableInterrupts()
+{
+
+	return(TRUE);
+}
+
+_X_EXPORT void
+xf86EnableInterrupts()
+{
+
+	return;
+}
+
+/* XXX why the hell is this necessary?! */
+#ifdef __arm__
+unsigned int IOPortBase = (int)MAP_FAILED;
+#endif
+
 Bool xf86EnableIO()
 {
+#ifdef PCI_MAGIC_IO_RANGE
         int fd = xf86Info.screenFd;
 
         xf86MsgVerb(X_WARNING, 3, "xf86EnableIO %d\n", fd);
         if (ioBase == MAP_FAILED)
         {
                 ioBase=mmap(NULL, 0x10000, PROT_READ|PROT_WRITE, MAP_SHARED, fd,
-                    0xf2000000);
+                    PCI_MAGIC_IO_RANGE);
                 xf86MsgVerb(X_INFO, 3, "xf86EnableIO: %08x\n", ioBase);
                 if (ioBase == MAP_FAILED) {
                         xf86MsgVerb(X_WARNING, 3, "Can't map IO space!\n");
 			return FALSE;
 		}
         }
+#ifdef __arm__
+        IOPortBase = (unsigned int)ioBase;
+#endif
 	return TRUE;
+#else
+	return TRUE;
+#endif
 }
 
 void xf86DisableIO()
 {
-
+#ifdef PCI_MAGIC_IO_RANGE
         if (ioBase != MAP_FAILED)
         {
                 munmap(__UNVOLATILE(ioBase), 0x10000);
                 ioBase = MAP_FAILED;
+#ifdef __arm__
+        	IOPortBase = (unsigned int)MAP_FAILED;
+#endif
         }
+#endif
 }
 

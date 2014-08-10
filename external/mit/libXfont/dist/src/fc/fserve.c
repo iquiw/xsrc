@@ -1956,6 +1956,19 @@ fs_read_glyphs(FontPathElementPtr fpe, FSBlockDataPtr blockrec)
     buf += SIZEOF (fsOffset32) * (rep->num_chars);
     bufleft -= SIZEOF (fsOffset32) * (rep->num_chars);
 
+#if 0
+    if (bufleft < rep->nbytes)
+    {
+#ifdef DEBUG
+        fprintf(stderr,
+                "fsQueryXBitmaps16: nbytes (%d) > bufleft (%ld)\n",
+                rep->nbytes, bufleft);
+#endif
+        err = AllocError;
+        goto bail;
+    }
+#endif
+
     if (bufleft < rep->nbytes)
     {
 #ifdef DEBUG

@@ -68,13 +68,19 @@ authorization from the XFree86 Project and Silicon Motion.
 /*			D E F I N I T I O N S				      */
 /******************************************************************************/
 
+#ifdef __NetBSD__
+#define __BYTE_ORDER BYTE_ORDER
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#endif
+
 #ifndef SMI_DEBUG
 #define SMI_DEBUG		0
 #endif
 
 #define SMI_USE_IMAGE_WRITES	0
 #define SMI_USE_VIDEO		1
-#define SMI_USE_CAPTURE		1
+#define SMI_USE_CAPTURE		0
 #define SMI501_CLI_DEBUG	0
 
 /*

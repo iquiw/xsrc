@@ -400,6 +400,10 @@ struct sis_context
 #define MMIO_READ(reg) *(volatile GLint *)(smesa->IOBase + (reg))
 #define MMIO_READf(reg) *(volatile GLfloat *)(smesa->IOBase + (reg))
 
+#if defined(__NetBSD__)
+#include <sys/atomic.h>
+#define MMIO_WMB() membar_sync()
+#else /* !__NetBSD__ */
 #if defined(__i386__) || defined(__x86_64__)
 #define MMIO_WMB()	__asm __volatile("" : : : "memory")
 #elif defined(__ia64__)
@@ -407,6 +411,7 @@ struct sis_context
 #else
 #error platform needs WMB
 #endif
+#endif /* __NetBSD__ */
 
 #define mEndPrimitive()  \
 {       \

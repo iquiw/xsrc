@@ -230,7 +230,7 @@ extern Bool FFBDacInit(FFBPtr);
 extern void FFBDacFini(FFBPtr);
 extern void FFBDacEnterVT(FFBPtr);
 extern void FFBDacLeaveVT(FFBPtr);
-extern Bool FFBDacSaveScreen(FFBPtr, int);
+extern Bool FFBDacSaveScreen(ScreenPtr, int);
 extern void FFBDacDPMSMode(FFBPtr, int, int);
 
 /* Exported WID layer routines. */
@@ -240,6 +240,8 @@ extern void FFBWidFree(FFBPtr, unsigned int);
 extern unsigned int FFBWidUnshare(FFBPtr, unsigned int);
 extern unsigned int FFBWidReshare(FFBPtr, unsigned int);
 extern void FFBWidChangeBuffer(FFBPtr, unsigned int, int);
+extern void VISmoveImageLR(unsigned char *, unsigned char *, long, long, long, long);
+extern void VISmoveImageRL(unsigned char *, unsigned char *, long, long, long, long);
 
 /* Accelerated double-buffering. */
 extern Bool FFBDbePreInit(ScreenPtr);

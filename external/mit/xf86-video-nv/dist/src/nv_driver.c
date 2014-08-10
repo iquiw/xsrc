@@ -914,7 +914,7 @@ NVPciProbe(DriverPtr drv, int entity, struct pci_device *dev, intptr_t data)
     if (pci_device_has_kernel_driver(dev)) {
         xf86DrvMsg(0, X_ERROR,
                    NV_NAME ": The PCI device 0x%x (%s) at %2.2d@%2.2d:%2.2d:%1.1d has a kernel module claiming it.\n",
-                   id, name, dev->bus, dev->domain, dev->dev, dev->func);
+                   (int)id, name, dev->bus, dev->domain, dev->dev, dev->func);
         xf86DrvMsg(0, X_ERROR,
                    NV_NAME ": This driver cannot operate until it has been unloaded.\n");
         return FALSE;
@@ -927,11 +927,11 @@ NVPciProbe(DriverPtr drv, int entity, struct pci_device *dev, intptr_t data)
         if(name)
             xf86DrvMsg(0, X_WARNING,
                        NV_NAME ": Ignoring unsupported device 0x%x (%s) at %2.2d@%2.2d:%2.2d:%1.1d\n",
-                       id, name, dev->bus, dev->domain, dev->dev, dev->func);
+                       (int)id, name, dev->bus, dev->domain, dev->dev, dev->func);
         else
             xf86DrvMsg(0, X_WARNING,
                        NV_NAME ": Ignoring unsupported device 0x%x at %2.2d@%2.2d:%2.2d:%1.1d\n",
-                       id, dev->bus, dev->domain, dev->dev, dev->func);
+                       (int)id, dev->bus, dev->domain, dev->dev, dev->func);
         return FALSE;
     }
 
@@ -1214,7 +1214,9 @@ NVCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     }
 
     NVUnmapMem(pScrn);
+#ifndef AVOID_VGAHW
     vgaHWUnmapMem(pScrn);
+#endif
 #ifdef HAVE_XAA_H
     if (pNv->AccelInfoRec)
         XAADestroyInfoRec(pNv->AccelInfoRec);
@@ -1258,6 +1260,7 @@ NVFreeScreen(FREE_SCREEN_ARGS_DECL)
      * This only gets called when a screen is being deleted.  It does not
      * get called routinely at the end of a server generation.
      */
+  
     if (xf86LoaderCheckSymbol("vgaHWFreeHWRec"))
 	vgaHWFreeHWRec(pScrn);
     NVFreeRec(pScrn);
@@ -2411,11 +2414,13 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
     }
 
     /* Map the VGA memory when the primary video */
+#ifndef AVOID_VGAHW
     if (pNv->Primary && !pNv->FBDev) {
 	hwp->MapSize = 0x10000;
 	if (!vgaHWMapMem(pScrn))
 	    return FALSE;
     }
+#endif
 
     if (pNv->FBDev) {
 	fbdevHWSave(pScrn);

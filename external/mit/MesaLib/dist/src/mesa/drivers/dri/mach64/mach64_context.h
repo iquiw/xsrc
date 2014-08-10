@@ -294,6 +294,20 @@ extern GLboolean mach64UnbindContext( __DRIcontext *driContextPriv );
 #define LE32_IN_FLOAT( x )	( *(GLfloat *)(x) )
 #define LE32_OUT( x, y )	do { *(GLuint *)(x) = (y); } while (0)
 #define LE32_OUT_FLOAT( x, y )	do { *(GLfloat *)(x) = (y); } while (0)
+#elif defined(__NetBSD__)
+#define LE32_IN(x)	le32toh(*(GLuint *)(x))
+#define LE32_IN_FLOAT( x )                                              \
+({                                                                      \
+   GLuint __tmp = le32toh( *(GLuint *)(x) );                            \
+   *(GLfloat *)&__tmp;                                                  \
+})
+#define LE32_OUT( x, y )        do { *(GLuint *)(x) = htole32( y ); } while (0)
+#define LE32_OUT_FLOAT( x, y )                                          \
+do {                                                                    \
+   GLuint __tmp;                                                        \
+   *(GLfloat *)&__tmp = (y);                                            \
+   *(GLuint *)(x) = htole32( __tmp );                                  \
+} while (0)
 #else
 #if defined(__OpenBSD__) || defined(__NetBSD__)
 #include <machine/endian.h>

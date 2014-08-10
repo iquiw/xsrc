@@ -658,22 +658,27 @@ TDFXInitChips(ScrnInfoPtr pScrn)
     xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, 3,
 		   "TDFXInitChips: cfgbits = 0x%08lx\n", cfgbits);
 
-    for (i = 0; i < pTDFX->numChips; i++) {
+    if (pTDFX->numChips == 1) {
+      /*
+       * XXX
+       * Do not fudge BARs with only one chip present.
+       * Now this works again on NetBSD/macppc.
+       */
+      pTDFX->MMIOAddr[0] = mem0base & 0xffffff00;
+      pTDFX->LinearAddr[0] = mem1base & 0xffffff00;
+    } else {
+      for (i = 0; i < pTDFX->numChips; i++) {
 	PCI_WRITE_LONG(initbits | BIT(10), CFG_INIT_ENABLE, i);
-
-#if 0
-	v=pciReadWord(pTDFX->PciTag[i], CFG_PCI_COMMAND);
-	if (!i)
-	    pciWriteWord(pTDFX->PciTag[i], CFG_PCI_COMMAND, v | 0x3);
-	else
-	    pciWriteWord(pTDFX->PciTag[i], CFG_PCI_COMMAND, v | 0x2);
-#endif
-
+	
+	#if 0
+		v=pciReadWord(pTDFX->PciTag[i], CFG_PCI_COMMAND);
+		if (!i)
+		    pciWriteWord(pTDFX->PciTag[i], CFG_PCI_COMMAND, v | 0x3);
+		else
+		    pciWriteWord(pTDFX->PciTag[i], CFG_PCI_COMMAND, v | 0x2);
+	#endif
+	
 	pTDFX->MMIOAddr[i] = mem0base + (i * mem0size);
-
-	xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, 3,
-		       "TDFXInitChips: MMIOAddr[%d] = 0x%08lx\n",
-		       i, pTDFX->MMIOAddr[i]);
 
 	PCI_WRITE_LONG(pTDFX->MMIOAddr[i], CFG_MEM0BASE, i);
 
@@ -682,14 +687,18 @@ TDFXInitChips(ScrnInfoPtr pScrn)
 
 	PCI_WRITE_LONG(pTDFX->LinearAddr[i], CFG_MEM1BASE, i);
 
-	xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, 3,
-		       "TDFXInitChips: LinearAddr[%d] = 0x%08lx\n",
-		       i, pTDFX->LinearAddr[i]);
 	pTDFX->LinearAddr[i] &= 0xFFFFFF00;
 
 	PCI_WRITE_LONG(cfgbits, CFG_PCI_DECODE, i);
 	PCI_WRITE_LONG(initbits, CFG_INIT_ENABLE, i);
+      }
     }
+    xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, 3,
+		       "TDFXInitChips: MMIOAddr[%d] = 0x%08lx\n",
+		       0, pTDFX->MMIOAddr[0]);
+    xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, 3,
+		       "TDFXInitChips: LinearAddr[%d] = 0x%08lx\n",
+		       0, pTDFX->LinearAddr[0]);
 }
 
 void
@@ -2216,7 +2225,8 @@ TDFXScreenInit(SCREEN_INIT_ARGS_DECL) {
 
   if (!pTDFX->usePIO) TDFXSetMMIOAccess(pTDFX);
 
-#if USE_PCIVGAIO
+#ifndef USE_PCIVGAIO
+  /* access VGA registers through the IO BAR, not legacy decoding */
   hwp->PIOOffset = pTDFX->PIOBase[0] - 0x300;
 #endif
   vgaHWGetIOBase(hwp);

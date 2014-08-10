@@ -135,6 +135,11 @@
 /* ??? */
 #include "servermd.h"
 
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 7
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#endif
+
 /* Mandatory functions */
 static const OptionInfoRec *	RHDAvailableOptions(int chipid, int busid);
 #ifdef XSERVER_LIBPCIACCESS

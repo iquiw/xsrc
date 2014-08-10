@@ -806,6 +806,19 @@ int drmCheckModesettingSupported(const char *busid)
 			return -EINVAL;
 		return (modesetting ? 0 : -ENOSYS);
 	}
+#else
+	int fd;
+	static const struct drm_mode_card_res zero_res;
+	struct drm_mode_card_res res = zero_res;
+	int ret;
+ 
+	fd = drmOpen(NULL, busid);
+	if (fd == -1)
+		return -EINVAL;
+	ret = drmIoctl(fd, DRM_IOCTL_MODE_GETRESOURCES, &res);
+	drmClose(fd);
+	if (ret == 0)
+		return 0;
 #endif
 	return -ENOSYS;
 
@@ -906,7 +919,7 @@ int drmModePageFlip(int fd, uint32_t crtc_id, uint32_t fb_id,
 
 int drmModeSetPlane(int fd, uint32_t plane_id, uint32_t crtc_id,
 		    uint32_t fb_id, uint32_t flags,
-		    int32_t crtc_x, int32_t crtc_y,
+		    uint32_t crtc_x, uint32_t crtc_y,
 		    uint32_t crtc_w, uint32_t crtc_h,
 		    uint32_t src_x, uint32_t src_y,
 		    uint32_t src_w, uint32_t src_h)
