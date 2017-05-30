@@ -39,6 +39,8 @@
 #define SBUS_DEVICE_FFB		0x000b
 #define SBUS_DEVICE_GT		0x000c
 #define SBUS_DEVICE_MGX		0x000d
+#define SBUS_DEVICE_P9100	0x000e
+#define SBUS_DEVICE_AG10E	0x000f
 
 typedef struct sbus_prom_node {
     int node;
@@ -102,7 +104,7 @@ extern _X_EXPORT int sparcPromGetBool(sbusPromNodePtr pnode, const char *prop);
 extern _X_EXPORT void sparcPromAssignNodes(void);
 extern _X_EXPORT char *sparcPromNode2Pathname(sbusPromNodePtr pnode);
 extern _X_EXPORT int sparcPromPathname2Node(const char *pathName);
-extern _X_EXPORT char *sparcDriverName(void);
+extern _X_EXPORT const char *sparcDriverName(void);
 
 extern Bool xf86SbusConfigure(void *busData, sbusDevicePtr sBus);
 extern void xf86SbusConfigureNewDev(void *busData, sbusDevicePtr sBus,

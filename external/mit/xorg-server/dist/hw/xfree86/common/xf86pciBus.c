@@ -1071,8 +1071,7 @@ xf86VideoPtrToDriverList(struct pci_device *dev,
        any device */
     const char *driverList[5] = { NULL, NULL, NULL, NULL, NULL };
 
-    switch (dev->vendor_id) {
-        /* AMD Geode LX */
+    switch (dev->vendor_id) { /* AMD Geode LX */
     case 0x1022:
         if (dev->device_id == 0x2081)
             driverList[0] = "geode";
@@ -1189,7 +1188,7 @@ xf86VideoPtrToDriverList(struct pci_device *dev,
     {
         int idx = 0;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__NetBSD__)
         driverList[idx++] = "nouveau";
 #endif
         driverList[idx++] = "nv";

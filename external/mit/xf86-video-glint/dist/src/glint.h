@@ -38,6 +38,8 @@
 #ifdef HAVE_XAA_H
 #include "xaa.h"
 #endif
+#include "exa.h"
+
 #include "xf86fbman.h"
 #include "xf86RamDac.h"
 #include "xf86cmap.h"
@@ -148,6 +150,13 @@ typedef struct {
 #ifdef HAVE_XAA_H
     XAAInfoRecPtr	AccelInfoRec;
 #endif
+    ExaDriverPtr 	pExa;
+    int			srcoff, srcpitch;
+    int			mskoff, mskpitch;
+    int			srcformat, dstformat, mskformat;
+    int			fillcolour, op;
+    Bool		source_is_solid, no_source_pixmap, render;
+
     CloseScreenProcPtr	CloseScreen;
     ScreenBlockHandlerProcPtr BlockHandler;
     GCPtr		CurrentGC;
@@ -219,9 +228,11 @@ void Permedia2Save(ScrnInfoPtr pScrn, GLINTRegPtr glintReg);
 Bool Permedia2Init(ScrnInfoPtr pScrn, DisplayModePtr mode);
 void Permedia2PreInit(ScrnInfoPtr pScrn);
 Bool Permedia2AccelInit(ScreenPtr pScreen);
+Bool Pm2InitEXA(ScreenPtr pScreen);
 void Permedia2Sync(ScrnInfoPtr pScrn);
 void Permedia2InitializeEngine(ScrnInfoPtr pScrn);
 Bool Permedia2HWCursorInit(ScreenPtr pScreen);
+void Permedia2LoadCoord(ScrnInfoPtr, int, int, int, int);
 
 void PermediaRestore(ScrnInfoPtr pScrn, GLINTRegPtr glintReg);
 void PermediaSave(ScrnInfoPtr pScrn, GLINTRegPtr glintReg);
@@ -240,6 +251,7 @@ void Permedia3Restore(ScrnInfoPtr pScrn, GLINTRegPtr glintReg);
 void Permedia3Save(ScrnInfoPtr pScrn, GLINTRegPtr glintReg);
 Bool Permedia3Init(ScrnInfoPtr pScrn, DisplayModePtr mode, GLINTRegPtr pReg);
 Bool Permedia3AccelInit(ScreenPtr pScreen);
+Bool Pm3InitEXA(ScreenPtr pScreen);
 void Permedia3InitializeEngine(ScrnInfoPtr pScrn);
 void Permedia3EnableOffscreen(ScreenPtr pScreen);
 void Permedia3Sync(ScrnInfoPtr pScrn);

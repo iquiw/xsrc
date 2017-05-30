@@ -66,6 +66,7 @@
 #include <getopt.h>
 const struct option longopts[] = {
     {"force", 0, 0, 'f'},
+    {"quick", 0, 0, 'q'},
     {"really-force", 0, 0, 'r'},
     {"sysroot", required_argument, 0, 'y'},
     {"system-only", 0, 0, 's'},
@@ -86,10 +87,10 @@ usage (char *program, int error)
 {
     FILE *file = error ? stderr : stdout;
 #if HAVE_GETOPT_LONG
-    fprintf (file, "usage: %s [-frsvVh] [-y SYSROOT] [--force|--really-force] [--sysroot=SYSROOT] [--system-only] [--verbose] [--version] [--help] [dirs]\n",
+    fprintf (file, "usage: %s [-fqrsvVh] [--quick] [-y SYSROOT] [--force|--really-force] [--sysroot=SYSROOT] [--system-only] [--verbose] [--version] [--help] [dirs]\n",
 	     program);
 #else
-    fprintf (file, "usage: %s [-frsvVh] [-y SYSROOT] [dirs]\n",
+    fprintf (file, "usage: %s [-fqrsvVh] [-y SYSROOT] [dirs]\n",
 	     program);
 #endif
     fprintf (file, "Build font information caches in [dirs]\n"
@@ -97,6 +98,7 @@ usage (char *program, int error)
     fprintf (file, "\n");
 #if HAVE_GETOPT_LONG
     fprintf (file, "  -f, --force              scan directories with apparently valid caches\n");
+    fprintf (file, "  -q, --quick              don't sleep before exiting\n");
     fprintf (file, "  -r, --really-force       erase all existing caches, then rescan\n");
     fprintf (file, "  -s, --system-only        scan system-wide directories only\n");
     fprintf (file, "  -y, --sysroot=SYSROOT    prepend SYSROOT to all paths for scanning\n");
@@ -105,6 +107,7 @@ usage (char *program, int error)
     fprintf (file, "  -h, --help               display this help and exit\n");
 #else
     fprintf (file, "  -f         (force)   scan directories with apparently valid caches\n");
+    fprintf (file, "  -q         (quick)   don't sleep before exiting\n");
     fprintf (file, "  -r,   (really force) erase all existing caches, then rescan\n");
     fprintf (file, "  -s         (system)  scan system-wide directories only\n");
     fprintf (file, "  -y SYSROOT (sysroot) prepend SYSROOT to all paths for scanning\n");
@@ -284,6 +287,7 @@ main (int argc, char **argv)
     FcStrSet	*dirs, *updateDirs;
     FcStrList	*list;
     FcBool    	verbose = FcFalse;
+    FcBool      quick = FcFalse;
     FcBool	force = FcFalse;
     FcBool	really_force = FcFalse;
     FcBool	systemOnly = FcFalse;
@@ -296,9 +300,9 @@ main (int argc, char **argv)
     int		c;
 
 #if HAVE_GETOPT_LONG
-    while ((c = getopt_long (argc, argv, "frsy:Vvh", longopts, NULL)) != -1)
+    while ((c = getopt_long (argc, argv, "fqrsy:Vvh", longopts, NULL)) != -1)
 #else
-    while ((c = getopt (argc, argv, "frsy:Vvh")) != -1)
+    while ((c = getopt (argc, argv, "fqrsy:Vvh")) != -1)
 #endif
     {
 	switch (c) {
@@ -307,6 +311,9 @@ main (int argc, char **argv)
 	    /* fall through */
 	case 'f':
 	    force = FcTrue;
+	    break;
+	case 'q':
+	    quick = FcTrue;
 	    break;
 	case 's':
 	    systemOnly = FcTrue;
@@ -414,7 +421,7 @@ main (int argc, char **argv)
      * library, and there aren't any signals flying around here.
      */
     /* the resolution of mtime on FAT is 2 seconds */
-    if (changed)
+    if (!quick && changed)
 	sleep (2);
     if (verbose)
 	printf ("%s: %s\n", argv[0], ret ? "failed" : "succeeded");

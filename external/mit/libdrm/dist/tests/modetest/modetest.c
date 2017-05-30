@@ -525,6 +525,8 @@ static struct resources *get_resources(struct device *dev)
 
 	drmSetClientCap(dev->fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
 
+	drmSetClientCap(dev->fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+
 	res->res = drmModeGetResources(dev->fd);
 	if (!res->res) {
 		fprintf(stderr, "drmModeGetResources failed: %s\n",
@@ -1698,11 +1700,7 @@ int main(int argc, char **argv)
 		if (test_cursor)
 			clear_cursors(&dev);
 
-		if (plane_count)
-			clear_planes(&dev, plane_args, plane_count);
-
-		if (count)
-			clear_mode(&dev);
+		bo_destroy(dev.mode.bo);
 	}
 
 	free_resources(dev.resources);

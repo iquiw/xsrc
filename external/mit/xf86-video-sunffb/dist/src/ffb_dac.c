@@ -34,6 +34,7 @@
 #include "xf86_OSproc.h"
 
 #include "xf86DDC.h"
+#include "xf86Privstr.h"
 
 /*
  * Used for stabilize time after playing with power management on the display
@@ -525,11 +526,21 @@ SPIN(ffb_dacPtr d, int count) {
 
 /*  Screen save (blank) restore */
 Bool
-FFBDacSaveScreen(FFBPtr pFfb, int mode) {
+FFBDacSaveScreen(ScreenPtr pScreen, int mode) {
+  ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
+  FFBPtr pFfb = GET_FFB_FROM_SCRN(pScrn);
   int tmp;
   ffb_dacPtr dac;
+  Bool redraw = FALSE;
+
   if(!pFfb) return FALSE;   /* Is there any way at all this could happen? */
   else dac = pFfb -> dac;
+
+  /* 
+   * there seems to be a bug in ffb1 hardware which causes screen corruption 
+   * when (un)blanking - so we disable/enable screen access to cause a
+   * full redraw.
+   */
 
   tmp = DACCFG_READ(dac, FFBDAC_CFG_TGEN);  /* Get the timing information */
 
@@ -542,13 +553,27 @@ FFBDacSaveScreen(FFBPtr pFfb, int mode) {
     case SCREEN_SAVER_OFF:
     case SCREEN_SAVER_FORCER:
       tmp |= FFBDAC_CFG_TGEN_VIDE;  /* Turn the video on */
+      if (pFfb->ffb_type < ffb2_prototype)
+        redraw = TRUE;
       break;
 
     default:
       return FALSE;  /* Don't know what to do; gently fail. */
   }
-  DACCFG_WRITE(dac, FFBDAC_CFG_TGEN, tmp);  /* Restore timing register, video set as asked */
+  /* Restore timing register, video set as asked */
+  DACCFG_WRITE(dac, FFBDAC_CFG_TGEN, tmp);  
   SPIN(dac, DPMS_SPIN_COUNT/10);
+
+  if (redraw) {
+    /* this causes a complete redraw of the screen */
+#ifdef XF86_SCRN_INTERFACE // compat-api.h
+    pScrn->EnableDisableFBAccess(pScrn, FALSE);
+    pScrn->EnableDisableFBAccess(pScrn, TRUE);
+#else
+    pScrn->EnableDisableFBAccess(pScreen->myNum, FALSE);
+    pScrn->EnableDisableFBAccess(pScreen->myNum, TRUE);
+#endif
+  } 
   return TRUE;
 }
 
@@ -571,10 +596,17 @@ FFBDacSaveScreen(FFBPtr pFfb, int mode) {
 
     05.xii.01, FEM
     08.xii.01, FEM
+
+    Note, that the rule for "On" is not always correct.  Some modes use
+    -VSYNC normally (see FFB3 VESA modes and some EDID modes).  So, we
+    take the hsync and vsync values from the saved timing generator state
+    for "DPMSModeOn".
 */
 void
 FFBDacDPMSMode(FFBPtr pFfb, int DPMSMode, int flags) {
   int tmp;
+  ffb_dac_info_t *p = &pFfb->dac_info;
+  ffb_dac_hwstate_t *state = &p->x_dac_state;
   ffb_dacPtr dac = pFfb -> dac;
 
   tmp = DACCFG_READ(dac, FFBDAC_CFG_TGEN);  /* Get timing control */
@@ -582,8 +614,7 @@ FFBDacDPMSMode(FFBPtr pFfb, int DPMSMode, int flags) {
   switch(DPMSMode) {
 
     case DPMSModeOn:
-      tmp &= ~(FFBDAC_CFG_TGEN_VSD | FFBDAC_CFG_TGEN_HSD); /* Turn off VSYNC, HSYNC
-							      disable bits */
+      tmp = state -> tgen;
       tmp |= FFBDAC_CFG_TGEN_VIDE;  /* Turn the video on */
        break;
 

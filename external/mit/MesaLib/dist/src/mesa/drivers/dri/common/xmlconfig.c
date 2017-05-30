@@ -39,6 +39,10 @@
 
 #undef GET_PROGRAM_NAME
 
+#if defined(__NetBSD__)
+#include <sys/param.h>
+#endif
+
 #if (defined(__GNU_LIBRARY__) || defined(__GLIBC__)) && !defined(__UCLIBC__)
 #    if !defined(__GLIBC__) || (__GLIBC__ < 2)
 /* These aren't declared in any libc5 header */

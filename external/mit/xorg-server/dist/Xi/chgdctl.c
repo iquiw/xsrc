@@ -85,7 +85,30 @@ SProcXChangeDeviceControl(ClientPtr client)
     swaps(&ctl->length);
     switch (stuff->control) {
     case DEVICE_ABS_CALIB:
+#if 0
+        calib = (xDeviceAbsCalibCtl*)ctl;
+        swaps(&calib->length, n);
+        swapl(&calib->min_x, n);
+        swapl(&calib->max_x, n);
+        swapl(&calib->min_y, n);
+        swapl(&calib->max_y, n);
+        swapl(&calib->flip_x, n);
+        swapl(&calib->flip_y, n);
+        swapl(&calib->rotation, n);
+        swapl(&calib->button_threshold, n);
+        break;
+#endif
     case DEVICE_ABS_AREA:
+#if 0
+        area = (xDeviceAbsAreaCtl*)ctl;
+        swapl(&area->offset_x, n);
+        swapl(&area->offset_y, n);
+        swapl(&area->width, n);
+        swapl(&area->height, n);
+        swapl(&area->screen, n);
+        swapl(&area->following, n);
+        break;
+#endif
     case DEVICE_CORE:
     case DEVICE_ENABLE:
     case DEVICE_RESOLUTION:

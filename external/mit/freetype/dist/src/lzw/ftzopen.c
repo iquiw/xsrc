@@ -276,7 +276,7 @@
         state->block_mode = max_bits & LZW_BLOCK_MASK;
         state->max_free   = (FT_UInt)( ( 1UL << state->max_bits ) - 256 );
 
-        if ( state->max_bits > LZW_MAX_BITS )
+        if ( state->max_bits > LZW_MAX_BITS || state->max_bits < 12)
           goto Eof;
 
         state->num_bits = LZW_INIT_BITS;
@@ -287,19 +287,7 @@
         state->free_bits = state->num_bits < state->max_bits
                            ? (FT_UInt)( ( 1UL << state->num_bits ) - 256 )
                            : state->max_free + 1;
-
-        c = ft_lzwstate_get_code( state );
-        if ( c < 0 || c > 255 )
-          goto Eof;
-
-        old_code = old_char = (FT_UInt)c;
-
-        if ( buffer )
-          buffer[result] = (FT_Byte)old_char;
-
-        if ( ++result >= out_size )
-          goto Exit;
-
+        old_code = -1;
         state->phase = FT_LZW_PHASE_CODE;
       }
       /* fall-through */
@@ -319,8 +307,7 @@
 
         if ( code == LZW_CLEAR && state->block_mode )
         {
-          /* why not LZW_FIRST-256 ? */
-          state->free_ent  = ( LZW_FIRST - 1 ) - 256;
+          state->free_ent  = LZW_FIRST - 256;
           state->buf_clear = 1;
 
           /* not quite right, but at least more predictable */
@@ -376,7 +363,7 @@
         }
 
         /* now create new entry */
-        if ( state->free_ent < state->max_free )
+        if ( state->free_ent < state->max_free && old_code != -1)
         {
           if ( state->free_ent >= state->prefix_size &&
                ft_lzwstate_prefix_grow( state ) < 0  )

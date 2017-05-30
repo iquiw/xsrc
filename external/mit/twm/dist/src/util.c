@@ -256,11 +256,11 @@ Zoom(Window wf, Window wt)
  *  \param name  the filename to expand
  */
 char *
-ExpandFilename(char *name)
+ExpandFilename(const char *name)
 {
     char *newname;
 
-    if (name[0] != '~') return name;
+    if (name[0] != '~') return strdup(name);
 
     newname = malloc (HomeLen + strlen(name) + 2);
     if (!newname) {
@@ -589,17 +589,13 @@ GetFont(MyFont *font)
     int ascent;
     int descent;
     int fnum;
-    char *basename2;
 
     if (use_fontset) {
 	if (font->fontset != NULL){
 	    XFreeFontSet(dpy, font->fontset);
 	}
 
-	basename2 = malloc(strlen(font->name) + 3);
-	if (basename2) sprintf(basename2, "%s,*", font->name);
-	else basename2 = font->name;
-	if( (font->fontset = XCreateFontSet(dpy, basename2,
+	if( (font->fontset = XCreateFontSet(dpy, font->name,
 					    &missing_charset_list_return,
 					    &missing_charset_count_return,
 					    &def_string_return)) == NULL) {
@@ -607,7 +603,6 @@ GetFont(MyFont *font)
 			 ProgramName, font->name);
 	    exit(1);
 	}
-	if (basename2 != font->name) free(basename2);
 	for(i=0; i<missing_charset_count_return; i++){
 	    printf("%s: warning: font for charset %s is lacking.\n",
 		   ProgramName, missing_charset_list_return[i]);

@@ -34,6 +34,8 @@
 #ifdef HAVE_XAA_H
 #include "xaa.h"
 #endif
+#include "exa.h"
+
 #include <X11/Xmd.h>
 #include "gcstruct.h"
 #include "windowstr.h"
@@ -179,9 +181,6 @@ typedef struct {
 #ifdef HAVE_XAA_H
 	XAAInfoRecPtr pXAAInfo;
 #endif
-	unsigned int xaa_fbc;
-	unsigned int xaa_wid;
-	unsigned int xaa_planemask;
 	unsigned int xaa_linepat;
 	int xaa_xdir, xaa_ydir, xaa_rop;
 	unsigned char *xaa_scanline_buffers[2];
@@ -205,6 +204,16 @@ typedef struct {
 	unsigned char CursorShiftX, CursorShiftY;
 	unsigned char *CursorData;
 
+	/* EXA stuff */
+	ExaDriverPtr 	pExa;
+	int xdir, ydir, rop;
+	CARD32 planemask, fbc, wid, fillcolour;
+	Bool no_source_pixmap, source_is_solid;
+	int srcoff, srcpitch, mskoff, mskpitch;
+	CARD32 srcformat, dstformat, mskformat;
+	int op;
+
+
 	PixmapPtr pix32, pix8;
 
 	void *I2C;
@@ -215,6 +224,7 @@ typedef struct {
 
 /* Acceleration */
 extern Bool FFBAccelInit(ScreenPtr, FFBPtr);
+extern Bool FFBInitEXA(ScreenPtr);
 extern void CreatorVtChange (ScreenPtr pScreen, int enter);
 
 /* HW cursor support */
@@ -230,7 +240,7 @@ extern Bool FFBDacInit(FFBPtr);
 extern void FFBDacFini(FFBPtr);
 extern void FFBDacEnterVT(FFBPtr);
 extern void FFBDacLeaveVT(FFBPtr);
-extern Bool FFBDacSaveScreen(FFBPtr, int);
+extern Bool FFBDacSaveScreen(ScreenPtr, int);
 extern void FFBDacDPMSMode(FFBPtr, int, int);
 
 /* Exported WID layer routines. */
@@ -240,6 +250,8 @@ extern void FFBWidFree(FFBPtr, unsigned int);
 extern unsigned int FFBWidUnshare(FFBPtr, unsigned int);
 extern unsigned int FFBWidReshare(FFBPtr, unsigned int);
 extern void FFBWidChangeBuffer(FFBPtr, unsigned int, int);
+extern void VISmoveImageLR(unsigned char *, unsigned char *, long, long, long, long);
+extern void VISmoveImageRL(unsigned char *, unsigned char *, long, long, long, long);
 
 /* Accelerated double-buffering. */
 extern Bool FFBDbePreInit(ScreenPtr);
@@ -289,5 +301,10 @@ do {	fprintf __x; 				\
 #else
 #define FFBLOG(__x)		do { } while(0)
 #endif
+
+/* common acceleration routines */
+void FFB_SetupTextureAttrs(FFBPtr);
+void FFB_HardwareSetup(FFBPtr);
+void CreatorAlignTabInit(FFBPtr);
 
 #endif /* FFB_H */

@@ -421,6 +421,10 @@ ProcXIChangeHierarchy(ClientPtr client)
     if (!stuff->num_changes)
         return rc;
 
+#if 0
+    if (stuff->length > (INT_MAX >> 2))
+        return BadAlloc;
+#endif
     len = ((size_t)stuff->length << 2) - sizeof(xXIAnyHierarchyChangeInfo);
 
     any = (xXIAnyHierarchyChangeInfo *) &stuff[1];

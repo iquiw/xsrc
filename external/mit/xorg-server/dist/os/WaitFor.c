@@ -52,6 +52,8 @@ SOFTWARE.
  *
  *****************************************************************/
 
+#include <X11/Xpoll.h>
+
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
 #endif
@@ -66,7 +68,6 @@ SOFTWARE.
 #include "misc.h"
 
 #include "osdep.h"
-#include <X11/Xpoll.h>
 #include "dixstruct.h"
 #include "opaque.h"
 #ifdef DPMSExtension

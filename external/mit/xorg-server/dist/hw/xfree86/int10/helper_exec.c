@@ -524,6 +524,11 @@ pciCfg1in(uint16_t addr, uint32_t *val)
     }
     if (addr == 0xCFC) {
         pci_device_cfg_read_u32(pci_device_for_cfg_address(PciCfg1Addr),
+				/*
+				 * XXXMRG
+				 * this one is OK - CARD32 is "long" for 32 bit
+				 * and "int" for 64 bit
+				 */
                                 (uint32_t *) val, PCI_OFFSET(PciCfg1Addr));
         if (PRINT_PORT && DEBUG_IO_TRACE())
             ErrorF(" cfg_inl(%#" PRIx32 ") = %8.8" PRIx32 "\n", (unsigned) PciCfg1Addr,
@@ -676,6 +681,7 @@ bios_checksum(const uint8_t *start, int size)
 void
 LockLegacyVGA(xf86Int10InfoPtr pInt, legacyVGAPtr vga)
 {
+#ifndef NO_LEGACY_VGA
     vga->save_msr = pci_io_read8(pInt->io, 0x03CC);
     vga->save_vse = pci_io_read8(pInt->io, 0x03C3);
 #ifndef __ia64__
@@ -688,17 +694,20 @@ LockLegacyVGA(xf86Int10InfoPtr pInt, legacyVGAPtr vga)
     pci_io_write8(pInt->io, 0x46E8, ~(uint8_t) 0x08 & vga->save_46e8);
 #endif
     pci_io_write8(pInt->io, 0x0102, ~(uint8_t) 0x01 & vga->save_pos102);
+#endif
 }
 
 void
 UnlockLegacyVGA(xf86Int10InfoPtr pInt, legacyVGAPtr vga)
 {
+#ifndef NO_LEGACY_VGA
     pci_io_write8(pInt->io, 0x0102, vga->save_pos102);
 #ifndef __ia64__
     pci_io_write8(pInt->io, 0x46E8, vga->save_46e8);
 #endif
     pci_io_write8(pInt->io, 0x03C3, vga->save_vse);
     pci_io_write8(pInt->io, 0x03C2, vga->save_msr);
+#endif
 }
 
 #if defined (_PC)

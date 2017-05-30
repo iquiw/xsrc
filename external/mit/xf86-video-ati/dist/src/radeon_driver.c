@@ -178,7 +178,7 @@ static const OptionInfoRec RADEONOptions[] = {
     { OPTION_SCALER_WIDTH,                "ScalerWidth",              OPTV_INTEGER, {0}, FALSE }, 
 #endif
 #ifdef RENDER
-    { OPTION_RENDER_ACCEL,   "RenderAccel",      OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_RENDER_ACCEL,   "RenderAccel",      OPTV_BOOLEAN, {0}, TRUE },
     { OPTION_SUBPIXEL_ORDER, "SubPixelOrder",    OPTV_ANYSTR,  {0}, FALSE },
 #endif
     { OPTION_CLOCK_GATING,   "ClockGating",      OPTV_BOOLEAN, {0}, FALSE },
@@ -3756,12 +3756,12 @@ Bool RADEONScreenInit(SCREEN_INIT_ARGS_DECL)
     /* Backing store setup */
     xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, RADEON_LOGLEVEL_DEBUG,
 		   "Initializing backing store\n");
-    miInitializeBackingStore(pScreen);
     xf86SetBackingStore(pScreen);
 
     /* DRI finalisation */
 #ifdef XF86DRI
-    if (info->directRenderingEnabled && info->cardType==CARD_PCIE &&
+    if (info->directRenderingEnabled &&
+	(info->cardType==CARD_PCIE || info->cardType==CARD_PCI) &&
         info->dri->pKernelDRMVersion->version_minor >= 19)
     {
       if (RADEONDRISetParam(pScrn, RADEON_SETPARAM_PCIGART_LOCATION, info->dri->pciGartOffset) < 0)
@@ -6440,7 +6440,11 @@ static Bool RADEONCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     if (info->dri && info->dri->pDamage) {
 	PixmapPtr pPix = pScreen->GetScreenPixmap(pScreen);
 
+#if XORG_VERSION_CURRENT >= XORG_VERSION_NUMERIC(1,15,0,0,0)
+	DamageUnregister(info->dri->pDamage);
+#else
 	DamageUnregister(&pPix->drawable, info->dri->pDamage);
+#endif
 	DamageDestroy(info->dri->pDamage);
 	info->dri->pDamage = NULL;
     }

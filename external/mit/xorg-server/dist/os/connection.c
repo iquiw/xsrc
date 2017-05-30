@@ -60,6 +60,8 @@ SOFTWARE.
  *
  *****************************************************************/
 
+#include <X11/Xpoll.h>
+
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
 #endif
@@ -103,7 +105,6 @@ SOFTWARE.
 #endif                          /* WIN32 */
 #include "misc.h"               /* for typedef of pointer */
 #include "osdep.h"
-#include <X11/Xpoll.h>
 #include "opaque.h"
 #include "dixstruct.h"
 #include "xace.h"

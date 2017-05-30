@@ -89,15 +89,22 @@
 #include "xf86RAC.h"
 #include "xf86Resources.h"
 #endif
+#include "xf86_OSlib.h"
 #include "xf86cmap.h"
 #include "xf86xv.h"
 #include "vbe.h"
+#include "xf86Priv.h"
+#include "xf86Privstr.h"
 
 				/* fbdevhw & vgahw */
 #ifdef WITH_VGAHW
 #include "vgaHW.h"
 #endif
+
+#ifndef AVOID_FBDEV
 #include "fbdevhw.h"
+#endif
+
 #include "dixstruct.h"
 
 				/* DPMS support. */
@@ -108,6 +115,10 @@
 #include <X11/extensions/dpms.h>
 #endif
 
+#ifdef __NetBSD__
+#include <sys/time.h>
+#include <dev/wscons/wsconsio.h>
+#endif
 
 #ifndef MAX
 #define MAX(a,b) ((a)>(b)?(a):(b))
@@ -146,7 +157,9 @@ typedef enum {
   OPTION_PANEL_WIDTH,
   OPTION_PANEL_HEIGHT,
   OPTION_PROG_FP_REGS,
+#ifndef AVOID_FBDEV
   OPTION_FBDEV,
+#endif
   OPTION_VIDEO_KEY,
   OPTION_SHOW_CACHE,
   OPTION_VGA_ACCESS,
@@ -174,7 +187,9 @@ static const OptionInfoRec R128Options[] = {
   { OPTION_PANEL_WIDTH,  "PanelWidth",       OPTV_INTEGER, {0}, FALSE },
   { OPTION_PANEL_HEIGHT, "PanelHeight",      OPTV_INTEGER, {0}, FALSE },
   { OPTION_PROG_FP_REGS, "ProgramFPRegs",    OPTV_BOOLEAN, {0}, FALSE },
+#ifndef AVOID_FBDEV
   { OPTION_FBDEV,        "UseFBDev",         OPTV_BOOLEAN, {0}, FALSE },
+#endif
   { OPTION_VIDEO_KEY,    "VideoKey",         OPTV_INTEGER, {0}, FALSE },
   { OPTION_SHOW_CACHE,   "ShowCache",        OPTV_BOOLEAN, {0}, FALSE },
   { OPTION_VGA_ACCESS,   "VGAAccess",        OPTV_BOOLEAN, {0}, TRUE  },
@@ -234,9 +249,12 @@ static Bool R128MapMMIO(ScrnInfoPtr pScrn)
 {
     R128InfoPtr info          = R128PTR(pScrn);
 
+#ifndef AVOID_FBDEV
     if (info->FBDev) {
 	info->MMIO = fbdevHWMapMMIO(pScrn);
-    } else {
+    } else
+#endif
+    {
 #ifndef XSERVER_LIBPCIACCESS
 	info->MMIO = xf86MapPciMem(pScrn->scrnIndex,
 				   VIDMEM_MMIO | VIDMEM_READSIDEEFFECT,
@@ -269,9 +287,12 @@ static Bool R128UnmapMMIO(ScrnInfoPtr pScrn)
 {
     R128InfoPtr info          = R128PTR(pScrn);
 
+#ifndef AVOID_FBDEV
     if (info->FBDev)
 	fbdevHWUnmapMMIO(pScrn);
-    else {
+    else 
+#endif
+    {
 #ifndef XSERVER_LIBPCIACCESS
 	xf86UnMapVidMem(pScrn->scrnIndex, info->MMIO, R128_MMIOSIZE);
 #else
@@ -287,9 +308,12 @@ static Bool R128MapFB(ScrnInfoPtr pScrn)
 {
     R128InfoPtr info          = R128PTR(pScrn);
 
+#ifndef AVOID_FBDEV
     if (info->FBDev) {
 	info->FB = fbdevHWMapVidmem(pScrn);
-    } else {
+    } else 
+#endif
+    {
 #ifndef XSERVER_LIBPCIACCESS
 	info->FB = xf86MapPciMem(pScrn->scrnIndex,
 				 VIDMEM_FRAMEBUFFER,
@@ -322,9 +346,11 @@ static Bool R128UnmapFB(ScrnInfoPtr pScrn)
 {
     R128InfoPtr info          = R128PTR(pScrn);
 
+#ifndef AVOID_FBDEV
     if (info->FBDev)
 	fbdevHWUnmapVidmem(pScrn);
     else
+#endif
 #ifndef XSERVER_LIBPCIACCESS
 	xf86UnMapVidMem(pScrn->scrnIndex, info->FB, info->FbMapSize);
 #else
@@ -483,7 +509,7 @@ void R128GetPanelInfoFromBIOS(xf86OutputPtr output)
     xf86GetOptValInteger(info->Options, OPTION_PANEL_WIDTH,  &(r128_output->PanelXRes));
     xf86GetOptValInteger(info->Options, OPTION_PANEL_HEIGHT, &(r128_output->PanelYRes));
 
-    if (!info->VBIOS) return;
+    if (!info->VBIOS) goto fallback;
     info->FPBIOSstart = 0;
 
     /* FIXME: There should be direct access to the start of the FP info
@@ -504,7 +530,8 @@ void R128GetPanelInfoFromBIOS(xf86OutputPtr output)
         }
     }
 
-    if (!FPHeader) return;
+    if (!FPHeader) goto fallback;
+
 
     /* Assume that only one panel is attached and supported */
     for (i = FPHeader + 20; i < FPHeader + 84; i += 2) {
@@ -514,7 +541,9 @@ void R128GetPanelInfoFromBIOS(xf86OutputPtr output)
         }
     }
 
+#ifndef AVOID_FBDEV
     if (!info->FPBIOSstart) return;
+#endif
 
     if (!r128_output->PanelXRes)
         r128_output->PanelXRes = R128_BIOS16(info->FPBIOSstart + 25);
@@ -565,6 +594,27 @@ void R128GetPanelInfoFromBIOS(xf86OutputPtr output)
                    "This support is untested and may not "
                    "function properly\n");
     }
+    return;
+fallback:
+#ifdef __NetBSD__
+    if ((!r128_output->PanelXRes || !r128_output->PanelYRes)  &&
+        (info->HaveWSDisplay)) {
+	/*
+	 * we may not be on x86 so check wsdisplay for panel dimensions
+	 * XXX this assumes that the r128 is the console, although that should
+	 * be the case in the vast majority of cases where an LCD is hooked up
+	 * directly
+	 * We should probably just check the relevant registers but I'm not
+	 * sure they're available at this point.
+	 */
+	struct wsdisplay_fbinfo fbinfo;
+	
+	if (ioctl(xf86Info.consoleFd, WSDISPLAYIO_GINFO, &fbinfo) == 0) {
+	    r128_output->PanelXRes = fbinfo.width;
+	    r128_output->PanelYRes = fbinfo.height;
+	}
+    }
+#endif
 }
 
 /* Read PLL parameters from BIOS block.  Default to typical values if there
@@ -876,7 +926,8 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
 	case PCI_CHIP_RAGE128LF:
 	case PCI_CHIP_RAGE128MF:
 	case PCI_CHIP_RAGE128ML: 
-			info->HasPanelRegs = TRUE;  
+			info->HasPanelRegs = TRUE; 
+			info->isDFP = TRUE; 
 			/* which chips support dualhead? */
 			pR128Ent->HasCRTC2 = TRUE;
 			break;
@@ -907,9 +958,11 @@ static Bool R128PreInitConfig(ScrnInfoPtr pScrn)
     if (!R128MapMMIO(pScrn)) return FALSE;
     R128MMIO                  = info->MMIO;
 
+#ifndef AVOID_FBDEV
     if (info->FBDev)
 	pScrn->videoRam       = fbdevHWGetVidmem(pScrn) / 1024;
     else
+#endif
 	pScrn->videoRam       = INREG(R128_CONFIG_MEMSIZE) / 1024;
 
     info->MemCntl             = INREG(R128_MEM_CNTL);
@@ -1262,6 +1315,9 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 {
     R128InfoPtr      info;
     xf86Int10InfoPtr pInt10 = NULL;
+#ifdef __NetBSD__
+    struct wsdisplayio_bus_id bid;
+#endif
 
     R128TRACE(("R128PreInit\n"));
 
@@ -1288,6 +1344,29 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
 	       PCI_DEV_BUS(info->PciInfo),
 	       PCI_DEV_DEV(info->PciInfo),
 	       PCI_DEV_FUNC(info->PciInfo));
+
+#ifdef __NetBSD__
+    /* now check if this is the console */
+    info->HaveWSDisplay = FALSE;
+    info->HaveBacklightControl = FALSE;
+    if (ioctl(xf86Info.consoleFd, WSDISPLAYIO_GET_BUSID, &bid) != -1) {
+    	if ((bid.bus_type == WSDISPLAYIO_BUS_PCI) &&
+    	    (bid.ubus.pci.bus == PCI_DEV_BUS(info->PciInfo)) &&
+    	    (bid.ubus.pci.device == PCI_DEV_DEV(info->PciInfo)) &&
+    	    (bid.ubus.pci.function == PCI_DEV_FUNC(info->PciInfo))) {
+    	    	struct wsdisplay_param p;
+    	    	xf86Msg(X_INFO, "Alright, this is the console\n");
+    	    	info->HaveWSDisplay = TRUE;
+
+    	    	/* now see if we have hacklight control */
+    	    	p.param = WSDISPLAYIO_PARAM_BACKLIGHT;
+		if (ioctl(xf86Info.consoleFd, WSDISPLAYIO_GETPARAM, &p) != -1) {
+		    xf86Msg(X_INFO, "... and we have backlight control\n");
+		    info->HaveBacklightControl = TRUE; 	 
+		}   	
+    	}
+    }
+#endif
 
 #ifndef XSERVER_LIBPCIACCESS
     info->PciTag        = pciTag(PCI_DEV_BUS(info->PciInfo),
@@ -1358,6 +1437,7 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
         xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "ShowCache enabled\n");
     }
 
+#ifndef AVOID_FBDEV
 #ifdef __powerpc__
     if (xf86ReturnOptValBool(info->Options, OPTION_FBDEV, TRUE))
 #else
@@ -1379,6 +1459,7 @@ Bool R128PreInit(ScrnInfoPtr pScrn, int flags)
     }
 
     if (!info->FBDev)
+#endif /* !AVOID_FBDEV */
 	if (!R128PreInitInt10(pScrn, &pInt10))  goto fail;
 
     if (!R128PreInitConfig(pScrn))              goto fail;
@@ -2032,11 +2113,15 @@ Bool R128ScreenInit(SCREEN_INIT_ARGS_DECL)
     /* xf86CrtcRotate accesses pScrn->pScreen */
     pScrn->pScreen = pScreen;
 
+#ifndef AVOID_FBDEV
     if (info->FBDev) {
 	if (!fbdevHWModeInit(pScrn, pScrn->currentMode)) return FALSE;
     } else {
+#endif
 	if (!xf86SetDesiredModes(pScrn)) return FALSE;
+#ifndef AVOID_FBDEV
     }
+#endif
 
     R128SaveScreen(pScreen, SCREEN_SAVER_ON);
     //pScrn->AdjustFrame(ADJUST_FRAME_ARGS(pScrn, pScrn->frameX0, pScrn->frameY0));
@@ -2076,9 +2161,11 @@ Bool R128ScreenInit(SCREEN_INIT_ARGS_DECL)
     }
 
     /* DPMS setup - FIXME: also for mirror mode in non-fbdev case? - Michel */
+#ifndef AVOID_FBDEV
     if (info->FBDev)
 	xf86DPMSInit(pScreen, fbdevHWDPMSSetWeak(), 0);
     else
+#endif
         xf86DPMSInit(pScreen, xf86DPMSSet, 0);
 
     R128InitVideo(pScreen);
@@ -2118,7 +2205,10 @@ Bool R128ScreenInit(SCREEN_INIT_ARGS_DECL)
 				/* Colormap setup */
     if (!miCreateDefColormap(pScreen)) return FALSE;
     if (!xf86HandleColormaps(pScreen, 256, info->dac6bits ? 6 : 8,
-			     (info->FBDev ? fbdevHWLoadPaletteWeak() :
+			     (
+#ifndef AVOID_FBDEV
+			     info->FBDev ? fbdevHWLoadPaletteWeak() :
+#endif
 			     R128LoadPalette), NULL,
 			     CMAP_PALETTED_TRUECOLOR
 			     | CMAP_RELOAD_ON_MODE_SWITCH
@@ -2631,10 +2721,12 @@ static void R128Save(ScrnInfoPtr pScrn)
     R128SavePtr   save      = &info->SavedReg;
 
     R128TRACE(("R128Save\n"));
+#ifndef AVOID_FBDEV 
     if (info->FBDev) {
 	fbdevHWSave(pScrn);
 	return;
     }
+#endif
 
 #ifdef WITH_VGAHW
     if (info->VGAAccess) {
@@ -2674,11 +2766,12 @@ static void R128Restore(ScrnInfoPtr pScrn)
     R128SavePtr   restore   = &info->SavedReg;
 
     R128TRACE(("R128Restore\n"));
+#ifndef AVOID_FBDEV
     if (info->FBDev) {
 	fbdevHWRestore(pScrn);
 	return;
     }
-
+#endif
     R128Blank(pScrn);
 
     OUTREG(R128_AMCGPIO_MASK,     restore->amcgpio_mask);
@@ -2700,6 +2793,12 @@ static void R128Restore(ScrnInfoPtr pScrn)
     R128RestoreRMXRegisters(pScrn, restore);
     R128RestoreFPRegisters(pScrn, restore);
     R128RestoreLVDSRegisters(pScrn, restore);
+
+    OUTREG(R128_AMCGPIO_MASK,     restore->amcgpio_mask);
+    OUTREG(R128_AMCGPIO_EN_REG,   restore->amcgpio_en_reg);
+    OUTREG(R128_CLOCK_CNTL_INDEX, restore->clock_cntl_index);
+    OUTREG(R128_GEN_RESET_CNTL,   restore->gen_reset_cntl);
+    OUTREG(R128_DP_DATATYPE,      restore->dp_datatype);
 
 #ifdef WITH_VGAHW
     if (info->VGAAccess) {
@@ -3532,13 +3631,15 @@ Bool R128EnterVT(VT_FUNC_ARGS_DECL)
     R128TRACE(("R128EnterVT\n"));
 
     pScrn->vtSema = TRUE;
+#ifndef AVOID_FBDEV
     if (info->FBDev) {
         if (!fbdevHWEnterVT(VT_FUNC_ARGS)) return FALSE;
     } else {
-        if (!xf86SetDesiredModes(pScrn)) return FALSE;
+#endif
+	if (!xf86SetDesiredModes(pScrn)) return FALSE;
+#ifndef AVOID_FBDEV
     }
-
-    //if (!R128ModeInit(pScrn, pScrn->currentMode)) return FALSE;
+#endif
 
     if (info->accelOn)
 	R128EngineInit(pScrn);
@@ -3582,9 +3683,11 @@ void R128LeaveVT(VT_FUNC_ARGS_DECL)
 #endif
     R128SavePalette(pScrn, save);
     info->PaletteSavedOnVT = TRUE;
+#ifndef AVOID_FBDEV
     if (info->FBDev)
         fbdevHWLeaveVT(VT_FUNC_ARGS);
     else
+#endif
         R128Restore(pScrn);
 }
 

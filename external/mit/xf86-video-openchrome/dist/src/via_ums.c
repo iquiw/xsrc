@@ -28,6 +28,7 @@
 
 #include "globals.h"
 #include "via_driver.h"
+#include "xf86fbman.h"
 
 static void
 viaMMIOEnable(ScrnInfoPtr pScrn)
@@ -186,7 +187,7 @@ viaMapMMIO(ScrnInfoPtr pScrn)
 
     xf86DrvMsg(pScrn->scrnIndex, X_PROBED,
                "Mapping the frame buffer at address 0x%lX with "
-               "size %u KB.\n",
+               "size %lu KB.\n",
                pVia->FrameBufferBase, pVia->videoRambytes / 1024);
 
 #ifdef HAVE_PCIACCESS

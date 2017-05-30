@@ -51,10 +51,17 @@ __asm__(".balign 16\n"
    ".balign 16\n"                \
    func ":"
 
+#ifdef __PIC__
+#define STUB_ASM_CODE(slot)      \
+   "call x86_current_tls@PLT\n\t"\
+   "movl %gs:(%eax), %eax\n\t"   \
+   "jmp *(4 * " slot ")(%eax)"
+#else
 #define STUB_ASM_CODE(slot)      \
    "call x86_current_tls\n\t"    \
    "movl %gs:(%eax), %eax\n\t"   \
    "jmp *(4 * " slot ")(%eax)"
+#endif
 
 #define MAPI_TMP_STUB_ASM_GCC
 #include "mapi_tmp.h"
@@ -72,8 +79,8 @@ __asm__(".text");
 extern unsigned long
 x86_current_tls();
 
-static char x86_entry_start[];
-static char x86_entry_end[];
+extern char x86_entry_start[] __attribute__((__visibility__("hidden")));
+extern char x86_entry_end[] __attribute__((__visibility__("hidden")));
 
 void
 entry_patch_public(void)

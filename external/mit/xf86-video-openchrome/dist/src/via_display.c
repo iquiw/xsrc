@@ -29,6 +29,7 @@
 #include "config.h"
 #endif
 
+#include <stdint.h>
 #include "via_driver.h"
 
 /*
@@ -813,12 +814,12 @@ viaIGA1SetFBStartingAddress(xf86CrtcPtr crtc, int x, int y)
 
     Base = (y * pScrn->displayWidth + x) * (pScrn->bitsPerPixel / 8);
     DEBUG(xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                        "Base Address: 0x%lx\n",
-                        Base));
+                        "Base Address: 0x%"PRIx32"x\n",
+                        (uint32_t)Base));
     Base = (Base + drmmode->front_bo->offset) >> 1;
     xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                "DRI Base Address: 0x%lx\n",
-                Base);
+                "DRI Base Address: 0x%"PRIx32"\n",
+                (uint32_t)Base);
 
     hwp->writeCrtc(hwp, 0x0D, Base & 0xFF);
     hwp->writeCrtc(hwp, 0x0C, (Base & 0xFF00) >> 8);
@@ -2044,12 +2045,12 @@ viaIGA2SetFBStartingAddress(xf86CrtcPtr crtc, int x, int y)
 
     Base = (y * pScrn->displayWidth + x) * (pScrn->bitsPerPixel / 8);
     DEBUG(xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                        "Base Address: 0x%lx\n",
-                        Base));
+                        "Base Address: 0x%"PRIx32"\n",
+                        (uint32_t)Base));
     Base = (Base + drmmode->front_bo->offset) >> 3;
     xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                "DRI Base Address: 0x%lx\n",
-                Base);
+                "DRI Base Address: 0x%"PRIx32"\n",
+                (uint32_t)Base);
 
     tmp = hwp->readCrtc(hwp, 0x62) & 0x01;
     tmp |= (Base & 0x7F) << 1;
@@ -2970,8 +2971,12 @@ iga1_crtc_gamma_set(xf86CrtcPtr crtc, CARD16 *red, CARD16 *green, CARD16 *blue,
     vgaHWPtr hwp = VGAHWPTR(pScrn);
     VIAPtr pVia = VIAPTR(pScrn);
     int SR1A, SR1B, CR67, CR6A;
-    LOCO colors[size];
+    LOCO *colors;
     int i;
+
+    colors = malloc(size * sizeof(*colors));
+    if (colors == NULL)
+	return;
 
     for (i = 0; i < size; i++) {
         colors[i].red = red[i] >> 8;
@@ -3007,6 +3012,7 @@ iga1_crtc_gamma_set(xf86CrtcPtr crtc, CARD16 *red, CARD16 *green, CARD16 *blue,
             hwp->writeDacData(hwp, colors[i].blue);
         }
     }
+    free(colors);
 }
 
 static void *
@@ -3407,8 +3413,12 @@ iga2_crtc_gamma_set(xf86CrtcPtr crtc, CARD16 *red, CARD16 *green, CARD16 *blue,
     vgaHWPtr hwp = VGAHWPTR(pScrn);
     VIAPtr pVia = VIAPTR(pScrn);
     int SR1A, SR1B, CR67, CR6A;
-    LOCO colors[size];
     int i;
+    LOCO *colors;
+
+    colors = malloc(size * sizeof(*colors));
+    if (colors == NULL)
+	return;
 
     for (i = 0; i < size; i++) {
         colors[i].red = red[i] >> 8;
@@ -3467,6 +3477,7 @@ iga2_crtc_gamma_set(xf86CrtcPtr crtc, CARD16 *red, CARD16 *green, CARD16 *blue,
             hwp->writeDacData(hwp, colors[i].blue);
         }
     }
+    free(colors);
 }
 
 static void *

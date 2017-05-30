@@ -554,7 +554,25 @@ VIADRI1ScreenInit(ScreenPtr pScreen)
             pDRIInfo->clientDriverName = VIAClientDriverName;
             break;
     }
+#if 0
+    if (xf86LoaderCheckSymbol("DRICreatePCIBusID")) {
+        pDRIInfo->busIdString = DRICreatePCIBusID(pVia->PciInfo);
+    } else {
+        pDRIInfo->busIdString = xalloc(64);
+        sprintf(pDRIInfo->busIdString, "PCI:%d:%d:%d",
+#ifdef XSERVER_LIBPCIACCESS
+                ((pVia->PciInfo->domain << 8) | pVia->PciInfo->bus),
+                pVia->PciInfo->dev, pVia->PciInfo->func
+#else
+                ((pciConfigPtr)pVia->PciInfo->thisCard)->busnum,
+                ((pciConfigPtr)pVia->PciInfo->thisCard)->devnum,
+                ((pciConfigPtr)pVia->PciInfo->thisCard)->funcnum
+#endif
+               );
+    }
+#else
     pDRIInfo->busIdString = DRICreatePCIBusID(pVia->PciInfo);
+#endif
     pDRIInfo->ddxDriverMajorVersion = VIA_DRIDDX_VERSION_MAJOR;
     pDRIInfo->ddxDriverMinorVersion = VIA_DRIDDX_VERSION_MINOR;
     pDRIInfo->ddxDriverPatchVersion = VIA_DRIDDX_VERSION_PATCH;

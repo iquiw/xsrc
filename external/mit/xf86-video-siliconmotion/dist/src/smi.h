@@ -30,6 +30,7 @@ authorization from the XFree86 Project and Silicon Motion.
 #ifndef _SMI_H
 #define _SMI_H
 
+#include "xorg-server.h"
 #include "smi_pcirename.h"
 
 #include <string.h>
@@ -68,6 +69,12 @@ authorization from the XFree86 Project and Silicon Motion.
 /*			D E F I N I T I O N S				      */
 /******************************************************************************/
 
+#ifdef __NetBSD__
+#define __BYTE_ORDER BYTE_ORDER
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#endif
+
 #define PCI_VENDOR_SMI		0x126F
 #define PCI_CHIP_SMI910		0x0910
 #define PCI_CHIP_SMI810		0x0810
@@ -83,7 +90,7 @@ authorization from the XFree86 Project and Silicon Motion.
 
 #define SMI_USE_IMAGE_WRITES	0
 #define SMI_USE_VIDEO		1
-#define SMI_USE_CAPTURE		1
+#define SMI_USE_CAPTURE		0
 #define SMI501_CLI_DEBUG	0
 
 /*

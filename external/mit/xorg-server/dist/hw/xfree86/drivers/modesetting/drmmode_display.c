@@ -674,11 +674,15 @@ drmmode_set_scanout_pixmap_cpu(xf86CrtcPtr crtc, PixmapPtr ppix)
     DamageRegister(&ppix->drawable, drmmode_crtc->slave_damage);
 
     if (ppriv->fb_id == 0) {
-        drmModeAddFB(drmmode->fd, ppix->drawable.width,
+        int ret = drmModeAddFB(drmmode->fd, ppix->drawable.width,
                      ppix->drawable.height,
                      ppix->drawable.depth,
                      ppix->drawable.bitsPerPixel,
                      ppix->devKind, ppriv->backing_bo->handle, &ppriv->fb_id);
+	if (ret) {
+	    ErrorF("failed to set scanout pixmap cpu\n");
+	    return FALSE;
+	}
     }
     return TRUE;
 }
@@ -1366,7 +1370,7 @@ static int parse_path_blob(drmModePropertyBlobPtr path_blob, int *conn_base_id, 
     if (!conn)
         return -1;
     len = conn - (blob_data + 4);
-    if (len + 1> 5)
+    if (len + 1 >= sizeof(conn_id))
         return -1;
     memcpy(conn_id, blob_data + 4, len);
     conn_id[len + 1] = '\0';

@@ -50,6 +50,13 @@
 #include <ctype.h>
 #endif
 
+#ifdef __NetBSD__
+#if defined(__sparc__) || defined(__sparc64__)
+#include <dev/sun/fbio.h>
+extern struct sbus_devtable sbusDeviceTable[];
+#endif /* sparc / sparc64 */
+#endif /* NetBSD */
+
 /* Sections for the default built-in configuration. */
 
 #define BUILTIN_DEVICE_NAME \
@@ -199,6 +206,46 @@ listPossibleVideoDrivers(char *matches[], int nmatches)
     }
     i = 0;
 
+/* XXXMRG:  xorg-server 1.10/1.18 -- merge into xf86PlatformMatchDriver()? */
+#ifdef __NetBSD__
+#if defined(__shark)
+    matches[i++] = xnfstrdup("chips");
+    matches[i++] = xnfstrdup("igs");
+#elif defined(__sgimips)
+    matches[i++] = xnfstrdup("crime");
+    matches[i++] = xnfstrdup("newport");
+#elif defined(__sparc) || defined(__sparc64)
+    /* dig through /dev/fb* */
+    {
+    	struct fbtype fbt;
+	int j = 0, fd = 0, dev;
+	char fbpath[32];
+
+	for (j = 0; j < 10; j++) {
+	    snprintf(fbpath, 31, "/dev/fb%d", j);
+	    xf86Msg(X_ERROR,"%s: trying %s\n", __func__, fbpath);
+	    fd = open(fbpath, O_RDONLY, 0);
+	    if (fd == -1) continue;
+	    memset(&fbt, 0, sizeof(fbt));
+	    if (ioctl(fd, FBIOGTYPE, &fbt) == -1) {
+	    	close(fd);
+		continue;
+	    }
+	    close(fd);
+	    dev = 0;
+	    while ((sbusDeviceTable[dev].fbType != 0) &&
+	           (sbusDeviceTable[dev].fbType != fbt.fb_type))
+		dev++;
+	    if (sbusDeviceTable[dev].fbType == fbt.fb_type) {
+		xf86Msg(X_ERROR,"%s: found %s\n", __func__,
+		    sbusDeviceTable[dev].driverName);
+		matches[i++] = xnfstrdup(sbusDeviceTable[dev].driverName);
+	    }
+	}
+    }
+#endif
+
+#else /* !NetBSD */
 #ifdef XSERVER_PLATFORM_BUS
     i = xf86PlatformMatchDriver(matches, nmatches);
 #endif
@@ -256,12 +303,13 @@ listPossibleVideoDrivers(char *matches[], int nmatches)
 #ifdef __sparc__
     if (i < (nmatches - 1))
     {
-        char *sbusDriver = sparcDriverName();
+        const char *sbusDriver = sparcDriverName();
 
         if (sbusDriver)
             matches[i++] = xnfstrdup(sbusDriver);
     }
 #endif
+#endif /* NetBSD */
 #ifdef XSERVER_LIBPCIACCESS
     if (i < (nmatches - 1))
         i += xf86PciMatchDriver(&matches[i], nmatches - i);
@@ -288,6 +336,8 @@ listPossibleVideoDrivers(char *matches[], int nmatches)
         matches[i++] = xnfstrdup("vesa");
 #elif defined(__sparc__) && !defined(sun)
         matches[i++] = xnfstrdup("sunffb");
+#elif defined(__NetBSD__)
+	matches[i++] = xnfstrdup("wsfb");
 #endif
     }
 }

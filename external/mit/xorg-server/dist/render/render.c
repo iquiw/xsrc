@@ -275,6 +275,7 @@ ProcRenderQueryVersion(ClientPtr client)
     };
 
     REQUEST(xRenderQueryVersionReq);
+    REQUEST_SIZE_MATCH(xRenderQueryVersionReq);
 
     REQUEST_SIZE_MATCH(xRenderQueryVersionReq);
 

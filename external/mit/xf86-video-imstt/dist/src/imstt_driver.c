@@ -39,14 +39,12 @@
 #include "xf86_OSproc.h"
 #include "xf86PciInfo.h"
 #include "xf86Pci.h"
-#include "xf86Version.h"
 #include "xf86Resources.h"
 #include "xf86fbman.h"
 #include "compiler.h"
 #include "xaa.h"
 #include "mipointer.h"
 #include "micmap.h"
-#include "mibstore.h"
 #include "fbdevhw.h"
 
 #include "fb.h"
@@ -55,6 +53,11 @@
 
 #include "imstt.h"
 #include "imstt_reg.h"
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#endif
 
 
 /* To get it to build on non-PPC */
@@ -812,7 +815,6 @@ static Bool IMSTTScreenInit(int scrnIndex, ScreenPtr pScreen,
 	fbPictureInit (pScreen, 0, 0);
 
 	xf86SetBlackWhitePixels(pScreen);
-	miInitializeBackingStore(pScreen);
 	xf86SetBackingStore(pScreen);
 
 	if (!iptr->NoAccel) {
