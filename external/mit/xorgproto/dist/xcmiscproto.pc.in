@@ -1,9 +1,0 @@
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-libdir=@libdir@
-includedir=@includedir@
- 
-Name: XCMiscProto
-Description: XCMisc extension headers
-Version: 1.2.2
-Cflags: -I${includedir}
