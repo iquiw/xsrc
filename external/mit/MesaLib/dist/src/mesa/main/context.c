@@ -356,11 +356,14 @@ mtx_t OneTimeLock = _MTX_INITIALIZER_NP;
  * Calls all the various one-time-fini functions in Mesa
  */
 
-static void
+static GLbitfield api_init_mask = 0x0;
+static void __attribute__((__destructor__))
 one_time_fini(void)
 {
-   _mesa_destroy_shader_compiler();
-   _mesa_locale_fini();
+   if (api_init_mask) {
+      _mesa_destroy_shader_compiler();
+      _mesa_locale_fini();
+   }
 }
 
 /**
@@ -375,7 +378,6 @@ one_time_fini(void)
 static void
 one_time_init( struct gl_context *ctx )
 {
-   static GLbitfield api_init_mask = 0x0;
 
    mtx_lock(&OneTimeLock);
 
@@ -399,8 +401,6 @@ one_time_init( struct gl_context *ctx )
       for (i = 0; i < 256; i++) {
          _mesa_ubyte_to_float_color_tab[i] = (float) i / 255.0F;
       }
-
-      atexit(one_time_fini);
 
 #if defined(DEBUG)
       if (MESA_VERBOSE != 0) {

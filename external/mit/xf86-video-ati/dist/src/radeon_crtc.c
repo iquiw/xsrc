@@ -170,7 +170,7 @@ RADEONComputePLL_old(RADEONPLLPtr pll,
 
     freq = freq * 1000;
 
-    ErrorF("freq: %lu\n", freq);
+/*    ErrorF("freq: %lu\n", freq); */
 
     if (flags & RADEON_PLL_USE_REF_DIV)
 	min_ref_div = max_ref_div = pll->reference_div;
@@ -245,17 +245,18 @@ RADEONComputePLL_old(RADEONPLLPtr pll,
 		    tmp += (CARD64)pll->reference_freq * 1000 * frac_feedback_div;
 		    current_freq = RADEONDiv(tmp, ref_div * post_div);
 
+#define RD_ABS(a, b) ((a) > (b) ? (a) - (b) : (b) - (a))
 		    if (flags & RADEON_PLL_PREFER_CLOSEST_LOWER) {
 			error = freq - current_freq;
 			error = (int32_t)error < 0 ? 0xffffffff : error;
 		    } else
-			error = abs(current_freq - freq);
-		    vco_diff = abs(vco - best_vco);
+			error = RD_ABS(current_freq, freq);
+		    vco_diff = RD_ABS(vco, best_vco);
 
 		    if ((best_vco == 0 && error < best_error) ||
 			(best_vco != 0 &&
 			 (error < best_error - 100 ||
-			  (abs(error - best_error) < 100 && vco_diff < best_vco_diff )))) {
+			  (RD_ABS(error, best_error) < 100 && vco_diff < best_vco_diff )))) {
 			best_post_div = post_div;
 			best_ref_div = ref_div;
 			best_feedback_div = feedback_div;
@@ -300,11 +301,13 @@ RADEONComputePLL_old(RADEONPLLPtr pll,
 	}
     }
 
+/*
     ErrorF("best_freq: %u\n", (unsigned int)best_freq);
     ErrorF("best_feedback_div: %u\n", (unsigned int)best_feedback_div);
     ErrorF("best_frac_feedback_div: %u\n", (unsigned int)best_frac_feedback_div);
     ErrorF("best_ref_div: %u\n", (unsigned int)best_ref_div);
     ErrorF("best_post_div: %u\n", (unsigned int)best_post_div);
+*/
 
     if (best_freq == -1)
 	FatalError("Couldn't find valid PLL dividers\n");
@@ -438,11 +441,13 @@ RADEONComputePLL_new(RADEONPLLPtr pll,
     best_freq += pll->reference_freq * fb_div_frac;
     best_freq = best_freq / (ref_div * post_div);
 
+/*
     ErrorF("best_freq: %u\n", (unsigned int)best_freq);
     ErrorF("best_feedback_div: %u\n", (unsigned int)fb_div);
     ErrorF("best_frac_feedback_div: %u\n", (unsigned int)fb_div_frac);
     ErrorF("best_ref_div: %u\n", (unsigned int)ref_div);
     ErrorF("best_post_div: %u\n", (unsigned int)post_div);
+*/
 
 done:
     if (best_freq == 0)
@@ -503,7 +508,11 @@ static void
 radeon_crtc_mode_commit(xf86CrtcPtr crtc)
 {
     if (crtc->scrn->pScreen != NULL)
+#ifdef HAVE_XF86_CURSOR_RESET_CURSOR
+	xf86CursorResetCursor(crtc->scrn->pScreen);
+#else
 	xf86_reload_cursors(crtc->scrn->pScreen);
+#endif
 }
 
 void

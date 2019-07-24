@@ -100,6 +100,10 @@ xf86AddBusDeviceToConfigure(const char *driver, BusType bus, void *busData,
             ret = xf86SbusConfigure(busData, DevToConfig[i].sVideo);
             break;
 #endif
+#if defined(__arm32__) || defined(__arm__)
+        case BUS_ISA:
+            break;
+#endif
         default:
             return NULL;
         }
@@ -138,6 +142,12 @@ xf86AddBusDeviceToConfigure(const char *driver, BusType bus, void *busData,
                                 &DevToConfig[i].GDev);
         break;
 #endif
+#if defined(__arm32__) || defined(__arm__)
+    case BUS_ISA:
+	DevToConfig[i].GDev.busID = xnfalloc(6);
+	strcpy((char *)DevToConfig[i].GDev.busID, "ISA");
+	break;
+#endif
     default:
         break;
     }
@@ -163,6 +173,12 @@ configureInputSection(void)
     ptr->inp_identifier = xnfstrdup("Keyboard0");
     ptr->inp_driver = xnfstrdup("kbd");
     ptr->list.next = NULL;
+#if defined(WSCONS_SUPPORT) && !defined(__i386__) && !defined(__amd64__)
+    ptr->inp_option_lst = xf86addNewOption(ptr->inp_option_lst,
+        xstrdup("Protocol"), "wskbd");
+    ptr->inp_option_lst = xf86addNewOption(ptr->inp_option_lst,
+        xstrdup("Device"), "/dev/wskbd");
+#endif
 
     /* Crude mechanism to auto-detect mouse (os dependent) */
     {

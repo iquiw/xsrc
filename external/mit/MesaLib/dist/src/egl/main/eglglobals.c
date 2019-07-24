@@ -91,11 +91,16 @@ struct _egl_global _eglGlobal =
    .debugTypesEnabled = _EGL_DEBUG_BIT_CRITICAL | _EGL_DEBUG_BIT_ERROR,
 };
 
+static EGLBoolean registered = EGL_FALSE;
 
-static void
+static void __attribute__((__destructor__))
 _eglAtExit(void)
 {
    EGLint i;
+
+   if (!registered)
+      return;
+
    for (i = _eglGlobal.NumAtExitCalls - 1; i >= 0; i--)
       _eglGlobal.AtExitCalls[i]();
 }
@@ -109,10 +114,7 @@ _eglAddAtExitCall(void (*func)(void))
 
       mtx_lock(_eglGlobal.Mutex);
 
-      if (!registered) {
-         atexit(_eglAtExit);
-         registered = EGL_TRUE;
-      }
+      registered = EGL_TRUE;
 
       assert(_eglGlobal.NumAtExitCalls < ARRAY_SIZE(_eglGlobal.AtExitCalls));
       _eglGlobal.AtExitCalls[_eglGlobal.NumAtExitCalls++] = func;
@@ -160,7 +162,10 @@ _eglPointerIsDereferencable(void *p)
 {
 #ifdef HAVE_MINCORE
    uintptr_t addr = (uintptr_t) p;
-   unsigned char valid = 0;
+#ifdef __linux__
+   unsigned
+#endif
+   char valid = 0;
    const long page_size = getpagesize();
 
    if (p == NULL)

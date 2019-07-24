@@ -33,13 +33,17 @@
 #include "config.h"
 #endif
 
+#if defined(__NetBSD__)
+#include <fcntl.h>
+#include <dev/wscons/wsconsio.h>
+#include <sys/ioctl.h>
+#endif
+
 /* function prototypes, common data structures & generic includes */
 #include "newport.h"
 
 /* Drivers using the mi SW cursor need: */
 #include "mipointer.h"
-/* Drivers using the mi implementation of backing store need: */
-#include "mibstore.h"
 /* Drivers using the mi colourmap code need: */
 #include "micmap.h"
 
@@ -55,6 +59,12 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+
+#if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) > 6
+#define xf86LoaderReqSymLists(...) do {} while (0)
+#define LoaderRefSymLists(...) do {} while (0)
+#endif
 
 #define NEWPORT_VERSION		4000
 #define NEWPORT_NAME		"NEWPORT"
@@ -195,7 +205,8 @@ NewportFreeRec(ScrnInfoPtr pScrn)
 static void
 NewportIdentify(int flags)
 {
-	xf86PrintChipsets( NEWPORT_NAME, "driver for Newport Graphics Card", NewportChipsets);
+	xf86PrintChipsets( NEWPORT_NAME, "driver for Newport Graphics Card", 
+	    NewportChipsets);
 }
 
 static Bool
@@ -210,16 +221,31 @@ NewportProbe(DriverPtr drv, int flags)
 #endif
 	unsigned probedIDs[NEWPORT_MAX_BOARDS];
 	memType base;
-
 	if ((numDevSections = xf86MatchDevice(NEWPORT_DRIVER_NAME, &devSections)) <= 0) 
                 return FALSE;
+
 	numUsed = NewportHWProbe(probedIDs);
 	if ( numUsed <= 0 ) 
 		return FALSE;
 
-	if(flags & PROBE_DETECT) 
+	if ( xf86DoConfigure && xf86DoConfigurePass1 ) {
+		GDevPtr pGDev;
+		for (i = 0; i < numUsed; i++) {
+			pGDev = xf86AddBusDeviceToConfigure(NEWPORT_DRIVER_NAME,
+				BUS_NONE, NULL, 0);
+			if (pGDev) {
+				/*
+				 * XF86Match???Instances() treat chipID and 
+				 * chipRev as overrides, so clobber them here.
+				 */
+				pGDev->chipID = pGDev->chipRev = -1;
+			}
+	    	}
+	}
+
+	if(flags & PROBE_DETECT) {
 		foundScreen = TRUE;
-	else {
+	} else {
 		for (i = 0; i < numDevSections; i++) {
 			dev = devSections[i];
 			busID =  xf86SetIntOption(dev->options, "BusID", 0);
@@ -372,9 +398,11 @@ NewportPreInit(ScrnInfoPtr pScrn, int flags)
 		pNewport->board_rev, pNewport->rex3_rev, 
 		pNewport->cmap_rev, pNewport->xmap9_rev);
 
-	if ( (xf86GetOptValInteger(pNewport->Options, OPTION_BITPLANES, &pNewport->bitplanes)))
+	if ( (xf86GetOptValInteger(pNewport->Options, OPTION_BITPLANES, 
+	    &pNewport->bitplanes)))
 	from = X_CONFIG;
-	xf86DrvMsg(pScrn->scrnIndex, from, "Newport has %d bitplanes\n", pNewport->bitplanes);
+	xf86DrvMsg(pScrn->scrnIndex, from, "Newport has %d bitplanes\n", 
+	    pNewport->bitplanes);
 
 	if ( pScrn->depth > pNewport->bitplanes ) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR, \
@@ -459,6 +487,12 @@ NewportPreInit(ScrnInfoPtr pScrn, int flags)
 		return FALSE;
 	}
 
+	/* Load XAA module */
+	if (!xf86LoadSubModule(pScrn, "xaa")) {
+		NewportFreeRec(pScrn);
+		return FALSE;
+	}
+	xf86LoaderReqSymLists(xaaSymbols, NULL);
 	return TRUE;
 }
 
@@ -537,7 +571,6 @@ NewportScreenInit(int index, ScreenPtr pScreen, int argc, char **argv)
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "RENDER extension initialisation failed.\n");
 
-	miInitializeBackingStore(pScreen);
 	xf86SetBackingStore(pScreen);
 
 	xf86SetBlackWhitePixels(pScreen);
@@ -617,7 +650,7 @@ NewportScreenInit(int index, ScreenPtr pScreen, int argc, char **argv)
 	if (serverGeneration == 1) {
 		xf86ShowUnusedOptions(pScrn->scrnIndex, pScrn->options);
 	}
-	
+	NewportModeInit(pScrn, pScrn->currentMode);
 	return TRUE;
 }
 
@@ -709,7 +742,8 @@ NewportModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
 
 	width = mode->HDisplay;
 	height = mode->VDisplay;
-	if (width != 1280 || height != 1024) {
+	if ((width > 1280) || (width < 1024) ||
+	    (height < 768) || (height > 1024)) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR, \
 		"Width = %d and height = %d is not supported by by this driver\n", width, height);
 		return FALSE;
@@ -735,17 +769,22 @@ NewportModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
 					NPORT_DMODE1_RWPCKD;
 	} else { /* 24bpp */
 		CARD32 mode = 0L;
+		LOCO col;
+		int i;
 
 		/* tell the xmap9s that we are using 24bpp */
 		NewportBfwait(pNewport->pNewportRegs);
-		pNewportRegs->set.dcbmode = (DCB_XMAP_ALL | W_DCB_XMAP9_PROTOCOL |
-				XM9_CRS_CONFIG | NPORT_DMODE_W1 );
-		pNewportRegs->set.dcbdata0.bytes.b3 &= ~(XM9_8_BITPLANES | XM9_PUPMODE);
+		pNewportRegs->set.dcbmode = (DCB_XMAP_ALL | 
+		    W_DCB_XMAP9_PROTOCOL | XM9_CRS_CONFIG | NPORT_DMODE_W1 );
+		pNewportRegs->set.dcbdata0.bytes.b3 &= 
+		    ~(XM9_8_BITPLANES | XM9_PUPMODE);
 		NewportBfwait(pNewport->pNewportRegs);
 		/* set up the mode register for 24bpp */
-		mode = XM9_MREG_PIX_SIZE_24BPP | XM9_MREG_PIX_MODE_RGB1
+		mode = XM9_MREG_PIX_SIZE_24BPP | XM9_MREG_PIX_MODE_RGB2
 				| XM9_MREG_GAMMA_BYPASS;
-		NewportXmap9SetModeRegister( pNewportRegs , 0, mode);
+		for (i = 0; i < 32; i++)
+			NewportXmap9SetModeRegister( pNewportRegs , i, mode);
+
 		/* select the set up mode register */
 		NewportBfwait(pNewport->pNewportRegs);
 		pNewportRegs->set.dcbmode = (DCB_XMAP_ALL | W_DCB_XMAP9_PROTOCOL |
@@ -759,16 +798,29 @@ NewportModeInit(ScrnInfoPtr pScrn, DisplayModePtr mode)
 					NPORT_DMODE1_RGBMD | 
 					/* turn on 8888 = RGBA pixel packing */
 					NPORT_DMODE1_HD32 | NPORT_DMODE1_RWPCKD;
-		/* After setting up XMAP9 we have to reinitialize the CMAP for
-		 * whatever reason (the docs say nothing about it). RestorePalette()
-		 * is just a lazy way to do this */
-		NewportRestorePalette( pScrn );
+		/*
+		 * After setting up XMAP9 we have to reinitialize the CMAP for
+		 * whatever reason (the docs say nothing about it). 
+		 */
+
+
+		for (i = 0; i < 256; i++) {
+			col.red = col.green = col.blue = i;
+			NewportCmapSetRGB(NEWPORTREGSPTR(pScrn), i, col);
+		}
+		for (i = 0; i < 256; i++) {
+			col.red = col.green = col.blue = i;
+			NewportCmapSetRGB(NEWPORTREGSPTR(pScrn), i + 0x1f00,
+			    col);
+		}
+
 	}
 	/* blank the framebuffer */
 	NewportWait(pNewportRegs);
-	pNewportRegs->set.drawmode0 = (NPORT_DMODE0_DRAW | NPORT_DMODE0_DOSETUP |
-					NPORT_DMODE0_STOPX | NPORT_DMODE0_STOPY |
-					NPORT_DMODE0_BLOCK);
+	pNewportRegs->set.drawmode0 = (NPORT_DMODE0_DRAW |
+				       NPORT_DMODE0_DOSETUP |
+				       NPORT_DMODE0_STOPX | NPORT_DMODE0_STOPY |
+				       NPORT_DMODE0_BLOCK);
 	pNewportRegs->set.drawmode1 = pNewport->drawmode1 |
 					NPORT_DMODE1_FCLR |
 					NPORT_DMODE1_RGBMD;
@@ -812,10 +864,22 @@ NewportRestore(ScrnInfoPtr pScrn, Bool Closing)
 static unsigned
 NewportHWProbe(unsigned probedIDs[])
 {
-	FILE* cpuinfo;
-	char line[80];
 	unsigned hasNewport = 0;
 
+#if defined(__NetBSD__)
+	int fd, type, i;
+
+	probedIDs[0] = 0;
+
+	fd = open("/dev/ttyE0", O_RDONLY, 0);
+	i = ioctl(fd, WSDISPLAYIO_GTYPE, &type);
+	close(fd);
+
+	if ( (i == 0) && ( type == WSDISPLAY_TYPE_NEWPORT) )
+		hasNewport = 1;
+#else
+	FILE* cpuinfo;
+	char line[80];
 	if ((cpuinfo = fopen("/proc/cpuinfo", "r"))) {
 		while(fgets(line, 80, cpuinfo) != NULL) {
 			if(strstr(line, "SGI Indy") != NULL) {
@@ -831,6 +895,7 @@ NewportHWProbe(unsigned probedIDs[])
 		}
 		fclose(cpuinfo);
 	}
+#endif
 	return hasNewport;
 }
 
@@ -866,12 +931,19 @@ NewportMapRegs(ScrnInfoPtr pScrn)
 {
 	NewportPtr pNewport = NEWPORTPTR(pScrn);
 
+#if defined(__NetBSD__)
+	pNewport->pNewportRegs = xf86MapVidMem(pScrn->scrnIndex,
+			VIDMEM_MMIO, NEWPORT_REGISTERS, sizeof(NewportRegs));
+#else
 	pNewport->pNewportRegs = xf86MapVidMem(pScrn->scrnIndex, 
 			VIDMEM_MMIO,
-			NEWPORT_BASE_ADDR0 + pNewport->busID * NEWPORT_BASE_OFFSET,
-			 sizeof(NewportRegs));
-	if ( ! pNewport->pNewportRegs ) 
+			NEWPORT_BASE_ADDR0 + pNewport->busID * 
+			    NEWPORT_BASE_OFFSET, sizeof(NewportRegs));
+#endif
+	if ( ! pNewport->pNewportRegs ) {
+		xf86Msg(X_ERROR, "can't map registers\n");
 		return FALSE;
+	}
 	return TRUE;
 }
 

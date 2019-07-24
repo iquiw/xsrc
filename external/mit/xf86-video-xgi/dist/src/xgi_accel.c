@@ -34,6 +34,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <unistd.h>
 
 #include "xf86.h"
 #include "xf86_OSproc.h"
@@ -958,6 +959,7 @@ Volari_AccelInit(ScreenPtr pScreen)
             return TRUE;
 	}
 #endif /* EXA */
+	return FALSE;
 }
 
 void
@@ -1738,11 +1740,12 @@ void XGIDumpCMDQueue(ScrnInfoPtr pScrn)
     ErrorF("----------------------------------------------------------------------\n") ;
 
 	SwWP = Volari_GetSwWP() ;
-    ErrorF("SwWP=0x%x\n", SwWP) ;
-    ErrorF("pXGI->cmdQueueBase=0x%x\n", pXGI->cmdQueueBase) ;
+    ErrorF("SwWP=0x%lx\n", SwWP) ;
+    ErrorF("pXGI->cmdQueueBase=%p\n", pXGI->cmdQueueBase) ;
 	for( i = 0 ; i < SwWP ; i+=0x04 )
 	{
-		ErrorF("[%04X]: %08lX\n",i, *(CARD32 *)(pXGI->cmdQueueBase+i));
+		ErrorF("[%04X]: %08lX\n",i,
+		    (unsigned long)*(CARD32 *)(pXGI->cmdQueueBase+i));
 	}
 }
 

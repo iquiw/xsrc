@@ -202,7 +202,7 @@ FcScandir (const char		*dirp,
     if (!d)
 	return -1;
 
-    dlist = (struct dirent **) malloc (sizeof (struct dirent *) * lsize);
+    dlist = malloc (sizeof (struct dirent *) * lsize);
     if (!dlist)
     {
 	closedir (d);

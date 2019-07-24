@@ -1115,7 +1115,18 @@ checkCoreInputDevices(serverLayoutPtr servlayoutp, Bool implicitLayout)
     if (!foundPointer && xf86Info.forceInputDevices) {
         memset(&defPtr, 0, sizeof(defPtr));
         defPtr.inp_identifier = strdup("<default pointer>");
+#if defined(__NetBSD__) && (defined(__i386__) || defined(__amd64__))
+	if (xf86findDeviceByDriver("vmware", xf86configptr->conf_device_lst) ||
+	    xf86findDeviceByDriver("vmwlegacy", xf86configptr->conf_device_lst)) {
+		defPtr.inp_driver = strdup("vmmouse");
+		defPtr.inp_option_lst = xf86addNewOption(defPtr.inp_option_lst, strdup("Protocol"), "wsmouse");
+		defPtr.inp_option_lst = xf86addNewOption(defPtr.inp_option_lst, strdup("Device"), "/dev/wsmouse");
+	} else {
+#endif
         defPtr.inp_driver = strdup("mouse");
+#if defined(__NetBSD__) && (defined(__i386__) || defined(__amd64__))
+        }
+#endif
         confInput = &defPtr;
         foundPointer = TRUE;
         from = X_DEFAULT;

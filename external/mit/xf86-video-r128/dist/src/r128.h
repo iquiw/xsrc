@@ -116,6 +116,7 @@
 #define R128_MMIOSIZE  0x4000
 
 #define R128_VBIOS_SIZE 0x00010000
+#define R128_NAME "R128"
 
 #if R128_DEBUG
 #include "r128_version.h"
@@ -306,8 +307,14 @@ typedef struct {
 #endif
     int               Chipset;
 
+#ifndef AVOID_FBDEV
     Bool              FBDev;
+#endif
 
+#ifdef __NetBSD__
+    Bool	      HaveWSDisplay;
+    Bool	      HaveBacklightControl;
+#endif
     unsigned long     LinearAddr;   /* Frame buffer physical address         */
     unsigned long     MMIOAddr;     /* MMIO region physical address          */
     unsigned long     BIOSAddr;     /* BIOS physical address                 */

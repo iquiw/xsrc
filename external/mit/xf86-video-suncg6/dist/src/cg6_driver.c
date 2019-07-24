@@ -27,6 +27,7 @@
 
 #include <string.h>
 
+#include "cg6.h"
 #include "xf86.h"
 #include "xf86_OSproc.h"
 #include "mipointer.h"
@@ -34,7 +35,6 @@
 
 #include "fb.h"
 #include "xf86cmap.h"
-#include "cg6.h"
 
 #include "compat-api.h"
 
@@ -58,7 +58,8 @@ static void	CG6FreeScreen(FREE_SCREEN_ARGS_DECL);
 static ModeStatus CG6ValidMode(SCRN_ARG_TYPE arg, DisplayModePtr mode,
 			       Bool verbose, int flags);
 
-void CG6Sync(ScrnInfoPtr pScrn);
+static Bool CG6DriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+				pointer ptr);
 
 #define CG6_VERSION 4000
 #define CG6_NAME "SUNCG6"
@@ -82,23 +83,24 @@ _X_EXPORT DriverRec SUNCG6 = {
     CG6Probe,
     CG6AvailableOptions,
     NULL,
-    0
+    0,
+    CG6DriverFunc
 };
 
 typedef enum {
     OPTION_SW_CURSOR,
     OPTION_HW_CURSOR,
-    OPTION_NOACCEL
+    OPTION_NOACCEL,
+    OPTION_ACCELMETHOD
 } CG6Opts;
 
 static const OptionInfoRec CG6Options[] = {
     { OPTION_SW_CURSOR,		"SWcursor",	OPTV_BOOLEAN,	{0}, FALSE },
     { OPTION_HW_CURSOR,		"HWcursor",	OPTV_BOOLEAN,	{0}, FALSE },
     { OPTION_NOACCEL,		"NoAccel",	OPTV_BOOLEAN,	{0}, FALSE },
+    { OPTION_ACCELMETHOD,	"AccelMethod",	OPTV_STRING,	{0}, FALSE },
     { -1,			NULL,		OPTV_NONE,	{0}, FALSE }
 };
-
-#ifdef XFree86LOADER
 
 static MODULESETUPPROTO(cg6Setup);
 
@@ -125,7 +127,7 @@ cg6Setup(pointer module, pointer opts, int *errmaj, int *errmin)
 
     if (!setupDone) {
 	setupDone = TRUE;
-	xf86AddDriver(&SUNCG6, module, 0);
+	xf86AddDriver(&SUNCG6, module, HaveDriverFuncs);
 
 	/*
 	 * Modules that this driver always requires can be loaded here
@@ -142,8 +144,6 @@ cg6Setup(pointer module, pointer opts, int *errmaj, int *errmin)
 	return NULL;
     }
 }
-
-#endif /* XFree86LOADER */
 
 static Bool
 CG6GetRec(ScrnInfoPtr pScrn)
@@ -391,7 +391,14 @@ CG6PreInit(ScrnInfoPtr pScrn, int flags)
 	pCg6->NoAccel = TRUE;
 	xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Acceleration disabled\n");
     }
-        
+    pCg6->useXAA = FALSE;
+
+    char *optstr;
+    optstr = (char *)xf86GetOptValString(pCg6->Options, OPTION_ACCELMETHOD);
+    if (optstr == NULL) optstr = "exa";
+    if (xf86NameCmp(optstr, "xaa") == 0)
+        pCg6->useXAA = TRUE;
+
     if (xf86LoadSubModule(pScrn, "fb") == NULL) {
 	CG6FreeRec(pScrn);
 	return FALSE;
@@ -434,21 +441,63 @@ CG6ScreenInit(SCREEN_INIT_ARGS_DECL)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     Cg6Ptr pCg6;
+    sbusDevicePtr psdp;
     int ret;
 
     pCg6 = GET_CG6_FROM_SCRN(pScrn);
+    psdp = pCg6->psdp;
 
     /* Map the CG6 memory */
-    pCg6->fbc =
-	xf86MapSbusMem (pCg6->psdp, CG6_FBC_VOFF,
-			CG6_RAM_VOFF - CG6_FBC_VOFF +
-			(pCg6->psdp->width * pCg6->psdp->height));
 
-    if (! pCg6->fbc)
-	return FALSE;
+    pCg6->fbc = xf86MapSbusMem(psdp, CG6_FBC_VOFF, sizeof(*pCg6->fbc));
+    pCg6->thc = xf86MapSbusMem(psdp, CG6_THC_VOFF, sizeof(*pCg6->thc));
 
-    pCg6->fb = (unsigned char *)pCg6->fbc + CG6_RAM_VOFF - CG6_FBC_VOFF;
-    pCg6->thc = (Cg6ThcPtr)((char *)pCg6->fbc + CG6_THC_VOFF - CG6_FBC_VOFF);
+    /*
+     * XXX need something better here - we rely on the OS to allow mmap()ing 
+     * usable VRAM ONLY. Works with NetBSD, may crash and burn on other OSes.
+     */
+    pCg6->vidmem = 2 * 1024 * 1024;
+    pCg6->fb = xf86MapSbusMem(psdp, CG6_RAM_VOFF, pCg6->vidmem);
+    
+    if (pCg6->fb == NULL) {
+        /* mapping 2MB failed - try 1MB */
+        pCg6->vidmem = 1024 * 1024;
+        pCg6->fb = xf86MapSbusMem(psdp, CG6_RAM_VOFF, pCg6->vidmem);
+    }
+
+    if (pCg6->fb == NULL) {
+        /* we can't map all video RAM - fall back to width*height */
+        pCg6->vidmem = psdp->width * psdp->height;
+        pCg6->fb = xf86MapSbusMem(psdp, CG6_RAM_VOFF, pCg6->vidmem);
+    }
+    
+    if (pCg6->fb != NULL) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "mapped %d KB video RAM\n", 
+            pCg6->vidmem >> 10);
+    }
+    
+    if (!pCg6->fbc || !pCg6->thc || !pCg6->fb) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                   "xf86MapSbusMem failed fbc:%p fb:%p thc:%p\n",
+                   pCg6->fbc, pCg6->fb, pCg6->thc);
+    
+        if (pCg6->fbc) {
+            xf86UnmapSbusMem(psdp, pCg6->fbc, sizeof(*pCg6->fbc));
+            pCg6->fbc = NULL;
+        }
+
+        if (pCg6->thc) {
+            xf86UnmapSbusMem(psdp, pCg6->thc, sizeof(*pCg6->thc));
+            pCg6->thc = NULL;
+        }
+
+        if (pCg6->fb) {
+            xf86UnmapSbusMem(psdp, pCg6->fb, pCg6->vidmem);
+            pCg6->fb = NULL;
+        }
+
+        return FALSE;
+    }
 
     /* Darken the screen for aesthetic reasons and set the viewport */
     CG6SaveScreen(pScreen, SCREEN_SAVER_ON);
@@ -489,24 +538,57 @@ CG6ScreenInit(SCREEN_INIT_ARGS_DECL)
     if (!ret)
 	return FALSE;
 
-#ifdef RENDER
+    pCg6->width = pScrn->virtualX;
+    pCg6->height = pScrn->virtualY;
+    pCg6->maxheight = (pCg6->vidmem / pCg6->width) & 0xffff;
+
     fbPictureInit (pScreen, 0, 0);
-#endif
 
     xf86SetBackingStore(pScreen);
     xf86SetSilkenMouse(pScreen);
 
     xf86SetBlackWhitePixels(pScreen);
 
-#if 0
     if (!pCg6->NoAccel) {
-	extern Bool CG6AccelInit(ScreenPtr pScreen, Cg6Ptr pCg6);
+#ifdef HAVE_XAA_H
+    	if (pCg6->useXAA) {
+	    BoxRec bx;
+	    if (!xf86LoadSubModule(pScrn, "xaa"))
+	    	return FALSE;
+	    pCg6->pXAA=XAACreateInfoRec();
+	    CG6AccelInit(pScrn);
+	    bx.x1=bx.y1=0;
+	    bx.x2=pCg6->width;
+	    bx.y2=pCg6->maxheight;
+	    xf86InitFBManager(pScreen,&bx);
+	    if(!XAAInit(pScreen, pCg6->pXAA))
+		return FALSE;
 
-	if (!CG6AccelInit(pScreen, pCg6))
-	    return FALSE;
-	xf86Msg(X_INFO, "%s: Using acceleration\n", pCg6->psdp->device);
+	    xf86Msg(X_INFO, "%s: Using XAA acceleration\n", pCg6->psdp->device);
+	} else
+#endif /* HAVE_XAA_H */
+	 {
+	    /* EXA */
+	    XF86ModReqInfo req;
+	    int errmaj, errmin;
+
+	    memset(&req, 0, sizeof(XF86ModReqInfo));
+	    req.majorversion = EXA_VERSION_MAJOR;
+	    req.minorversion = EXA_VERSION_MINOR;
+	    if (!LoadSubModule(pScrn->module, "exa", NULL, NULL, NULL, &req,
+		&errmaj, &errmin)) {
+		LoaderErrorMsg(NULL, "exa", errmaj, errmin);
+		return FALSE;
+	    }
+	    if (!CG6EXAInit(pScreen))
+		return FALSE;
+	    xf86Msg(X_INFO, "%s: Using EXA acceleration\n", pCg6->psdp->device);
+	}
     }
-#endif
+
+    /* setup DGA */
+    Cg6DGAInit(pScreen);
+
 
     /* Initialise cursor functions */
     miDCInitialize (pScreen, xf86GetPointerScreenFuncs());
@@ -612,12 +694,24 @@ CG6CloseScreen(CLOSE_SCREEN_ARGS_DECL)
 {
     ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
     Cg6Ptr pCg6 = GET_CG6_FROM_SCRN(pScrn);
+    sbusDevicePtr psdp = pCg6->psdp;
 
     pScrn->vtSema = FALSE;
 
-    xf86UnmapSbusMem(pCg6->psdp, pCg6->fbc,
-		     CG6_RAM_VOFF - CG6_FBC_VOFF +
-		     (pCg6->psdp->width * pCg6->psdp->height));
+    if (pCg6->fbc) {
+        xf86UnmapSbusMem(psdp, pCg6->fbc, sizeof(*pCg6->fbc));
+        pCg6->fbc = NULL;
+    }
+
+    if (pCg6->thc) {
+        xf86UnmapSbusMem(psdp, pCg6->thc, sizeof(*pCg6->thc));
+        pCg6->thc = NULL;
+    }
+
+    if (pCg6->fb) {
+        xf86UnmapSbusMem(psdp, pCg6->fb, pCg6->vidmem);
+        pCg6->fb = NULL;
+    }
     
     if (pCg6->HWCursor)
     	xf86SbusHideOsHwCursor(pCg6->psdp);
@@ -678,11 +772,19 @@ CG6SaveScreen(ScreenPtr pScreen, int mode)
     return TRUE;
 }
 
-/*
- * This is the implementation of the Sync() function.
- */
-void
-CG6Sync(ScrnInfoPtr pScrn)
+static Bool
+CG6DriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+    pointer ptr)
 {
-    return;
+	xorgHWFlags *flag;
+
+	switch (op) {
+	case GET_REQUIRED_HW_INTERFACES:
+		flag = (CARD32*)ptr;
+		(*flag) = HW_MMIO;
+		return TRUE;
+	default:
+		return FALSE;
+	}
 }
+

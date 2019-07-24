@@ -318,7 +318,7 @@ ms_kernel_msc_to_crtc_msc(xf86CrtcPtr crtc, uint64_t sequence, Bool is64bit)
 }
 
 int
-ms_get_crtc_ust_msc(xf86CrtcPtr crtc, CARD64 *ust, CARD64 *msc)
+ms_get_crtc_ust_msc(xf86CrtcPtr crtc, uint64_t *ust, uint64_t *msc)
 {
     ScreenPtr screen = crtc->randr_crtc->pScreen;
     ScrnInfoPtr scrn = xf86ScreenToScrn(screen);

@@ -178,7 +178,7 @@ static const OptionInfoRec RADEONOptions[] = {
     { OPTION_SCALER_WIDTH,                "ScalerWidth",              OPTV_INTEGER, {0}, FALSE }, 
 #endif
 #ifdef RENDER
-    { OPTION_RENDER_ACCEL,   "RenderAccel",      OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_RENDER_ACCEL,   "RenderAccel",      OPTV_BOOLEAN, {0}, TRUE },
     { OPTION_SUBPIXEL_ORDER, "SubPixelOrder",    OPTV_ANYSTR,  {0}, FALSE },
 #endif
     { OPTION_CLOCK_GATING,   "ClockGating",      OPTV_BOOLEAN, {0}, FALSE },
@@ -227,6 +227,12 @@ struct RADEONInt10Save {
 static Bool RADEONMapMMIO(ScrnInfoPtr pScrn);
 static Bool RADEONUnmapMMIO(ScrnInfoPtr pScrn);
 
+static void
+radeonUpdatePacked(ScreenPtr pScreen, shadowBufPtr pBuf)
+{
+    shadowUpdatePacked(pScreen, pBuf);
+}
+
 static void *
 radeonShadowWindow(ScreenPtr screen, CARD32 row, CARD32 offset, int mode,
 		   CARD32 *size, void *closure)
@@ -255,7 +261,7 @@ RADEONCreateScreenResources (ScreenPtr pScreen)
    if (info->r600_shadow_fb) {
        pixmap = pScreen->GetScreenPixmap(pScreen);
 
-       if (!shadowAdd(pScreen, pixmap, shadowUpdatePackedWeak(),
+       if (!shadowAdd(pScreen, pixmap, radeonUpdatePacked,
 		      radeonShadowWindow, 0, NULL))
 	   return FALSE;
    }
@@ -2630,8 +2636,8 @@ static Bool RADEONPreInitXv(ScrnInfoPtr pScrn)
     uint16_t bios_header;
     uint16_t pll_info_block;
 #ifdef XvExtension
-    char* microc_path = NULL;
-    char* microc_type = NULL;
+    const char* microc_path = NULL;
+    const char* microc_type = NULL;
     MessageType from;
 
     if (xf86GetOptValInteger(info->Options, OPTION_VIDEO_KEY,
@@ -2865,7 +2871,7 @@ static void RADEONFixZaphodOutputs(ScrnInfoPtr pScrn)
     RADEONInfoPtr info = RADEONPTR(pScrn);
     xf86CrtcConfigPtr   config = XF86_CRTC_CONFIG_PTR(pScrn);
     int o;
-    char *s;
+    const char *s;
 
     if ((s = xf86GetOptValString(info->Options, OPTION_ZAPHOD_HEADS))) {
 	for (o = config->num_output; o > 0; o--) {
@@ -3454,7 +3460,7 @@ Bool RADEONScreenInit(SCREEN_INIT_ARGS_DECL)
     int            hasDRI = 0;
 #ifdef RENDER
     int            subPixelOrder = SubPixelUnknown;
-    char*          s;
+    const char*    s;
 #endif
 
 
@@ -3756,12 +3762,12 @@ Bool RADEONScreenInit(SCREEN_INIT_ARGS_DECL)
     /* Backing store setup */
     xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, RADEON_LOGLEVEL_DEBUG,
 		   "Initializing backing store\n");
-    miInitializeBackingStore(pScreen);
     xf86SetBackingStore(pScreen);
 
     /* DRI finalisation */
 #ifdef XF86DRI
-    if (info->directRenderingEnabled && info->cardType==CARD_PCIE &&
+    if (info->directRenderingEnabled &&
+	(info->cardType==CARD_PCIE || info->cardType==CARD_PCI) &&
         info->dri->pKernelDRMVersion->version_minor >= 19)
     {
       if (RADEONDRISetParam(pScrn, RADEON_SETPARAM_PCIGART_LOCATION, info->dri->pciGartOffset) < 0)
@@ -6440,7 +6446,11 @@ static Bool RADEONCloseScreen(CLOSE_SCREEN_ARGS_DECL)
     if (info->dri && info->dri->pDamage) {
 	PixmapPtr pPix = pScreen->GetScreenPixmap(pScreen);
 
+#if XORG_VERSION_CURRENT >= XORG_VERSION_NUMERIC(1,15,0,0,0)
+	DamageUnregister(info->dri->pDamage);
+#else
 	DamageUnregister(&pPix->drawable, info->dri->pDamage);
+#endif
 	DamageDestroy(info->dri->pDamage);
 	info->dri->pDamage = NULL;
     }

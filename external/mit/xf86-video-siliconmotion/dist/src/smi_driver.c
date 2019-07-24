@@ -84,6 +84,8 @@ static void SMI_ProbeDDC(ScrnInfoPtr pScrn, int index);
 static void SMI_DetectPanelSize(ScrnInfoPtr pScrn);
 static void SMI_DetectMCLK(ScrnInfoPtr pScrn);
 
+static Bool SMI_driverFunc(ScrnInfoPtr, xorgDriverFuncOp, pointer);
+
 /*
  * xf86VDrvMsgVerb prints up to 14 characters prefix, where prefix has the
  * format "%s(%d): " so, use name "SMI" instead of "Silicon Motion"
@@ -121,7 +123,8 @@ _X_EXPORT DriverRec SILICONMOTION =
     SMI_Probe,
     SMI_AvailableOptions,
     NULL,
-    0
+    0,
+    SMI_driverFunc
 };
 
 /* Supported chipsets */
@@ -198,8 +201,6 @@ static const OptionInfoRec SMIOptions[] =
     { -1,		     NULL,		  OPTV_NONE,	{0}, FALSE }
 };
 
-#ifdef XFree86LOADER
-
 static MODULESETUPPROTO(siliconmotionSetup);
 
 static XF86ModuleVersionInfo SMIVersRec =
@@ -237,7 +238,7 @@ siliconmotionSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 
     if (!setupDone) {
 	setupDone = TRUE;
-	xf86AddDriver(&SILICONMOTION, module, 0);
+	xf86AddDriver(&SILICONMOTION, module, HaveDriverFuncs);
 
 	/*
 	 * The return value must be non-NULL on success even though there
@@ -252,8 +253,6 @@ siliconmotionSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 	return NULL;
     }
 }
-
-#endif /* XFree86LOADER */
 
 static Bool
 SMI_GetRec(ScrnInfoPtr pScrn)
@@ -744,6 +743,7 @@ SMI_PreInit(ScrnInfoPtr pScrn, int flags)
 	char *strptr;
 
 	from = X_DEFAULT;
+	pSmi->useEXA = TRUE;
 	if ((strptr = (char *)xf86GetOptValString(pSmi->Options,
 						  OPTION_ACCELMETHOD))) {
 	    if (!xf86NameCmp(strptr,"XAA")) {
@@ -1020,6 +1020,7 @@ SMI_DetectPanelSize(ScrnInfoPtr pScrn)
 
     if (pSmi->lcdWidth == 0 || pSmi->lcdHeight == 0) {
 	/* panel size detection ... requires BIOS call on 730 hardware */
+#ifdef USE_INT10
 	if (pSmi->Chipset == SMI_COUGAR3DR) {
 	    if (pSmi->pInt10 != NULL) {
 		pSmi->pInt10->num = 0x10;
@@ -1076,7 +1077,9 @@ SMI_DetectPanelSize(ScrnInfoPtr pScrn)
 	    /* Set this to indicate that we've done the detection */
 	    pSmi->lcd = 1;
 	}
-	else if (IS_MSOC(pSmi)) {
+	else
+#endif /* USE_INT10 */
+	if (IS_MSOC(pSmi)) {
 	    pSmi->lcdWidth  = (READ_SCR(pSmi, PANEL_WWIDTH)  >> 16) & 2047;
 	    pSmi->lcdHeight = (READ_SCR(pSmi, PANEL_WHEIGHT) >> 16) & 2047;
 	}
@@ -1266,7 +1269,7 @@ SMI_MapMmio(ScrnInfoPtr pScrn)
 					     result);
 
 	if (err)
-	    return (FALSE);
+	    pSmi->MapBase = NULL;
     }
 #endif
 
@@ -2007,6 +2010,7 @@ SMI_EnableVideo(ScrnInfoPtr pScrn)
 void
 SMI_EnableMmio(ScrnInfoPtr pScrn)
 {
+#if !defined(__mips__)
     SMIPtr pSmi = SMIPTR(pScrn);
 
     ENTER();
@@ -2035,11 +2039,13 @@ SMI_EnableMmio(ScrnInfoPtr pScrn)
     }
 
     LEAVE();
+#endif
 }
 
 void
 SMI_DisableMmio(ScrnInfoPtr pScrn)
 {
+#if !defined(__mips__)
     SMIPtr pSmi = SMIPTR(pScrn);
 
     ENTER();
@@ -2059,6 +2065,7 @@ SMI_DisableMmio(ScrnInfoPtr pScrn)
     }
 
     LEAVE();
+#endif
 }
 
 static void
@@ -2125,4 +2132,20 @@ SMI_PrintRegs(ScrnInfoPtr pScrn)
 		"END register dump --------------------\n");
 
     LEAVE();
+}
+
+static Bool
+SMI_driverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
+    pointer ptr)
+{
+	xorgHWFlags *flag;
+	
+	switch (op) {
+	case GET_REQUIRED_HW_INTERFACES:
+		flag = (CARD32*)ptr;
+		(*flag) = HW_MMIO;
+		return TRUE;
+	default:
+		return FALSE;
+	}
 }

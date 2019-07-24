@@ -5,6 +5,7 @@
 #include "vgaHW.h"
 #include "xf86Cursor.h"
 #include "xf86int10.h"
+#include "exa.h"
 
 #define NV_ARCH_04  0x04
 #define NV_ARCH_10  0x10
@@ -99,6 +100,7 @@ typedef struct {
     Bool                HWCursor;
     Bool                FpScale;
     Bool                ShadowFB;
+    Bool                UseEXA;
     unsigned char *     ShadowPtr;
     int                 ShadowPitch;
     CARD32              MinVClockFreqKHz;
@@ -128,6 +130,8 @@ typedef struct {
 #ifdef HAVE_XAA_H
     XAAInfoRecPtr       AccelInfoRec;
 #endif
+    ExaDriverPtr 	pExa;
+    U032		surfaceFormat, rectFormat;
     xf86CursorInfoPtr   CursorInfoRec;
     DGAModePtr          DGAModes;
     int                 numDGAModes;

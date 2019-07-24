@@ -1078,9 +1078,11 @@ NVPreInit(ScrnInfoPtr pScrn, int flags)
 	}
 
 	if (pNv->AccelMethod > NONE) {
+#if 0
 		if (pNv->Architecture >= NV_TESLA)
 			pNv->wfb_enabled = xf86ReturnOptValBool(
 				pNv->Options, OPTION_WFB, FALSE);
+#endif
 
 		pNv->tiled_scanout = TRUE;
 	}
@@ -1239,10 +1241,12 @@ NVPreInit(ScrnInfoPtr pScrn, int flags)
 	/* Set display resolution */
 	xf86SetDpi(pScrn, 0, 0);
 
+#if 0
 	if (pNv->wfb_enabled) {
 		if (xf86LoadSubModule(pScrn, "wfb") == NULL)
 			NVPreInitFail("\n");
 	}
+#endif
 
 	if (xf86LoadSubModule(pScrn, "fb") == NULL)
 		NVPreInitFail("\n");
@@ -1369,7 +1373,9 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
 				   "Falling back to NoAccel\n");
 			pNv->AccelMethod = NONE;
 			pNv->ShadowFB = TRUE;
+#if 0
 			pNv->wfb_enabled = FALSE;
+#endif
 			pNv->tiled_scanout = FALSE;
 			pScrn->displayWidth = nv_pitch_align(pNv,
 							     pScrn->virtualX,
@@ -1443,6 +1449,7 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
 	switch (pScrn->bitsPerPixel) {
 	case 16:
 	case 32:
+#if 0
 	if (pNv->wfb_enabled) {
 		ret = wfbScreenInit(pScreen, FBStart, pScrn->virtualX,
 				    pScrn->virtualY, pScrn->xDpi, pScrn->yDpi,
@@ -1450,10 +1457,13 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
 				    nouveau_wfb_setup_wrap,
 				    nouveau_wfb_finish_wrap);
 	} else {
+#endif
 		ret = fbScreenInit(pScreen, FBStart, pScrn->virtualX,
 				   pScrn->virtualY, pScrn->xDpi, pScrn->yDpi,
 				   displayWidth, pScrn->bitsPerPixel);
+#if 0
 	}
+#endif
 		break;
 	default:
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
@@ -1478,9 +1488,11 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
 		}
 	}
 
+#if 0
 	if (pNv->wfb_enabled)
 		wfbPictureInit (pScreen, 0, 0);
 	else
+#endif
 		fbPictureInit (pScreen, 0, 0);
 
 	xf86SetBlackWhitePixels(pScreen);

@@ -242,6 +242,9 @@
 ! Alternatively,
 !*on2Clicks: regex [[:alpha:]]+://([[:alnum:]!#+,./=?@_~-]|(%[[:xdigit:]][[:xdigit:]]))+
 
+*allowWindowOps: false
+*pointerMode: 0
+
 ! VT100s and similar terminals recognize escape sequences and control
 ! characters to which they reply to the host with other escape sequences,
 ! to provide information.  The "resize" program uses this feature.

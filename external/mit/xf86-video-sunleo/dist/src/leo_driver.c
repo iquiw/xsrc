@@ -337,6 +337,7 @@ LeoPreInit(ScrnInfoPtr pScrn, int flags)
 	/* Check that the returned depth is one we support */
 	switch (pScrn->depth) {
 	case 32:
+	case 24:
 	    /* OK */
 	    break;
 	default:
@@ -360,7 +361,7 @@ LeoPreInit(ScrnInfoPtr pScrn, int flags)
      * xf86SetWeight references it.
      */
     if (pScrn->depth > 8) {
-	rgb weight = {10, 11, 11};
+	rgb weight = {0, 0, 0};
 	rgb mask = {0xff, 0xff00, 0xff0000};
 
 	if (!xf86SetWeight(pScrn, weight, mask)) {
@@ -658,7 +659,7 @@ LeoCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 static void
 LeoFreeScreen(FREE_SCREEN_ARGS_DECL)
 {
-    SCRN_INFO_PTR(pScrn);
+    SCRN_INFO_PTR(arg);
     LeoFreeRec(pScrn);
 }
 

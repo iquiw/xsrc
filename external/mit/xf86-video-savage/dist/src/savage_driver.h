@@ -78,6 +78,8 @@
 #undef SAVAGEDRI
 #endif
 
+#include "compat-api.h"
+
 #ifdef SAVAGEDRI
 #define _XF86DRI_SERVER_
 #include "savage_dripriv.h"

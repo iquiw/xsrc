@@ -23,6 +23,8 @@
  */
 
 #include "fcint.h"
+#include <float.h>
+
 
 static double
 FcCompareNumber (const FcValue *value1, const FcValue *value2, FcValue *bestValue)
@@ -416,10 +418,10 @@ FcCompareValueList (FcObject	     object,
 	return FcTrue;
     }
 
-    best = 1e99;
-    bestStrong = 1e99;
-    bestWeak = 1e99;
-    j = 0;
+    best = DBL_MAX;
+    bestStrong = DBL_MAX;
+    bestWeak = DBL_MAX;
+    j = 1;
     for (v1 = v1orig; v1; v1 = FcValueListNext(v1))
     {
 	for (v2 = v2orig, k = 0; v2; v2 = FcValueListNext(v2), k++)
@@ -798,6 +800,12 @@ FcFontSetMatchInternal (FcFontSet   **sets,
 	    FcBool f = FcTrue;
 
 	    ss = s = strdup (env);
+	    if (ss == NULL)
+	    {
+		    fprintf (stderr, "Fontconfig Error: %s\n",
+			strerror (errno));
+		    exit (1);
+	    }
 	    os = FcObjectSetCreate ();
 	    while (f)
 	    {

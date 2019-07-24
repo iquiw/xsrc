@@ -46,6 +46,8 @@ in this Software without prior written authorization from The Open Group.
  * THIS SOFTWARE.
  */
 
+#include	"X11/Xpoll.h"
+
 #include	"config.h"
 
 /* include Xpoll.h early for possible FD_SETSIZE re-definition */

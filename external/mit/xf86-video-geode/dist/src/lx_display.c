@@ -27,6 +27,8 @@
 #include "config.h"
 #endif
 
+#include "xorg-server.h"
+
 #include "xf86.h"
 #include "geode.h"
 #include "xf86Crtc.h"
@@ -324,7 +326,11 @@ lx_crtc_commit(xf86CrtcPtr crtc)
 
     /* Load the cursor */
     if (crtc->scrn->pScreen != NULL) {
+#ifdef HAVE_XF86_CURSOR_RESET_CURSOR
+        xf86CursorResetCursor(crtc->scrn->pScreen);
+#else
         xf86_reload_cursors(crtc->scrn->pScreen);
+#endif
         crtc->funcs->hide_cursor(crtc);
         crtc->cursor_shown = FALSE;
     }

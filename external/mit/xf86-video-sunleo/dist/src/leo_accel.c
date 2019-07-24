@@ -109,7 +109,8 @@ Bool LeoAccelInit (ScreenPtr pScreen, LeoPtr pLeo)
         if (!dixRegisterPrivateKey(&LeoGCPrivateIndex, PRIVATE_GC, sizeof(LeoPrivGCRec)))
 		return FALSE;
 #else
-	if (!dixRequestPrivate(&LeoGCPrivateIndex, sizeof(LeoPrivGCRec)))
+	if (!dixRegisterPrivateKey(&LeoGCPrivateIndex, PRIVATE_GC,
+	    sizeof(LeoPrivGCRec)))
 		return FALSE;
 #endif
 
@@ -121,10 +122,10 @@ Bool LeoAccelInit (ScreenPtr pScreen, LeoPtr pLeo)
 	/* We will now clear the screen: we'll draw a rectangle covering all the
 	 * viewscreen, using a 'blackness' ROP.
 	 */
-	ld0->wid = 1;
+	ld0->wid = 0x10;
 	ld0->widclip = 0;
 	ld0->wmask = 0xffff;
-	ld0->planemask = 0xffffff;
+	ld0->planemask = 0x00ffffff;
 	ld0->rop = LEO_ATTR_WE_ENABLE|LEO_ATTR_RGBE_ENABLE|LEO_ATTR_FORCE_WID;
 	ld0->fg = 0;
 	ld0->vclipmin = 0;
@@ -141,7 +142,7 @@ Bool LeoAccelInit (ScreenPtr pScreen, LeoPtr pLeo)
 	while (lc0->csr & LEO_CSR_BLT_BUSY);
 	
 	lc0->addrspace = LEO_ADDRSPC_OBGR;
-	ld0->rop = LEO_ATTR_RGBE_ENABLE|LEO_ROP_NEW;
+	ld0->rop = LEO_ATTR_RGBE_ENABLE|LEO_ROP_NEW|LEO_ATTR_FORCE_WID;
 
 	/* Success */
 	return TRUE;

@@ -75,6 +75,11 @@
 /* All drivers should typically include these */
 #include "xf86.h"
 #include "xf86_OSproc.h"
+#include "xf86Priv.h"
+
+#ifdef XSERVER_LIBPCIACCESS
+#include <sys/mman.h>
+#endif
 
 /* Everything using inb/outb, etc needs "compiler.h" */
 #include "compiler.h"
@@ -95,11 +100,6 @@
 
 /* All drivers initialising the SW cursor need this */
 #include "mipointer.h"
-
-/* All drivers using the mi banking wrapper need this */
-#ifdef HAVE_ISA
-#include "mibank.h"
-#endif
 
 /* All drivers using the mi colormap manipulation need this */
 #include "micmap.h"
@@ -134,10 +134,9 @@
 /* Mandatory functions */
 static const OptionInfoRec *	CHIPSAvailableOptions(int chipid, int busid);
 static void     CHIPSIdentify(int flags);
-#ifdef XSERVER_LIBPCIACCESS
 static Bool     CHIPSPciProbe(DriverPtr drv, int entity_num,
 			      struct pci_device *dev, intptr_t match_data);
-#else
+#if defined(HAVE_ISA)
 static Bool     CHIPSProbe(DriverPtr drv, int flags);
 #endif
 static Bool     CHIPSPreInit(ScrnInfoPtr pScrn, int flags);
@@ -327,7 +326,7 @@ unsigned int ChipsReg32[] =
     0xB3D0,			        /* DR0xC address of cursor pattern   */
 };
 
-#if defined(__arm32__) && defined(__NetBSD__)
+#if defined(__arm__) && defined(__NetBSD__)
 /*
  * Built in TV output modes: These modes have been tested on NetBSD with
  * CT65550 and StrongARM. They give what seems to be the best output for
@@ -516,10 +515,10 @@ _X_EXPORT DriverRec CHIPS = {
 	CHIPS_VERSION,
 	CHIPS_DRIVER_NAME,
 	CHIPSIdentify,
-#ifdef XSERVER_LIBPCIACCESS
-	NULL,
-#else
+#if defined(HAVE_ISA)
 	CHIPSProbe,
+#else
+	NULL,
 #endif
 	CHIPSAvailableOptions,
 	NULL,
@@ -565,28 +564,6 @@ static PciChipsets CHIPSPCIchipsets[] = {
     { CHIPS_CT69030, PCI_CHIP_69030, RES_SHARED_VGA },
     { -1,	     -1,	     RES_UNDEFINED}
 };
-
-#ifdef HAVE_ISA
-static IsaChipsets CHIPSISAchipsets[] = {
-    { CHIPS_CT65520,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65525,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65530,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65535,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65540,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65545,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65546,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65548,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65550,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65554,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT65555,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT68554,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT69000,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT69030,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT64200,		RES_EXCLUSIVE_VGA },
-    { CHIPS_CT64300,		RES_EXCLUSIVE_VGA },
-    { -1,			RES_UNDEFINED }
-};
-#endif
 
 /* The options supported by the Chips and Technologies Driver */
 typedef enum {
@@ -797,8 +774,10 @@ CHIPSAvailableOptions(int chipid, int busid)
 
 #ifdef HAVE_ISA
     if (busid == BUS_ISA) {
-    	if ((chip == CHIPS_CT64200) || (chip == CHIPS_CT64300)) 
+    	if ((chip == CHIPS_CT64200) || (chip == CHIPS_CT64300)) { 
 	    return ChipsWingineOptions;
+	} else if ((chip >= CHIPS_CT65550) && (chip <= CHIPS_CT69030))
+	    return ChipsHiQVOptions;
     }
 #endif
     if (busid == BUS_PCI) {
@@ -809,7 +788,6 @@ CHIPSAvailableOptions(int chipid, int busid)
 }
 
 /* Mandatory */
-#ifdef XSERVER_LIBPCIACCESS
 Bool
 CHIPSPciProbe(DriverPtr drv, int entity_num, struct pci_device * dev,
 	    intptr_t match_data)
@@ -873,15 +851,17 @@ CHIPSPciProbe(DriverPtr drv, int entity_num, struct pci_device * dev,
 
     return (pScrn != NULL);
 }
-#else
+
+#if defined(HAVE_ISA)
 static Bool
 CHIPSProbe(DriverPtr drv, int flags)
 {
+    ScrnInfoPtr pScrn = NULL;
+    CHIPSPtr cPtr;
     Bool foundScreen = FALSE;
     int numDevSections, numUsed;
     GDevPtr *devSections;
-    int *usedChips;
-    int i;
+    int i, chipset, entity;
     
     /*
      * Find the config file Device sections that match this
@@ -891,89 +871,28 @@ CHIPSProbe(DriverPtr drv, int flags)
 					  &devSections)) <= 0) {
 	return FALSE;
     }
-    /* PCI BUS */
-    if (xf86GetPciVideoInfo() ) {
-	numUsed = xf86MatchPciInstances(CHIPS_NAME, PCI_VENDOR_CHIPSTECH,
-					CHIPSChipsets, CHIPSPCIchipsets, 
-					devSections,numDevSections, drv,
-					&usedChips);
-	if (numUsed > 0) {
-	    if (flags & PROBE_DETECT)
-		foundScreen = TRUE;
-	    else for (i = 0; i < numUsed; i++) {
-		EntityInfoPtr pEnt;
-		/* Allocate a ScrnInfoRec  */
-		ScrnInfoPtr pScrn = NULL;
-		if ((pScrn = xf86ConfigPciEntity(pScrn,0,usedChips[i],
-						       CHIPSPCIchipsets,NULL,
-						       NULL,NULL,NULL,NULL))){
-		    pScrn->driverVersion = CHIPS_VERSION;
-		    pScrn->driverName    = CHIPS_DRIVER_NAME;
-		    pScrn->name          = CHIPS_NAME;
-		    pScrn->Probe         = CHIPSProbe;
-		    pScrn->PreInit       = CHIPSPreInit;
-		    pScrn->ScreenInit    = CHIPSScreenInit;
-		    pScrn->SwitchMode    = CHIPSSwitchMode;
-		    pScrn->AdjustFrame   = CHIPSAdjustFrame;
-		    pScrn->EnterVT       = CHIPSEnterVT;
-		    pScrn->LeaveVT       = CHIPSLeaveVT;
-		    pScrn->FreeScreen    = CHIPSFreeScreen;
-		    pScrn->ValidMode     = CHIPSValidMode;
-		    foundScreen = TRUE;
-		}
 
-		/*
-		 * For cards that can do dual head per entity, mark the entity
-		 * as sharable.
-		 */
-		pEnt = xf86GetEntityInfo(usedChips[i]);
-		if (pEnt->chipset == CHIPS_CT69030) {
-		    CHIPSEntPtr cPtrEnt = NULL;
-		    DevUnion *pPriv;
-
-		    xf86SetEntitySharable(usedChips[i]);
-		    /* Allocate an entity private if necessary */
-		    if (CHIPSEntityIndex < 0)
-			CHIPSEntityIndex = xf86AllocateEntityPrivateIndex();
-		    pPriv = xf86GetEntityPrivate(pScrn->entityList[0], 
-				CHIPSEntityIndex);
-		    if (!pPriv->ptr) {
-			pPriv->ptr = xnfcalloc(sizeof(CHIPSEntRec), 1);
-			cPtrEnt = pPriv->ptr;
-			cPtrEnt->lastInstance = -1;
-		    } else {
-			cPtrEnt = pPriv->ptr;
-		    }
-		    /*
-		     * Set the entity instance for this instance of the 
-		     * driver.  For dual head per card, instance 0 is the 
-		     * "master" instance, driving the primary head, and 
-                     * instance 1 is the "slave".
-		     */
-		    cPtrEnt->lastInstance++;
-		    xf86SetEntityInstanceForScreen(pScrn, pScrn->entityList[0],
-						   cPtrEnt->lastInstance);
-		}
-
-	    }
-	    free(usedChips);
-	}
-    }
-
-#ifdef HAVE_ISA 
     /* Isa Bus */
-    numUsed = xf86MatchIsaInstances(CHIPS_NAME,CHIPSChipsets,CHIPSISAchipsets,
-				    drv,chipsFindIsaDevice,devSections,
-				    numDevSections,&usedChips);
-    if (numUsed > 0) {
-	if (flags & PROBE_DETECT)
-	    foundScreen = TRUE;
-	else for (i = 0; i < numUsed; i++) {
-	    ScrnInfoPtr pScrn = NULL;
-	    if ((pScrn = xf86ConfigIsaEntity(pScrn,0,
-						   usedChips[i],
-						   CHIPSISAchipsets,NULL,
-						   NULL,NULL,NULL,NULL))) {
+    if ((numDevSections =
+      xf86MatchDevice(CHIPS_DRIVER_NAME, &devSections)) > 0) {
+	for (i = 0; i < numDevSections; i++) {
+	    if ((chipset = chipsFindIsaDevice(devSections[i])) > -1) {
+		if ( xf86DoConfigure && xf86DoConfigurePass1 ) {
+		    xf86AddBusDeviceToConfigure(CHIPS_DRIVER_NAME, BUS_ISA, 
+			  NULL, chipset);
+		}
+		if (flags & PROBE_DETECT) {
+		    return TRUE;
+		}
+		if (!xf86CheckStrOption(devSections[i]->options, "BusID", 
+		  "ISA")) {
+		    continue;
+		}
+
+		pScrn = NULL;
+		entity = xf86ClaimFbSlot(drv, 0, devSections[i], TRUE);
+		pScrn = xf86ConfigFbEntity(NULL, 0, entity, NULL, NULL,
+		  NULL, NULL);
 		pScrn->driverVersion = CHIPS_VERSION;
 		pScrn->driverName    = CHIPS_DRIVER_NAME;
 		pScrn->name          = CHIPS_NAME;
@@ -986,19 +905,19 @@ CHIPSProbe(DriverPtr drv, int flags)
 		pScrn->LeaveVT       = CHIPSLeaveVT;
 		pScrn->FreeScreen    = CHIPSFreeScreen;
 		pScrn->ValidMode     = CHIPSValidMode;
-		foundScreen = TRUE;
+		if (!CHIPSGetRec(pScrn)) {
+		   return FALSE;
+		}
+		cPtr = CHIPSPTR(pScrn);
+		cPtr->Chipset = chipset;
 	    }
-	    free(usedChips);
 	}
     }
-#endif
     
     free(devSections);
     return foundScreen;
 }
-#endif
 
-#ifdef HAVE_ISA
 static int
 chipsFindIsaDevice(GDevPtr dev)
 {
@@ -1351,11 +1270,19 @@ CHIPSPreInit(ScrnInfoPtr pScrn, int flags)
     }
     
     if (cPtr->Flags & ChipsAccelSupport) {
+#ifdef HAVE_XAA_H
 	if (!xf86LoadSubModule(pScrn, "xaa")) {
 	    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Falling back to shadowfb\n");
 	    cPtr->Flags &= ~(ChipsAccelSupport);
 	    cPtr->Flags |= ChipsShadowFB;
 	}
+#else
+	if (!xf86LoadSubModule(pScrn, "exa")) {
+	    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Falling back to shadowfb\n");
+	    cPtr->Flags &= ~(ChipsAccelSupport);
+	    cPtr->Flags |= ChipsShadowFB;
+	}
+#endif
     }
 
     if (cPtr->Flags & ChipsShadowFB) {
@@ -1415,8 +1342,8 @@ chipsPreInitHiQV(ScrnInfoPtr pScrn, int flags)
     /* Set pScrn->monitor */
     pScrn->monitor = pScrn->confScreen->monitor;
     
-    /* All HiQV chips support 16/24/32 bpp */
-    if (!xf86SetDepthBpp(pScrn, 0, 0, 0, Support24bppFb | Support32bppFb |
+    /* All HiQV chips support 16/24/32 bpp, default to 16bpp for speed & vram */
+    if (!xf86SetDepthBpp(pScrn, 16, 0, 0, Support24bppFb | Support32bppFb |
 				SupportConvert32to24 | PreferConvert32to24))
 	return FALSE;
     else {
@@ -1451,7 +1378,13 @@ chipsPreInitHiQV(ScrnInfoPtr pScrn, int flags)
         return FALSE;
 
     hwp = VGAHWPTR(pScrn);
+#if defined(__arm__)
+    vgaHWSetMmioFuncs(hwp, (CARD8 *)IOPortBase, 0);
+#elif defined(__powerpc__)
+    vgaHWSetMmioFuncs(hwp, (void *)ioBase, 0);
+#else
     vgaHWSetStdFuncs(hwp);
+#endif
     vgaHWGetIOBase(hwp);
 #if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 12
     cPtr->PIOBase = hwp->PIOOffset;
@@ -1931,8 +1864,15 @@ chipsPreInitHiQV(ScrnInfoPtr pScrn, int flags)
 		       xf86SetDDCproperties(pScrn,pMon);
 		}
 	    }
+/*
+ * XXX
+ * this takes forever
+ * do halfway modern monitors even support ddc1?
+ */
+#if 0
 	if (!ddc_done)
 	    chips_ddc1(pScrn);
+#endif
     }
 
     /*test STN / TFT */
@@ -2233,7 +2173,7 @@ chipsPreInitHiQV(ScrnInfoPtr pScrn, int flags)
 	    /* Only alter the memory clock if the desired memory clock differs
 	     * by 50kHz from the one currently being used.
 	     */
-	    if (abs(mclk - MemClk->ProbedClk) > 50) {
+	    if ((mclk - MemClk->ProbedClk) > 50U) {
 		unsigned char vclk[3];
 
 		MemClk->Clk = mclk;
@@ -2389,7 +2329,7 @@ chipsPreInitHiQV(ScrnInfoPtr pScrn, int flags)
 		   "FP clock set to %7.3f MHz\n",
 		   (float)(cPtr->FPclock / 1000.));
 
-#if defined(__arm32__) && defined(__NetBSD__)
+#if defined(__arm__) && defined(__NetBSD__)
     ChipsPALMode.next = pScrn->monitor->Modes;
     pScrn->monitor->Modes = &ChipsNTSCMode;
 #endif
@@ -3490,8 +3430,8 @@ chipsPreInit655xx(ScrnInfoPtr pScrn, int flags)
 
     if (cPtr->ClockType & TYPE_PROGRAMMABLE) {
 	pScrn->numClocks = NoClocks;
-        SaveClk->Clock = ((cPtr->PanelType & ChipsLCDProbed) ? 
-			  LCD_TEXT_CLK_FREQ : CRT_TEXT_CLK_FREQ);
+	SaveClk->Clock = ((cPtr->PanelType & ChipsLCDProbed) ? 
+				 LCD_TEXT_CLK_FREQ : CRT_TEXT_CLK_FREQ);
 	xf86DrvMsg(pScrn->scrnIndex, X_PROBED, "Using programmable clocks\n");
     } else {  /* TYPE_PROGRAMMABLE */
 	SaveClk->Clock = chipsGetHWClock(pScrn);
@@ -3716,7 +3656,11 @@ CHIPSLeaveVT(VT_FUNC_ARGS_DECL)
     } else {
 	chipsHWCursorOff(cPtr, pScrn);
 	chipsRestore(pScrn, &(VGAHWPTR(pScrn))->SavedReg, &cPtr->SavedReg,
+#ifdef AVOID_VGAHW
+					FALSE);
+#else
 					TRUE);
+#endif
 	chipsLock(pScrn);
     }
 }
@@ -3869,9 +3813,11 @@ CHIPSScreenInit(SCREEN_INIT_ARGS_DECL)
     hwp = VGAHWPTR(pScrn);
     hwp->MapSize = 0x10000;		/* Standard 64k VGA window */
 
+#ifndef AVOID_VGAHW
     /* Map the VGA memory */
     if (!vgaHWMapMem(pScrn))
 	return FALSE;
+#endif
 
     /* Map the Chips memory and possible MMIO areas */
     if (!chipsMapMem(pScrn))
@@ -3889,7 +3835,7 @@ CHIPSScreenInit(SCREEN_INIT_ARGS_DECL)
 	DUALOPEN;
     }
 
-#if defined(__arm32__) && defined(__NetBSD__)
+#if defined(__arm__) && defined(___NetBSD__)
     if (strcmp(pScrn->currentMode->name,"PAL") == 0) {
 	xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "Using built-in PAL TV mode\n");
 	cPtr->TVMode = XMODE_PAL;
@@ -4052,7 +3998,7 @@ CHIPSScreenInit(SCREEN_INIT_ARGS_DECL)
 
     cPtr->HWCursorShown = FALSE;
 
-#ifdef HAVE_ISA
+#if defined(USE_MIBANK)
     if (!(cPtr->Flags & ChipsLinearSupport)) {
 	miBankInfoPtr pBankInfo;
 
@@ -4061,7 +4007,7 @@ CHIPSScreenInit(SCREEN_INIT_ARGS_DECL)
 	if (pBankInfo == NULL)
 	    return FALSE;
 	
-#if defined(__arm32__)
+#if defined(__arm__)
 	cPtr->Bank = -1;
 #endif
 	pBankInfo->pBankA = hwp->Base;
@@ -4132,7 +4078,7 @@ CHIPSScreenInit(SCREEN_INIT_ARGS_DECL)
 	miDCInitialize (pScreen, xf86GetPointerScreenFuncs());
 
     } else
-#endif /* HAVE_ISA */
+#endif /* USE_MIBANK */
     {
     /* !!! Only support linear addressing for now. This might change */
 	/* Setup pointers to free space in video ram */
@@ -4268,14 +4214,20 @@ CHIPSScreenInit(SCREEN_INIT_ARGS_DECL)
 	}
 	if (cPtr->Flags & ChipsAccelSupport) {
 	    if (IS_HiQV(cPtr)) {
+#ifdef HAVE_XAA_H
 		CHIPSHiQVAccelInit(pScreen);
-	    } else if (cPtr->UseMMIO) {
+#else
+		CHIPSInitEXA(pScreen);
+#endif
+	    }
+#ifdef HAVE_XAA_H
+	      else if (cPtr->UseMMIO) {
 		CHIPSMMIOAccelInit(pScreen);
 	    } else {
 		CHIPSAccelInit(pScreen);
 	    }
+#endif
 	}
-	
 	xf86SetBackingStore(pScreen);
 #ifdef ENABLE_SILKEN_MOUSE
 	xf86SetSilkenMouse(pScreen);
@@ -4483,7 +4435,11 @@ CHIPSCloseScreen(CLOSE_SCREEN_ARGS_DECL)
 	} else {
 	    chipsHWCursorOff(cPtr, pScrn);
 	    chipsRestore(pScrn, &(VGAHWPTR(pScrn))->SavedReg, &cPtr->SavedReg,
+#ifdef AVOID_VGAHW
+					FALSE);
+#else
 					TRUE);
+#endif
 	    chipsLock(pScrn);
 	}
 	chipsUnmapMem(pScrn);
@@ -5218,8 +5174,11 @@ chipsSave(ScrnInfoPtr pScrn, vgaRegPtr VgaSave, CHIPSRegPtr ChipsSave)
     tmp = cPtr->readXR(cPtr, 0x02);
     cPtr->writeXR(cPtr, 0x02, tmp & ~0x18);
     /* get generic registers */
+#ifdef AVOID_VGAHW
+    vgaHWSave(pScrn, VgaSave, VGA_SR_CMAP | VGA_SR_MODE);
+#else
     vgaHWSave(pScrn, VgaSave, VGA_SR_ALL);
-
+#endif
     /* save clock */
     chipsClockSave(pScrn, &ChipsSave->Clock);
 
@@ -5461,7 +5420,7 @@ chipsModeInitHiQV(ScrnInfoPtr pScrn, DisplayModePtr mode)
 	    ChipsNew->XR[0x80] &= ~0x80;
     }
 
-    if (abs(cPtr->MemClock.Clk - cPtr->MemClock.ProbedClk) > 50) {
+    if ((cPtr->MemClock.Clk - cPtr->MemClock.ProbedClk) > 50U) {
 	/* set mem clk */
 	ChipsNew->XR[0xCC] = cPtr->MemClock.xrCC;
 	ChipsNew->XR[0xCD] = cPtr->MemClock.xrCD;
@@ -5667,7 +5626,7 @@ chipsModeInitHiQV(ScrnInfoPtr pScrn, DisplayModePtr mode)
 	}
     }
     
-#if defined(__arm32__) && defined(__NetBSD__)
+#if defined(__arm__) && defined(___NetBSD__)
     if (cPtr->TVMode != XMODE_RGB) {
 	/*
 	 * Put the console into TV Out mode.
@@ -6333,7 +6292,7 @@ chipsModeInit655xx(ScrnInfoPtr pScrn, DisplayModePtr mode)
 	     * better will be used.
 	     */
 
-	    if (ChipsNew->XR[0x2C]  < abs((cPtr->PanelSize.VTotal -
+	    if ((unsigned)ChipsNew->XR[0x2C]  < ((cPtr->PanelSize.VTotal -
 		    cPtr->PanelSize.VRetraceStart - tmp - 1) -
 		    ChipsNew->XR[0x2C]))
 	        ChipsNew->XR[0x2F] |= 0x80;   /* turn FLM delay off */
@@ -6913,14 +6872,28 @@ chipsMapMem(ScrnInfoPtr pScrn)
 			   VIDMEM_MMIO_32BIT, cPtr->IOAddress, 0x20000L);
 #else
 		{
-		  void** result = (void**)&cPtr->MMIOBase;
-		  int err = pci_device_map_range(cPtr->PciInfo,
-						 cPtr->IOAddress,
-						 0x20000L,
-						 PCI_DEV_MAP_FLAG_WRITABLE,
-						 result);
-		  if (err) 
-		    return FALSE;
+		    int err;
+		    void** result = (void**)&cPtr->MMIOBase;
+
+		    if (cPtr->pEnt->location.type == BUS_PCI) {
+		        err = pci_device_map_range(cPtr->PciInfo,
+						   cPtr->IOAddress,
+						   0x20000L,
+						   PCI_DEV_MAP_FLAG_WRITABLE,
+						   result);
+		    } else {
+			*result = mmap(NULL,
+			           0x00020000U,
+			           PROT_READ | PROT_WRITE,
+			           MAP_SHARED,
+			           xf86Info.consoleFd,
+			           cPtr->IOAddress);
+			err = (*result == MAP_FAILED);
+		    }
+		    if (err) {
+			xf86Msg(X_ERROR, "PCI mmap registers failed\n");
+		        return FALSE;
+		    }
 		}
 #endif
 	    } else {
@@ -6934,14 +6907,28 @@ chipsMapMem(ScrnInfoPtr pScrn)
 			  VIDMEM_MMIO_32BIT, cPtr->IOAddress, 0x10000L);
 #else
 		{
-		  void** result = (void**)&cPtr->MMIOBase;
-		  int err = pci_device_map_range(cPtr->PciInfo,
-						 cPtr->IOAddress,
-						 0x10000L,
-						 PCI_DEV_MAP_FLAG_WRITABLE,
-						 result);
-		  if (err) 
-		    return FALSE;
+		    int err;
+		    void** result = (void**)&cPtr->MMIOBase;
+
+		    if (cPtr->pEnt->location.type == BUS_PCI) {
+			err = pci_device_map_range(cPtr->PciInfo,
+						   cPtr->IOAddress,
+						   0x10000L,
+						   PCI_DEV_MAP_FLAG_WRITABLE,
+						   result);
+		    } else {
+			*result = mmap(NULL,
+			           0x00010000U,
+			           PROT_READ | PROT_WRITE,
+			           MAP_SHARED,
+			           xf86Info.consoleFd,
+			           cPtr->IOAddress);
+			err = (*result == MAP_FAILED);
+		    }
+		    if (err) {
+			xf86Msg(X_ERROR, "PCI mmap failed\n");
+		        return FALSE;
+		    }
 		}
 #endif
 	    }
@@ -6950,55 +6937,66 @@ chipsMapMem(ScrnInfoPtr pScrn)
 		return FALSE;
 	}
 	if (cPtr->FbMapSize) {
-	  unsigned long Addr = (unsigned long)cPtr->FbAddress;
-	  unsigned int Map =  cPtr->FbMapSize;
+	    unsigned long Addr = (unsigned long)cPtr->FbAddress;
+	    unsigned int Map =  cPtr->FbMapSize;
+#ifdef XSERVER_LIBPCIACCESS
+	    int err;
+	    void** result;
+#endif
 	  
-	  if ((cPtr->Flags & ChipsDualChannelSupport) &&
-	      (xf86IsEntityShared(pScrn->entityList[0]))) {
-	      cPtrEnt = xf86GetEntityPrivate(pScrn->entityList[0],
-					     CHIPSEntityIndex)->ptr;
-	    if(cPtr->SecondCrtc == FALSE) {
-	      Addr = cPtrEnt->masterFbAddress;
-	      Map = cPtrEnt->masterFbMapSize;
-	    } else {
-	      Addr = cPtrEnt->slaveFbAddress;
-	      Map = cPtrEnt->slaveFbMapSize;
+	    if ((cPtr->Flags & ChipsDualChannelSupport) &&
+	        (xf86IsEntityShared(pScrn->entityList[0]))) {
+		cPtrEnt = xf86GetEntityPrivate(pScrn->entityList[0],
+					       CHIPSEntityIndex)->ptr;
+		if (cPtr->SecondCrtc == FALSE) {
+		    Addr = cPtrEnt->masterFbAddress;
+		    Map = cPtrEnt->masterFbMapSize;
+		} else {
+		    Addr = cPtrEnt->slaveFbAddress;
+		    Map = cPtrEnt->slaveFbMapSize;
+		}
 	    }
-	  }
 
 #ifndef XSERVER_LIBPCIACCESS
-	  if (cPtr->pEnt->location.type == BUS_PCI)
-	      cPtr->FbBase = xf86MapPciMem(pScrn->scrnIndex,VIDMEM_FRAMEBUFFER,
- 			          cPtr->PciTag, Addr, Map);
+	   if (cPtr->pEnt->location.type == BUS_PCI)
+		cPtr->FbBase = xf86MapPciMem(pScrn->scrnIndex,VIDMEM_FRAMEBUFFER,
+		 			     cPtr->PciTag, Addr, Map);
 
-	  else
-	      cPtr->FbBase = xf86MapVidMem(pScrn->scrnIndex,VIDMEM_FRAMEBUFFER,
-					   Addr, Map);
+	    else
+		cPtr->FbBase = xf86MapVidMem(pScrn->scrnIndex,VIDMEM_FRAMEBUFFER,
+					     Addr, Map);
 #else
-	  {
-	    void** result = (void**)&cPtr->FbBase;
-	    int err = pci_device_map_range(cPtr->PciInfo,
+	    result = (void**)&cPtr->FbBase;
+	    if (cPtr->pEnt->location.type == BUS_PCI) {
+		err = pci_device_map_range(cPtr->PciInfo,
 					   Addr,
 					   Map,
 					   PCI_DEV_MAP_FLAG_WRITABLE |
 					   PCI_DEV_MAP_FLAG_WRITE_COMBINE,
 					   result);
-	    if (err) 
-	      return FALSE;
-	  }
-
+	    } else
+			*result = mmap(NULL,
+			           Map,
+			           PROT_READ | PROT_WRITE,
+			           MAP_SHARED,
+			           xf86Info.consoleFd,
+			           Addr);
+			err = (*result == MAP_FAILED);
+	    if (err) {
+		xf86Msg(X_ERROR, "PCI mmap fb failed\n");
+		return FALSE;
+	    }
 #endif
-
-	  if (cPtr->FbBase == NULL)
-	      return FALSE;
+	    if (cPtr->FbBase == NULL)
+		return FALSE;
 	}
 	if (cPtr->Flags & ChipsFullMMIOSupport) {
 #ifndef XSERVER_LIBPCIACCESS
-		cPtr->MMIOBaseVGA = xf86MapPciMem(pScrn->scrnIndex,
-						  VIDMEM_MMIO,cPtr->PciTag,
-						  cPtr->IOAddress, 0x2000L);
+	    cPtr->MMIOBaseVGA = xf86MapPciMem(pScrn->scrnIndex,
+					      VIDMEM_MMIO,cPtr->PciTag,
+					      cPtr->IOAddress, 0x2000L);
 #else
-		cPtr->MMIOBaseVGA = cPtr->MMIOBase;
+	    cPtr->MMIOBaseVGA = cPtr->MMIOBase;
 #endif
 	    /* 69030 MMIO Fix.
 	     *
@@ -7009,22 +7007,22 @@ chipsMapMem(ScrnInfoPtr pScrn)
 	     * pipe and to toggle between them as necessary. -GHB
 	     */
 	    if (cPtr->Flags & ChipsDualChannelSupport)
+	    {
 #ifndef XSERVER_LIBPCIACCESS
 	       	cPtr->MMIOBasePipeB = xf86MapPciMem(pScrn->scrnIndex,
 				      VIDMEM_MMIO,cPtr->PciTag,
 				      cPtr->IOAddress + 0x800000, 0x2000L);
 #else
-	    {
-	      void** result = (void**)&cPtr->MMIOBasePipeB;
-	      int err = pci_device_map_range(cPtr->PciInfo,
-					     cPtr->IOAddress + 0x800000,
-					     0x2000L,
-					     PCI_DEV_MAP_FLAG_WRITABLE,
-					     result);
-	      if (err) 
-		return FALSE;
-	    }
+		void** result = (void**)&cPtr->MMIOBasePipeB;
+		int err = pci_device_map_range(cPtr->PciInfo,
+					       cPtr->IOAddress + 0x800000,
+					       0x2000L,
+					       PCI_DEV_MAP_FLAG_WRITABLE,
+					       result);
+		if (err) 
+		    return FALSE;
 #endif
+	    }
 
 	    cPtr->MMIOBasePipeA = cPtr->MMIOBaseVGA;
 	}
@@ -7300,8 +7298,8 @@ chipsTestDACComp(ScrnInfoPtr pScrn, unsigned char a, unsigned char b,
     hwp->writeDacData(hwp, a);                /* set pattern */
     hwp->writeDacData(hwp, b);
     hwp->writeDacData(hwp, c);
-    while (!(hwp->readST01(hwp)) & 0x01){};   /* wait for hsync to end  */
-    while ((hwp->readST01(hwp)) & 0x01){};    /* wait for hsync to end  */
+    while (!(hwp->readST01(hwp) & 0x01)){};   /* wait for hsync to end  */
+    while (hwp->readST01(hwp) & 0x01){};      /* wait for hsync to end  */
     type = hwp->readST00(hwp);                /* read comparator        */
     return (type & 0x10);
 }

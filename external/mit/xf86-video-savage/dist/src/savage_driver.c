@@ -1233,14 +1233,18 @@ static Bool SavagePreInit(ScrnInfoPtr pScrn, int flags)
 
 	    psav->shadowFB = TRUE;
 	    psav->rotate = 1;
+#if 0
             xf86DisableRandR();
+#endif
 	    xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, 
 		       "Rotating screen clockwise"
                        "- acceleration and RandR disabled\n");
 	} else if(!xf86NameCmp(s, "CCW")) {
 	    psav->shadowFB = TRUE;
 	    psav->rotate = -1;
+#if 0
             xf86DisableRandR();
+#endif
             xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
                    "Rotating screen counter clockwise"
                    " - acceleration and RandR disabled\n");
@@ -2034,8 +2038,6 @@ static Bool SavagePreInit(ScrnInfoPtr pScrn, int flags)
     xf86DrvMsg(pScrn->scrnIndex, X_PROBED, "Detected current MCLK value of %1.3f MHz\n",
 	       mclk / 1000.0);
 
-    pScrn->maxHValue = 2048 << 3;	/* 11 bits of h_total 8-pixel units */
-    pScrn->maxVValue = 2048;		/* 11 bits of v_total */
     pScrn->virtualX = pScrn->display->virtualX;
     pScrn->virtualY = pScrn->display->virtualY;
 

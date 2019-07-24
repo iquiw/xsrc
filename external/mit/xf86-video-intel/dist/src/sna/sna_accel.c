@@ -38,6 +38,7 @@
 
 #include <X11/fonts/font.h>
 #include <X11/fonts/fontstruct.h>
+#undef FontSetPrivate
 
 #include <dixfontstr.h>
 
@@ -17675,7 +17676,7 @@ static void sna_accel_post_damage(struct sna *sna)
 		if (RegionNil(damage))
 			continue;
 
-		src = dirty->src;
+		src = (PixmapPtr)dirty->src;
 		dst = dirty->slave_dst->master_pixmap;
 
 		region.extents.x1 = dirty->x;
@@ -17927,7 +17928,7 @@ migrate_dirty_tracking(PixmapPtr old_front, PixmapPtr new_front)
 
 	xorg_list_for_each_entry_safe(dirty, safe, &screen->pixmap_dirty_list, ent) {
 		assert(dirty->src == old_front);
-		if (dirty->src != old_front)
+		if ((PixmapPtr)dirty->src != old_front)
 			continue;
 
 		DamageUnregister(&dirty->src->drawable, dirty->damage);
@@ -17943,7 +17944,7 @@ migrate_dirty_tracking(PixmapPtr old_front, PixmapPtr new_front)
 		}
 
 		DamageRegister(&new_front->drawable, dirty->damage);
-		dirty->src = new_front;
+		dirty->src = (DrawablePtr)new_front;
 	}
 #endif
 }

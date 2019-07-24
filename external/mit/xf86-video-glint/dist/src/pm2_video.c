@@ -2593,17 +2593,11 @@ Permedia2ReadInput(int fd, pointer unused)
 }
 
 static Bool
-xvipcOpen(char *name, ScrnInfoPtr pScrn)
+xvipcOpen(const char *name, ScrnInfoPtr pScrn)
 {
-    const char *osname;
-
+#ifdef __linux__
     if (xvipc_fd >= 0)
 	return TRUE;
-
-    xf86GetOS(&osname, NULL, NULL, NULL);
-
-    if (!osname || strcmp(osname, "linux"))
-	return FALSE;
 
     for (;;) {
 	DEBUG(xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, 2,
@@ -2645,6 +2639,7 @@ xvipcOpen(char *name, ScrnInfoPtr pScrn)
     xvipc_fd = -1;
 
     xf86DrvMsg(pScrn->scrnIndex, X_WARNING, "Cannot find Permedia 2 kernel driver.\n");
+#endif
 
     return FALSE;
 }
@@ -3013,7 +3008,7 @@ Permedia2VideoInit(ScreenPtr pScreen)
     memcpy(VidOpts, pm2Options, sizeof(pm2Options));
 
     xf86ProcessOptions(pScrn->scrnIndex, pScrn->options, VidOpts);
-    xf86ShowUnusedOptions(pScrn->scrnIndex, VidOpts);
+    xf86ShowUnusedOptions(pScrn->scrnIndex, pScrn->options);
 
     /* Don't complain about no Xv support unless they asked for Xv support.
        Assume they want Xv if OPTION_DEVICE is set, since that's required. */
@@ -3170,7 +3165,7 @@ Permedia2VideoInit(ScreenPtr pScreen)
 
     if (VideoIO ? xf86XVScreenInit(pScreen, &VARPtrs[0], 3) :
 		  xf86XVScreenInit(pScreen, &VARPtrs[2], 1)) {
-	char *s;
+	const char *s;
 
 	xvEncoding	= MAKE_ATOM(XV_ENCODING);
 	xvHue		= MAKE_ATOM(XV_HUE);

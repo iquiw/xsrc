@@ -165,11 +165,6 @@ xf86OpenConsole()
 #endif
 
     if (serverGeneration == 1) {
-        /* check if we are run with euid==0 */
-        if (geteuid() != 0) {
-            FatalError("xf86OpenConsole: Server must be suid root");
-        }
-
         if (!KeepTty) {
             /*
              * detaching the controlling tty solves problems of kbd character
@@ -529,6 +524,7 @@ xf86OpenPcvt()
             xf86Msg(X_PROBED, "Using pcvt driver (version %d.%d)\n",
                     pcvt_version.rmajor, pcvt_version.rminor);
 #endif
+	    xf86Msg(X_PROBED, "using VT number %d\n", xf86Info.vtno);
         }
         else {
             /* Not pcvt */
@@ -581,8 +577,10 @@ xf86CloseConsole()
     struct vt_mode VT;
 #endif
 
+#if defined (SYSCONS_SUPPORT) || defined (PCVT_SUPPORT)
     if (xf86Info.ShareVTs)
         return;
+#endif
 
     switch (xf86Info.consType) {
 #ifdef PCCONS_SUPPORT

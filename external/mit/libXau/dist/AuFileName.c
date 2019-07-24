@@ -35,6 +35,9 @@ in this Software without prior written authorization from The Open Group.
 static char *buf = NULL;
 
 static void
+#ifdef __NetBSD__
+__attribute__ ((__destructor__))
+#endif
 free_filename_buffer(void)
 {
     free(buf);
@@ -47,7 +50,9 @@ XauFileName (void)
     const char *slashDotXauthority = "/.Xauthority";
     char    *name;
     static size_t	bsize;
+#ifndef __NetBSD__
     static int atexit_registered = 0;
+#endif
 #ifdef WIN32
     char    dir[128];
 #endif
@@ -76,10 +81,12 @@ XauFileName (void)
 	    return NULL;
 	}
 
+#ifndef __NetBSD__
         if (!atexit_registered) {
             atexit(free_filename_buffer);
             atexit_registered = 1;
         }
+#endif
 
 	bsize = size;
     }

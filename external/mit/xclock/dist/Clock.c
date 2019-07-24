@@ -2176,7 +2176,7 @@ SetValues(Widget gcurrent, Widget grequest, Widget gnew,
 					 fabsf(new->clock.update)*1000,
 				         clock_tic, (XtPointer)gnew);
 
-	  new->clock.show_second_hand =(abs(new->clock.update) <= SECOND_HAND_TIME);
+	  new->clock.show_second_hand =(fabsl(new->clock.update) <= SECOND_HAND_TIME);
 	  if (new->clock.show_second_hand != current->clock.show_second_hand)
 	    redisplay = TRUE;
       }

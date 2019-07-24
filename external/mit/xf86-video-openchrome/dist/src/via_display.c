@@ -29,6 +29,7 @@
 #include "config.h"
 #endif
 
+#include <stdint.h>
 #include "via_driver.h"
 
 static ViaExpireNumberTable CLE266AExpireNumber[] = {
@@ -1351,12 +1352,12 @@ viaIGA1SetFBStartingAddress(xf86CrtcPtr crtc, int x, int y)
 
     Base = (y * pScrn->displayWidth + x) * (pScrn->bitsPerPixel / 8);
     DEBUG(xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                        "Base Address: 0x%lx\n",
-                        Base));
+                        "Base Address: 0x%"PRIx32"x\n",
+                        (uint32_t)Base));
     Base = (Base + drmmode->front_bo->offset) >> 1;
     xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                "DRI Base Address: 0x%lx\n",
-                Base);
+                "DRI Base Address: 0x%"PRIx32"\n",
+                (uint32_t)Base);
 
     hwp->writeCrtc(hwp, 0x0D, Base & 0xFF);
     hwp->writeCrtc(hwp, 0x0C, (Base & 0xFF00) >> 8);
@@ -2742,12 +2743,12 @@ viaIGA2SetFBStartingAddress(xf86CrtcPtr crtc, int x, int y)
 
     Base = (y * pScrn->displayWidth + x) * (pScrn->bitsPerPixel / 8);
     DEBUG(xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                        "Base Address: 0x%lx\n",
-                        Base));
+                        "Base Address: 0x%"PRIx32"\n",
+                        (uint32_t)Base));
     Base = (Base + drmmode->front_bo->offset) >> 3;
     xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-                "DRI Base Address: 0x%lx\n",
-                Base);
+                "DRI Base Address: 0x%"PRIx32"\n",
+                (uint32_t)Base);
 
     tmp = hwp->readCrtc(hwp, 0x62) & 0x01;
     tmp |= (Base & 0x7F) << 1;
@@ -3845,7 +3846,11 @@ iga1_crtc_commit(xf86CrtcPtr crtc)
                         "Entering iga1_crtc_commit.\n"));
 
     if (crtc->scrn->pScreen != NULL && pVia->drmmode.hwcursor)
+#ifdef HAVE_XF86_CURSOR_RESET_CURSOR
+        xf86CursorResetCursor(crtc->scrn->pScreen);
+#else
         xf86_reload_cursors(crtc->scrn->pScreen);
+#endif
 
     /* Turn on IGA1. */
     viaIGA1DPMSControl(pScrn, 0x00);
@@ -4251,7 +4256,11 @@ iga2_crtc_commit(xf86CrtcPtr crtc)
                         "Entering iga2_crtc_commit.\n"));
 
     if (crtc->scrn->pScreen != NULL && pVia->drmmode.hwcursor)
+#ifdef HAVE_XF86_CURSOR_RESET_CURSOR
+	xf86CursorResetCursor(crtc->scrn->pScreen);
+#else
         xf86_reload_cursors(crtc->scrn->pScreen);
+#endif
 
     /* Turn on IGA2. */
     viaIGA2DisplayOutput(pScrn, TRUE);

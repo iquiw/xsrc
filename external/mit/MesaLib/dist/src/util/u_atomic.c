@@ -21,7 +21,9 @@
  * IN THE SOFTWARE.
  */
 
-#if defined(MISSING_64BIT_ATOMICS) && defined(HAVE_PTHREAD)
+/* #if defined(MISSING_64BIT_ATOMICS) && defined(HAVE_PTHREAD) */
+#include <sys/types.h>
+#ifndef __HAVE_ATOMIC64_OPS
 
 #include <stdint.h>
 #include <pthread.h>
@@ -34,10 +36,10 @@
 
 static pthread_mutex_t sync_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-WEAK uint64_t
-__sync_add_and_fetch_8(uint64_t *ptr, uint64_t val)
+WEAK long long
+__atomic_fetch_add_8(volatile long long *ptr, long long val, int memorder)
 {
-   uint64_t r;
+   long long r;
 
    pthread_mutex_lock(&sync_mutex);
    *ptr += val;
@@ -47,10 +49,10 @@ __sync_add_and_fetch_8(uint64_t *ptr, uint64_t val)
    return r;
 }
 
-WEAK uint64_t
-__sync_sub_and_fetch_8(uint64_t *ptr, uint64_t val)
+WEAK long long
+__atomic_fetch_sub_8(volatile long long *ptr, long long val, int memorder)
 {
-   uint64_t r;
+   long long r;
 
    pthread_mutex_lock(&sync_mutex);
    *ptr -= val;
@@ -60,10 +62,11 @@ __sync_sub_and_fetch_8(uint64_t *ptr, uint64_t val)
    return r;
 }
 
-WEAK uint64_t
-__sync_val_compare_and_swap_8(uint64_t *ptr, uint64_t oldval, uint64_t newval)
+#ifndef __clang__
+WEAK long long
+__sync_val_compare_and_swap_8(volatile long long *ptr, long long oldval, long long newval)
 {
-   uint64_t r;
+   long long r;
 
    pthread_mutex_lock(&sync_mutex);
    r = *ptr;
@@ -73,5 +76,6 @@ __sync_val_compare_and_swap_8(uint64_t *ptr, uint64_t oldval, uint64_t newval)
 
    return r;
 }
+#endif
 
 #endif

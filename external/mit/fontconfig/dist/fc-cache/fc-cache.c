@@ -76,6 +76,7 @@
 const struct option longopts[] = {
     {"error-on-no-fonts", 0, 0, 'E'},
     {"force", 0, 0, 'f'},
+    {"quick", 0, 0, 'q'},
     {"really-force", 0, 0, 'r'},
     {"sysroot", required_argument, 0, 'y'},
     {"system-only", 0, 0, 's'},
@@ -96,10 +97,10 @@ usage (char *program, int error)
 {
     FILE *file = error ? stderr : stdout;
 #if HAVE_GETOPT_LONG
-    fprintf (file, _("usage: %s [-EfrsvVh] [-y SYSROOT] [--error-on-no-fonts] [--force|--really-force] [--sysroot=SYSROOT] [--system-only] [--verbose] [--version] [--help] [dirs]\n"),
+    fprintf (file, _("usage: %s [-EfqrsvVh] [--quick] [-y SYSROOT] [--error-on-no-fonts] [--force|--really-force] [--sysroot=SYSROOT] [--system-only] [--verbose] [--version] [--help] [dirs]\n"),
 	     program);
 #else
-    fprintf (file, _("usage: %s [-EfrsvVh] [-y SYSROOT] [dirs]\n"),
+    fprintf (file, _("usage: %s [-EfqrsvVh] [-y SYSROOT] [dirs]\n"),
 	     program);
 #endif
     fprintf (file, _("Build font information caches in [dirs]\n"
@@ -108,6 +109,7 @@ usage (char *program, int error)
 #if HAVE_GETOPT_LONG
     fprintf (file, _("  -E, --error-on-no-fonts  raise an error if no fonts in a directory\n"));
     fprintf (file, _("  -f, --force              scan directories with apparently valid caches\n"));
+    fprintf (file, _("  -q, --quick              don't sleep before exiting\n"));
     fprintf (file, _("  -r, --really-force       erase all existing caches, then rescan\n"));
     fprintf (file, _("  -s, --system-only        scan system-wide directories only\n"));
     fprintf (file, _("  -y, --sysroot=SYSROOT    prepend SYSROOT to all paths for scanning\n"));
@@ -118,6 +120,7 @@ usage (char *program, int error)
     fprintf (file, _("  -E         (error-on-no-fonts)\n"));
     fprintf (file, _("                       raise an error if no fonts in a directory\n"));
     fprintf (file, _("  -f         (force)   scan directories with apparently valid caches\n"));
+    fprintf (file, _("  -q         (quick)   don't sleep before exiting\n"));
     fprintf (file, _("  -r,   (really force) erase all existing caches, then rescan\n"));
     fprintf (file, _("  -s         (system)  scan system-wide directories only\n"));
     fprintf (file, _("  -y SYSROOT (sysroot) prepend SYSROOT to all paths for scanning\n"));
@@ -291,6 +294,7 @@ main (int argc, char **argv)
     FcStrSet	*dirs;
     FcStrList	*list;
     FcBool    	verbose = FcFalse;
+    FcBool      quick = FcFalse;
     FcBool	force = FcFalse;
     FcBool	really_force = FcFalse;
     FcBool	systemOnly = FcFalse;
@@ -305,9 +309,9 @@ main (int argc, char **argv)
 
     setlocale (LC_ALL, "");
 #if HAVE_GETOPT_LONG
-    while ((c = getopt_long (argc, argv, "Efrsy:Vvh", longopts, NULL)) != -1)
+    while ((c = getopt_long (argc, argv, "Efqrsy:Vvh", longopts, NULL)) != -1)
 #else
-    while ((c = getopt (argc, argv, "Efrsy:Vvh")) != -1)
+    while ((c = getopt (argc, argv, "Efqrsy:Vvh")) != -1)
 #endif
     {
 	switch (c) {
@@ -319,6 +323,9 @@ main (int argc, char **argv)
 	    /* fall through */
 	case 'f':
 	    force = FcTrue;
+	    break;
+	case 'q':
+	    quick = FcTrue;
 	    break;
 	case 's':
 	    systemOnly = FcTrue;
@@ -417,7 +424,7 @@ main (int argc, char **argv)
      * library, and there aren't any signals flying around here.
      */
     /* the resolution of mtime on FAT is 2 seconds */
-    if (changed)
+    if (!quick && changed)
 	sleep (2);
     if (verbose)
 	printf ("%s: %s\n", argv[0], ret ? _("failed") : _("succeeded"));

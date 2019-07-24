@@ -911,27 +911,35 @@ NVPciProbe(DriverPtr drv, int entity, struct pci_device *dev, intptr_t data)
                       NVGetPCIXpressChip(dev) : dev->vendor_id << 16 | dev->device_id;
     const char *name = xf86TokenToString(NVKnownChipsets, id);
 
+/*
+ * XXX
+ * disable this test for now since it's bogus
+ * it will trigger whenever there's a driver other than vga attached to the
+ * device we're trying to probe, yet this works fine on top of gffb or genfb
+ * might need to revisit this when we have working DRM on non-x86
+ */
+#if NV_TEST_FOR_KERNEL_DRIVER
     if (pci_device_has_kernel_driver(dev)) {
         xf86DrvMsg(0, X_ERROR,
-                   NV_NAME ": The PCI device 0x%x (%s) at %2.2d@%2.2d:%2.2d:%1.1d has a kernel module claiming it.\n",
+                   NV_NAME ": The PCI device 0x%"PRIx32" (%s) at %2.2d@%2.2d:%2.2d:%1.1d has a kernel module claiming it.\n",
                    id, name, dev->bus, dev->domain, dev->dev, dev->func);
         xf86DrvMsg(0, X_ERROR,
                    NV_NAME ": This driver cannot operate until it has been unloaded.\n");
         return FALSE;
     }
-
+#endif
     if(dev->vendor_id == PCI_VENDOR_NVIDIA && !name &&
        !NVIsSupported(id) && !NVIsG80(id)) {
         /* See if pci.ids knows what the heck this thing is */
         name = pci_device_get_device_name(dev);
         if(name)
             xf86DrvMsg(0, X_WARNING,
-                       NV_NAME ": Ignoring unsupported device 0x%x (%s) at %2.2d@%2.2d:%2.2d:%1.1d\n",
-                       id, name, dev->bus, dev->domain, dev->dev, dev->func);
+                       NV_NAME ": Ignoring unsupported device 0x%"PRIx32" (%s) at %2.2d@%2.2d:%2.2d:%1.1d\n",
+                       (uint32_t)id, name, dev->bus, dev->domain, dev->dev, dev->func);
         else
             xf86DrvMsg(0, X_WARNING,
-                       NV_NAME ": Ignoring unsupported device 0x%x at %2.2d@%2.2d:%2.2d:%1.1d\n",
-                       id, dev->bus, dev->domain, dev->dev, dev->func);
+                       NV_NAME ": Ignoring unsupported device 0x%"PRIx32" at %2.2d@%2.2d:%2.2d:%1.1d\n",
+                       (uint32_t)id, dev->bus, dev->domain, dev->dev, dev->func);
         return FALSE;
     }
 
@@ -1212,9 +1220,11 @@ NVCloseScreen(CLOSE_SCREEN_ARGS_DECL)
             NVLockUnlock(pNv, 1);
         }
     }
-
+    
     NVUnmapMem(pScrn);
+#ifndef AVOID_VGAHW
     vgaHWUnmapMem(pScrn);
+#endif
 #ifdef HAVE_XAA_H
     if (pNv->AccelInfoRec)
         XAADestroyInfoRec(pNv->AccelInfoRec);
@@ -2048,11 +2058,22 @@ NVPreInit(ScrnInfoPtr pScrn, int flags)
 
     /* Load XAA if needed */
     if (!pNv->NoAccel) {
+    	pNv->UseEXA = 1;
+#ifdef HAVE_XAA_H
 	if (!xf86LoadSubModule(pScrn, "xaa")) {
-	    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Falling back to shadwwfb\n");
+	    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Falling back to shadowfb\n");
 	    pNv->NoAccel = 1;
 	    pNv->ShadowFB = 1;
+	} else
+	    pNv->UseEXA = 0;
+#else
+	if (!xf86LoadSubModule(pScrn, "exa")) {
+	    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "Falling back to shadowfb\n");
+	    pNv->NoAccel = 1;
+	    pNv->UseEXA = 0;
+	    pNv->ShadowFB = 1;
 	}
+#endif
     }
 
     /* Load ramdac if needed */
@@ -2449,11 +2470,13 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
     }
 
     /* Map the VGA memory when the primary video */
+#ifndef AVOID_VGAHW
     if (pNv->Primary && !pNv->FBDev) {
 	hwp->MapSize = 0x10000;
 	if (!vgaHWMapMem(pScrn))
 	    return FALSE;
     }
+#endif
 
     if (pNv->FBDev) {
 	fbdevHWSave(pScrn);
@@ -2579,6 +2602,7 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
     if(offscreenHeight > 32767)
         offscreenHeight = 32767;
 
+#ifdef HAVE_XAA_H
     AvailFBArea.x1 = 0;
     AvailFBArea.y1 = 0;
     AvailFBArea.x2 = pScrn->displayWidth;
@@ -2587,7 +2611,10 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
     
     if (!pNv->NoAccel)
 	NVAccelInit(pScreen);
-    
+#endif
+    if ((!pNv->NoAccel) && (pNv->UseEXA == 1))
+	NvInitExa(pScreen);
+
     xf86SetBackingStore(pScreen);
     xf86SetSilkenMouse(pScreen);
 
@@ -2628,7 +2655,9 @@ NVScreenInit(SCREEN_INIT_ARGS_DECL)
                case 32:	refreshArea = NVRefreshArea32;	break;
 	   }
            if(!pNv->RandRRotation) {
+#if 0
                xf86DisableRandR();
+#endif
                xf86DrvMsg(pScrn->scrnIndex, X_INFO,
                           "Driver rotation enabled, RandR disabled\n");
            }

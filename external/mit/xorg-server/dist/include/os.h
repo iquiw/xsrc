@@ -91,6 +91,9 @@ typedef struct _NewClientRec *NewClientPtr;
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
+#include <strings.h>
+
 
 #ifdef DDXBEFORERESET
 extern void ddxBeforeReset(void);
@@ -223,6 +226,16 @@ extern _X_EXPORT void ProcessCommandLine(int /*argc */ , char * /*argv */ []);
 extern _X_EXPORT int set_font_authorizations(char **authorizations,
                                              int *authlen,
                                              void *client);
+
+#if 0
+/*
+ * These causes all sorts of warnings->errors in the xsrc build.
+ */
+#ifdef __NetBSD__
+#undef _X_DEPRECATED
+#define _X_DEPRECATED
+#endif
+#endif
 
 /*
  * This function malloc(3)s buffer, terminating the server if there is not

@@ -678,13 +678,13 @@ Here is an example Xaccess file:
 .LP
 .nf
 .ft CW
-#
-# Xaccess \- XDMCP access control file
-#
+\&#
+\&# Xaccess \- XDMCP access control file
+\&#
 
-#
-# Direct/Broadcast query entries
-#
+\&#
+\&# Direct/Broadcast query entries
+\&#
 
 !xtra.lcs.mit.edu       # disallow direct/broadcast service for xtra
 bambi.ogi.edu           # allow access from this particular display
@@ -693,11 +693,11 @@ bambi.ogi.edu           # allow access from this particular display
 *.deshaw.com    NOBROADCAST     # allow only direct access
 *.gw.com                        # allow direct and broadcast
 
-#
-# Indirect query entries
-#
+\&#
+\&# Indirect query entries
+\&#
 
-%HOSTS  expo.lcs.mit.edu xenon.lcs.mit.edu \\
+%HOSTS  expo.lcs.mit.edu xenon.lcs.mit.edu \e
         excess.lcs.mit.edu kanga.lcs.mit.edu
 
 extract.lcs.mit.edu     xenon.lcs.mit.edu  #force extract to contact xenon
@@ -867,16 +867,16 @@ parameters for that widget:
 .nf
 .ft CW
 
-        xlogin*login.translations: #override\\
-                Ctrl<Key>R: abort-display()\\n\\
-                <Key>F1: set-session-argument(failsafe) finish-field()\\n\\
+        xlogin*login.translations: #override\e
+                Ctrl<Key>R: abort-display()\en\e
+                <Key>F1: set-session-argument(failsafe) finish-field()\en\e
                 <Key>Return: set-session-argument() finish-field()
         xlogin*borderWidth: 3
         xlogin*greeting: CLIENTHOST
-        #ifdef COLOR
+\&      #ifdef COLOR
         xlogin*greetColor: CadetBlue
         xlogin*failColor: red
-        #endif
+\&      #endif
 
 .ft
 .fi

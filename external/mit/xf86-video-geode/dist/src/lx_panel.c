@@ -34,6 +34,8 @@
 
 #include <stdio.h>
 
+#include "xorg-server.h"
+
 #include "xf86.h"
 #include "compiler.h"
 #include "xf86Modes.h"
@@ -110,7 +112,7 @@ LXGetLegacyPanelMode(ScrnInfoPtr pScrni)
 /* Construct a moderec from the specified panel mode */
 
 DisplayModePtr
-LXGetManualPanelMode(char *modestr)
+LXGetManualPanelMode(const char *modestr)
 {
     int clock;
     int hactive, hsstart, hsend, htotal;

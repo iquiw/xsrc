@@ -67,7 +67,7 @@ dump_validation_list(struct intel_batchbuffer *batch)
       uint64_t flags = batch->validation_list[i].flags;
       assert(batch->validation_list[i].handle ==
              batch->exec_bos[i]->gem_handle);
-      fprintf(stderr, "[%2d]: %2d %-14s %p %s%-7s @ 0x%016llx%s (%"PRIu64"B)\n",
+      fprintf(stderr, "[%2d]: %2d %-14s %p %s%-7s @ 0x%016"PRIx64"%s (%"PRIu64"B)\n",
               i,
               batch->validation_list[i].handle,
               batch->exec_bos[i]->name,
@@ -733,7 +733,7 @@ execbuffer(int fd,
       /* Update brw_bo::gtt_offset */
       if (batch->validation_list[i].offset != bo->gtt_offset) {
          assert(!(bo->kflags & EXEC_OBJECT_PINNED));
-         DBG("BO %d migrated: 0x%" PRIx64 " -> 0x%llx\n",
+         DBG("BO %d migrated: 0x%" PRIx64 " -> 0x%"PRIx64"\n",
              bo->gem_handle, bo->gtt_offset,
              batch->validation_list[i].offset);
          bo->gtt_offset = batch->validation_list[i].offset;

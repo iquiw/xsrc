@@ -27,7 +27,9 @@
 #include <xorg-config.h>
 #endif
 
+#include <errno.h>
 #include <X11/X.h>
+#include <machine/param.h>
 #include "xf86.h"
 #include "xf86Priv.h"
 
@@ -56,30 +58,45 @@ xf86OSInitVidMem(VidMemInfoPtr pVidMem)
 
 volatile unsigned char *ioBase = MAP_FAILED;
 
+/* XXX why the hell is this necessary?! */
+#ifdef __arm__
+unsigned int IOPortBase = (int)MAP_FAILED;
+#endif
+
 Bool
 xf86EnableIO()
 {
+#ifdef PCI_MAGIC_IO_RANGE
     int fd = xf86Info.consoleFd;
 
     xf86MsgVerb(X_WARNING, 3, "xf86EnableIO %d\n", fd);
     if (ioBase == MAP_FAILED) {
         ioBase = mmap(NULL, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
-                      0xf2000000);
-        xf86MsgVerb(X_INFO, 3, "xf86EnableIO: %08x\n", ioBase);
+                      PCI_MAGIC_IO_RANGE);
+        xf86MsgVerb(X_INFO, 3, "xf86EnableIO: %p\n", ioBase);
         if (ioBase == MAP_FAILED) {
-            xf86MsgVerb(X_WARNING, 3, "Can't map IO space!\n");
+            xf86MsgVerb(X_WARNING, 3, "Can't map IO space! (%d)\n", errno);
             return FALSE;
         }
     }
+#ifdef __arm__
+    IOPortBase = (unsigned int)ioBase;
+#endif
+#endif
     return TRUE;
 }
+
 
 void
 xf86DisableIO()
 {
-
+#ifdef PCI_MAGIC_IO_RANGE
     if (ioBase != MAP_FAILED) {
         munmap(__UNVOLATILE(ioBase), 0x10000);
         ioBase = MAP_FAILED;
+#ifdef __arm__
+        IOPortBase = (unsigned int)MAP_FAILED;
+#endif
     }
+#endif
 }

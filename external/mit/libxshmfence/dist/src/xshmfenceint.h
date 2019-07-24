@@ -32,6 +32,10 @@
 #include "xshmfence_futex.h"
 #endif
 
+#if HAVE_SEMAPHORE
+#include "xshmfence_semaphore.h"
+#endif
+
 #if HAVE_PTHREAD
 #include "xshmfence_pthread.h"
 #endif

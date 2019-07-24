@@ -129,7 +129,6 @@ static void Permedia2SubsequentScanlineCPUToScreenColorExpandFill(
 				ScrnInfoPtr pScrn, int x,
 				int y, int w, int h, int skipleft);
 static void Permedia2SubsequentColorExpandScanline(ScrnInfoPtr pScrn, int bufno);
-static void Permedia2LoadCoord(ScrnInfoPtr pScrn, int x, int y, int w, int h);
 static void Permedia2PolylinesThinSolidWrapper(DrawablePtr pDraw, GCPtr pGC,
    				int mode, int npt, DDXPointPtr pPts);
 static void Permedia2PolySegmentThinSolidWrapper(DrawablePtr pDraw, GCPtr pGC,
@@ -141,107 +140,6 @@ static void Permedia2PolySegmentThinSolidWrapper(DrawablePtr pDraw, GCPtr pGC,
 # define STIPPLE_SWAP	0
 #endif
 
-void
-Permedia2InitializeEngine(ScrnInfoPtr pScrn)
-{
-    GLINTPtr pGlint = GLINTPTR(pScrn);
-
-    /* Initialize the Accelerator Engine to defaults */
-
-    TRACE_ENTER("Permedia2InitializeEngine");
-
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	ScissorMode);
-    GLINT_SLOW_WRITE_REG(UNIT_ENABLE,	FBWriteMode);
-    GLINT_SLOW_WRITE_REG(0, 		dXSub);
-    GLINT_SLOW_WRITE_REG(GWIN_DisableLBUpdate,   GLINTWindow);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	DitherMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	AlphaBlendMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	ColorDDAMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	TextureColorMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	TextureAddressMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	PMTextureReadMode);
-    GLINT_SLOW_WRITE_REG(pGlint->pprod,	LBReadMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	AlphaBlendMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	TexelLUTMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	YUVMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	DepthMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	RouterMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	FogMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	AntialiasMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	AlphaTestMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	StencilMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	AreaStippleMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	LogicalOpMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	DepthMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	StatisticMode);
-    GLINT_SLOW_WRITE_REG(0x400,		FilterMode);
-    GLINT_SLOW_WRITE_REG(0xffffffff,	FBHardwareWriteMask);
-    GLINT_SLOW_WRITE_REG(0xffffffff,	FBSoftwareWriteMask);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	RasterizerMode);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	GLINTDepth);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	FBSourceOffset);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	FBPixelOffset);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	LBSourceOffset);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	WindowOrigin);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	FBWindowBase);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	FBSourceBase);
-    GLINT_SLOW_WRITE_REG(UNIT_DISABLE,	LBWindowBase);
-
-#if X_BYTE_ORDER == X_BIG_ENDIAN
-    pGlint->RasterizerSwap = 1;
-#else
-    pGlint->RasterizerSwap = 0;
-#endif
-
-    switch (pScrn->bitsPerPixel) {
-	case 8:
-	    pGlint->PixelWidth = 0x0; /* 8 Bits */
-	    pGlint->TexMapFormat = pGlint->pprod;
-#if X_BYTE_ORDER == X_BIG_ENDIAN
-	    pGlint->RasterizerSwap |= 3<<15;	/* Swap host data */
-#endif
-	    break;
-	case 16:
-	    pGlint->PixelWidth = 0x1; /* 16 Bits */
-	    pGlint->TexMapFormat = pGlint->pprod | 1<<19;
-#if X_BYTE_ORDER == X_BIG_ENDIAN
-	    pGlint->RasterizerSwap |= 2<<15;	/* Swap host data */
-#endif
-	    break;
-	case 24:
- 	    pGlint->PixelWidth = 0x4; /* 24 Bits */
-	    pGlint->TexMapFormat = pGlint->pprod | 2<<19;
-	    break;
-	case 32:
-	    pGlint->PixelWidth = 0x2; /* 32 Bits */
-	    pGlint->TexMapFormat = pGlint->pprod | 2<<19;
-  	    break;
-    }
-    pGlint->ClippingOn = FALSE;
-    pGlint->startxdom = 0;
-    pGlint->startxsub = 0;
-    pGlint->starty = 0;
-    pGlint->count = 0;
-    pGlint->dy = 1<<16;
-    pGlint->dxdom = 0;
-    pGlint->x = 0;
-    pGlint->y = 0;
-    pGlint->h = 0;
-    pGlint->w = 0;
-    pGlint->ROP = 0xFF;
-    GLINT_SLOW_WRITE_REG(pGlint->PixelWidth, FBReadPixel);
-    GLINT_SLOW_WRITE_REG(pGlint->TexMapFormat, PMTextureMapFormat);
-    GLINT_SLOW_WRITE_REG(0, RectangleSize);
-    GLINT_SLOW_WRITE_REG(0, RectangleOrigin);
-    GLINT_SLOW_WRITE_REG(0, dXDom);
-    GLINT_SLOW_WRITE_REG(1<<16, dY);
-    GLINT_SLOW_WRITE_REG(0, StartXDom);
-    GLINT_SLOW_WRITE_REG(0, StartXSub);
-    GLINT_SLOW_WRITE_REG(0, StartY);
-    GLINT_SLOW_WRITE_REG(0, GLINTCount);
-
-    TRACE_EXIT("Permedia2InitializeEngine");
-}
 #endif
 
 Bool
@@ -377,41 +275,6 @@ Permedia2AccelInit(ScreenPtr pScreen)
 }
 
 #ifdef HAVE_XAA_H
-static void Permedia2LoadCoord(
-	ScrnInfoPtr pScrn,
-	int x, int y,
-	int w, int h
-){
-    GLINTPtr pGlint = GLINTPTR(pScrn);
-    
-    if ((h != pGlint->h) || (w != pGlint->w)) {
-	pGlint->w = w;
-	pGlint->h = h;
-	GLINT_WRITE_REG(((h&0x0FFF)<<16)|(w&0x0FFF), RectangleSize);
-    }
-    if ((y != pGlint->y) || (x != pGlint->x)) {
-	pGlint->x = x;
-	pGlint->y = y;
-	GLINT_WRITE_REG(((y&0x0FFF)<<16)|(x&0x0FFF), RectangleOrigin);
-    }
-}
-
-
-void
-Permedia2Sync(ScrnInfoPtr pScrn)
-{
-    GLINTPtr pGlint = GLINTPTR(pScrn);
-
-    CHECKCLIPPING;
-
-    while (GLINT_READ_REG(DMACount) != 0);
-    GLINT_WAIT(2);
-    GLINT_WRITE_REG(0x400, FilterMode);
-    GLINT_WRITE_REG(0, GlintSync);
-    do {
-   	while(GLINT_READ_REG(OutFIFOWords) == 0);
-    } while (GLINT_READ_REG(OutputFIFO) != Sync_tag);
-}
 
 static void
 Permedia2SetClippingRectangle(ScrnInfoPtr pScrn, int x1, int y1, int x2, int y2)
@@ -620,19 +483,19 @@ Permedia2SubsequentSolidBresenhamLine( ScrnInfoPtr pScrn,
     if(dmaj == dmin) {
 	GLINT_WAIT(6);
 	if(octant & YDECREASING) {
-	    GLINT_WRITE_REG(-1<<16, dY);
+	    GLINT_WRITE_REG(-65536, dY);
 	} else {
-	    GLINT_WRITE_REG(1<<16, dY);
+	    GLINT_WRITE_REG(65536, dY);
 	}
 
 	if(octant & XDECREASING) {
-	    GLINT_WRITE_REG(-1<<16, dXDom);
+	    GLINT_WRITE_REG(-65536, dXDom);
 	} else {
-	    GLINT_WRITE_REG(1<<16, dXDom);
+	    GLINT_WRITE_REG(65536, dXDom);
 	}
 
-	GLINT_WRITE_REG(x<<16, StartXDom);
-	GLINT_WRITE_REG(y<<16, StartY);
+	GLINT_WRITE_REG(x * 65536, StartXDom);
+	GLINT_WRITE_REG(y * 65536, StartY);
 	GLINT_WRITE_REG(len,GLINTCount);
 	GLINT_WRITE_REG(PrimitiveLine, Render);
 	return;

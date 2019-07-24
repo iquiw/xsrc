@@ -956,6 +956,7 @@ MGAGCalcClock ( ScrnInfoPtr pScrn, long f_out,
 		/* see values of ( n ) which we can't use */
 		for ( n = feed_div_min; n <= feed_div_max; n++ )
 		{ 
+			double av;
 			calc_f = ref_freq * (n + 1) / (m + 1) ;
 
 			/*

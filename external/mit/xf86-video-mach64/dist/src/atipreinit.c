@@ -27,6 +27,13 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifdef __NetBSD__
+#include <sys/time.h>
+#include <sys/ioctl.h>
+#include <errno.h>
+#include <dev/wscons/wsconsio.h>
+#endif
+
 #include "ati.h"
 #include "atiaudio.h"
 #include "atibus.h"
@@ -55,6 +62,9 @@
 #if GET_ABI_MAJOR(ABI_VIDEODRV_VERSION) < 6
 #include "xf86RAC.h"
 #endif
+
+#include "xf86Priv.h"
+#include "xf86Privstr.h"
 
 /*
  * FreeScreen handles the clean-up.
@@ -529,7 +539,7 @@ ATIPreInit
 
 #   define           pATIHW     (&pATI->OldHW)
 
-#ifndef AVOID_CPIO
+#ifndef AVOID_CPIO_
 
     vbeInfoPtr       pVBE = NULL;
     pointer          pVBEModule = NULL;
@@ -647,7 +657,6 @@ ATIPreInit
     ATIClaimBusSlot(pGDev->active, pATI);
 
 #ifndef AVOID_CPIO
-
 #ifdef TV_OUT
 
     pATI->pVBE = NULL;
@@ -697,14 +706,29 @@ ATIPreInit
     pATI->pVBE = pVBE;
     pVBE = NULL;
 #endif /* TV_OUT */
+#endif /* AVOID_CPIO */
+#ifdef __NetBSD__
+    if (ConfiguredMonitor == NULL) {
+    	struct wsdisplayio_edid_info ei;
+    	char buffer[1024];
+    	int i, j;
+
+	ei.edid_data = buffer;
+	ei.buffer_size = 1024;
+	if (ioctl(xf86Info.consoleFd, WSDISPLAYIO_GET_EDID, &ei) != -1) {
+	    xf86Msg(X_INFO, "got %d bytes worth of EDID from wsdisplay\n", ei.data_size);
+	    ConfiguredMonitor = xf86InterpretEDID(pScreenInfo->scrnIndex, buffer);
+	} else
+	    xf86Msg(X_INFO, "ioctl failed %d\n", errno);
+    }
+#endif
+
 
     if (ConfiguredMonitor && !(flags & PROBE_DETECT))
     {
         xf86PrintEDID(ConfiguredMonitor);
         xf86SetDDCproperties(pScreenInfo, ConfiguredMonitor);
     }
-
-#endif /* AVOID_CPIO */
 
     if (flags & PROBE_DETECT)
     {
@@ -956,8 +980,13 @@ ATIPreInit
             }
         }
 
-        ati_bios_clock(pScreenInfo, pATI, BIOS, ClockTable, pGDev);
+#if defined(__sparc__)
+	/* make PGX64 work by default */
+	if (pATI->Chip == ATI_CHIP_264XL)
+		pATI->refclk = 29498000;
+#endif
 
+        ati_bios_clock(pScreenInfo, pATI, BIOS, ClockTable, pGDev);
         ati_bios_mmedia(pScreenInfo, pATI, BIOS, VideoTable, HardwareTable);
 
         if (pATI->LCDPanelID >= 0)
@@ -2252,8 +2281,6 @@ ATIPreInit
 
     pitchInc = minPitch * pATI->bitsPerPixel;
 
-    pScreenInfo->maxHValue = (MaxBits(CRTC_H_TOTAL) + 1) << 3;
-
     if (pATI->Chip < ATI_CHIP_264VT)
     {
         /*
@@ -2263,12 +2290,7 @@ ATIPreInit
          * the bit is ignored.
          */
         ATIClockRange.doubleScanAllowed = FALSE;
-
-        /* CRTC_H_TOTAL is one bit narrower */
-        pScreenInfo->maxHValue >>= 1;
     }
-
-    pScreenInfo->maxVValue = MaxBits(CRTC_V_TOTAL) + 1;
 
     maxPitch = minPitch * MaxBits(CRTC_PITCH);
 

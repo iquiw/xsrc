@@ -139,7 +139,7 @@ void XGI_GetSenseStatus( PXGI_HW_DEVICE_INFO HwDeviceExtension , PVB_DEVICE_INFO
     USHORT tempax = 0 , tempbx , tempcx , temp ,
            P2reg0 = 0 , SenseModeNo = 0 , OutputSelect = pVBInfo->OutputSelect,
            ModeIdIndex , i ;
-    pVBInfo->BaseAddr = ( USHORT )HwDeviceExtension->pjIOAddress ;
+    pVBInfo->BaseAddr = ( ULONG )HwDeviceExtension->pjIOAddress ;
 
     {		/* for 301 */
         if ( pVBInfo->VBInfo & SetCRT2ToHiVisionTV )
@@ -510,7 +510,7 @@ VOID XGISetDPMS(ScrnInfoPtr pScrn, PVB_DEVICE_INFO pVBInfo, PXGI_HW_DEVICE_INFO 
     /* VB_DEVICE_INFO VBINF; */
     /* PVB_DEVICE_INFO pVBInfo = pXGI->XGI_Pr */ /* &VBINF */;
 
-	ErrorF("XGISetDPMS(VESA_POWER_STATE = 0x%x)...\n", VESA_POWER_STATE);
+	ErrorF("XGISetDPMS(VESA_POWER_STATE = 0x%lx)...\n", VESA_POWER_STATE);
 
     InitTo330Pointer( pXGIHWDE->jChipType,  pVBInfo ) ;
     ReadVBIOSTablData( pXGIHWDE->jChipType , pVBInfo) ;

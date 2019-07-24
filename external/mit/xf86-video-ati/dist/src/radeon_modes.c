@@ -258,7 +258,7 @@ static void RADEONAddScreenModes(xf86OutputPtr output, DisplayModePtr *modeList)
     DisplayModePtr  first      = NULL;
     int             count      = 0;
     int             i, width, height;
-    char **ppModeName = pScrn->display->modes;
+    const char **ppModeName = pScrn->display->modes;
 
     first = last = *modeList;
 
@@ -408,7 +408,7 @@ RADEONUpdatePanelSize(xf86OutputPtr output)
 		    float  refresh =
 			(float)p->Clock * 1000.0 / p->HTotal / p->VTotal;
 
-		    if (abs((float)ddc->timings2[j].refresh - refresh) < 1.0) {
+		    if (fabsf((float)ddc->timings2[j].refresh - refresh) < 1.0) {
 			/* Is this good enough? */
 			native_mode->PanelXRes  = ddc->timings2[j].hsize;
 			native_mode->PanelYRes  = ddc->timings2[j].vsize;

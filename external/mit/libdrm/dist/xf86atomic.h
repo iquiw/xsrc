@@ -79,12 +79,12 @@ typedef struct {
 #define HAS_ATOMIC_OPS 1
 
 #if defined(__NetBSD__)
-#define LIBDRM_ATOMIC_TYPE int
+#define LIBDRM_ATOMIC_TYPE unsigned int
 #else
 #define LIBDRM_ATOMIC_TYPE uint_t
 #endif
 
-typedef struct { LIBDRM_ATOMIC_TYPE atomic; } atomic_t;
+typedef struct { volatile LIBDRM_ATOMIC_TYPE atomic; } atomic_t;
 
 # define atomic_read(x) (int) ((x)->atomic)
 # define atomic_set(x, val) ((x)->atomic = (LIBDRM_ATOMIC_TYPE)(val))

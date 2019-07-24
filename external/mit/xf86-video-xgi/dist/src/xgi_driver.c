@@ -47,9 +47,9 @@
 #include "config.h"
 #endif
 
-#define  PACKAGE_VERSION_MAJOR   6
-#define  PACKAGE_VERSION_MINOR   1
-#define  PACKAGE_VERSION_PATCHLEVEL   6803
+#define  PACKAGE_VERSION_MAJOR   1
+#define  PACKAGE_VERSION_MINOR   6
+#define  PACKAGE_VERSION_PATCHLEVEL   0
 
 #include "fb.h"
 #include "micmap.h"
@@ -70,18 +70,21 @@
 #include "vbe.h"
 
 #include "mipointer.h"
-#include "mibstore.h"
 
 #include "xgi.h"
 #include "xgi_regs.h"
 #include "xgi_vb.h"
 #include "xgi_dac.h"
 #include "vb_def.h"
+#include "vb_ext.h"
+#include "vb_i2c.h"
+#include "vb_setmode.h"
 #include "xgi_driver.h"
+#include "xgi_accel.h"
 #include "valid_mode.h"
 
 #define _XF86DGA_SERVER_
-#include <X11/extensions/xf86dgastr.h>
+#include <X11/extensions/xf86dgaproto.h>
 
 #include "globals.h"
 
@@ -106,11 +109,8 @@
 #include <unistd.h>
 #endif
 
-/* Jong 01/22/2009; compiler error; type conflict */
-/*
 #include <fcntl.h>
 #include <sys/ioctl.h>
-*/
 
 #ifdef XSERVER_LIBPCIACCESS
 static Bool XGIPciProbe(DriverPtr drv, int entity_num,
@@ -132,7 +132,7 @@ xf86MonPtr  g_pMonitorDVI=NULL; /* Jong 12/04/2007; used for filtering of CRT1 m
 
 /* Jong 07/27/2009; use run-time debug instead except for HW acceleration routines */
 /* Set Option "RunTimeDebug" to "true" in X configuration file */
-BOOL g_bRunTimeDebug=0;
+Bool g_bRunTimeDebug=0;
 
 /* Jong@09072009 */
 unsigned char g_DVI_I_SignalType = 0x00;
@@ -500,6 +500,7 @@ xgiSetup(pointer module, pointer opts, int *errmaj, int *errmin)
         xf86AddDriver(&XGI, module, 0);
 #endif
 
+#if 0
         LoaderRefSymLists(vgahwSymbols, fbSymbols, xaaSymbols,
                           shadowSymbols, ramdacSymbols, ddcSymbols,
                           vbeSymbols, int10Symbols,
@@ -507,6 +508,7 @@ xgiSetup(pointer module, pointer opts, int *errmaj, int *errmin)
                           drmSymbols, driSymbols,
 #endif
                           NULL);
+#endif
         return (pointer) TRUE;
     }
 
@@ -762,7 +764,7 @@ XGIDisplayPowerManagementSet(ScrnInfoPtr pScrn, int PowerManagementMode,
 
 typedef struct 
 {
-	unsigned char   name[10];
+    char   name[10];
     unsigned int    DCLK;
     unsigned int    HDisplay;
     unsigned int    HSyncStart;
@@ -862,13 +864,13 @@ XGIErrorLog(ScrnInfoPtr pScrn, const char *format, ...)
         "**************************************************\n";
 
     va_start(ap, format);
-    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, str);
+    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "%s", str);
     xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "                      ERROR:\n");
     xf86VDrvMsgVerb(pScrn->scrnIndex, X_ERROR, 1, format, ap);
     va_end(ap);
     xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
                "                  END OF MESSAGE\n");
-    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, str);
+    xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "%s", str);
 }
 
 #ifdef XSERVER_LIBPCIACCESS
@@ -1615,7 +1617,9 @@ XGIInternalDDC(ScrnInfoPtr pScrn, int crtno)
     ErrorF("get EDID with VBIOS call...\n");
     if (xf86LoadSubModule(pScrn, "int10")) 
 	{
+#if 0
         xf86LoaderReqSymLists(int10Symbols, NULL);
+#endif
         pInt = xf86InitInt10(pXGI->pEnt->index);
         if (pInt == NULL) {
             xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
@@ -1676,9 +1680,9 @@ XGIInternalDDC(ScrnInfoPtr pScrn, int crtno)
 
 			g_DVI_I_SignalType = (buffer[20] & 0x80) >> 7;
 			ErrorF("DVI-I : %s signal ...\n", (g_DVI_I_SignalType == 0x01) ? "DVI" : "CRT" );
-
+#if 0
             xf86LoaderReqSymLists(ddcSymbols, NULL);
-
+#endif
 			/* Jong 09/04/2007; Alan fixed abnormal EDID data */
 			/* pMonitor = xf86InterpretEDID(pScrn->scrnIndex, buffer) ; */
 			if ( (buffer[0]==0) && (buffer[7]==0) )
@@ -2218,9 +2222,9 @@ XGIDDCPreInit(ScrnInfoPtr pScrn)
 
         if (xf86LoadSubModule(pScrn, "ddc")) 
 		{
-
+#if 0
             xf86LoaderReqSymLists(ddcSymbols, NULL);
-
+#endif
             if (pXGI->xgi_HwDevExt.jChipType == XG27) 
 			{
 				ErrorF("Getting CRT EDID (DAC1-CRT1)...\n");
@@ -2684,9 +2688,9 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
         XGIErrorLog(pScrn, "Could not load vgahw module\n");
         return FALSE;
     }
-
+#if 0
     xf86LoaderReqSymLists(vgahwSymbols, NULL);
-
+#endif
     /* Due to the liberal license terms this is needed for
      * keeping the copyright notice readable and intact in
      * binary distributions. Removing this is a copyright
@@ -2768,11 +2772,11 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
 #endif
 
 		  xf86DrvMsgVerb(pScrn->scrnIndex, X_INFO, 3, 
-				  "VGA memory map from 0x%x to 0x%x \n", 
+				  "VGA memory map from %p to %p \n", 
 #ifdef XSERVER_LIBPCIACCESS
-				  pXGI->PciInfo->regions[2].base_addr, VGAHWPTR(pScrn)->Base);
+				  (void *)(intptr_t)pXGI->PciInfo->regions[2].base_addr, VGAHWPTR(pScrn)->Base);
 #else
-				  pXGI->PciInfo->ioBase[2], VGAHWPTR(pScrn)->Base);
+				  (void *)(intptr_t)pXGI->PciInfo->ioBase[2], VGAHWPTR(pScrn)->Base);
 #endif
         }
     }
@@ -2798,7 +2802,9 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
                    "Initializing display adapter through int10\n");
 
         if (xf86LoadSubModule(pScrn, "int10")) {
+#if 0
             xf86LoaderReqSymLists(int10Symbols, NULL);
+#endif
             pXGI->pInt = xf86InitInt10(pXGI->pEnt->index);
         }
         else {
@@ -2829,9 +2835,9 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
         XGIFreeRec(pScrn);
         return FALSE;
     }
-
+#if 0
     xf86LoaderReqSymLists(ramdacSymbols, NULL);
-
+#endif
     /* Set pScrn->monitor */
     pScrn->monitor = pScrn->confScreen->monitor;
 
@@ -3049,7 +3055,7 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
     pXGI->xgi_HwDevExt.pjIOAddress = (XGIIOADDRESS) (pXGI->RelIO + 0x30);
     xf86DrvMsg(pScrn->scrnIndex, from, "Relocated IO registers at 0x%lX\n",
                (unsigned long) pXGI->RelIO);
-	ErrorF("xgi_driver.c-pXGI->xgi_HwDevExt.pjIOAddress=0x%x...\n", pXGI->xgi_HwDevExt.pjIOAddress);
+	ErrorF("xgi_driver.c-pXGI->xgi_HwDevExt.pjIOAddress=0x%lx...\n", pXGI->xgi_HwDevExt.pjIOAddress);
 
     if (!xf86SetDepthBpp(pScrn, 0, 0, 0, pix24flags)) {
         XGIErrorLog(pScrn, "xf86SetDepthBpp() error\n");
@@ -3695,7 +3701,9 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
 #if !defined(__powerpc__)
     /* Now load and initialize VBE module. */
     if (xf86LoadSubModule(pScrn, "vbe")) {
+#if 0
         xf86LoaderReqSymLists(vbeSymbols, NULL);
+#endif
         pXGI->pVbe = VBEExtendedInit(pXGI->pInt, pXGI->pEnt->index,
                                      SET_BIOS_SCRATCH | RESTORE_BIOS_SCRATCH);
         if (!pXGI->pVbe) {
@@ -3728,7 +3736,7 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
 			pScrn->monitor->nHsync = 1;
 			pScrn->monitor->hsync[0].lo=30;
 			pScrn->monitor->hsync[0].hi=50;
-			ErrorF("No HorizSync information set in Monitor section and use default (%d, %d)...\n", 
+			ErrorF("No HorizSync information set in Monitor section and use default (%g, %g)...\n", 
 				pScrn->monitor->hsync[0].lo, pScrn->monitor->hsync[0].hi);
 		}
 
@@ -3737,7 +3745,7 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
 			pScrn->monitor->nVrefresh = 1;
 			pScrn->monitor->vrefresh[0].lo=40;
 			pScrn->monitor->vrefresh[0].hi=60;
-			ErrorF("No VertRefresh information set in Monitor section and use default (%d, %d)...\n", 
+			ErrorF("No VertRefresh information set in Monitor section and use default (%g, %g)...\n", 
 				pScrn->monitor->vrefresh[0].lo, pScrn->monitor->vrefresh[0].hi);
 		}
 	}
@@ -4117,8 +4125,9 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
         XGIFreeRec(pScrn);
         return FALSE;
     }
+#if 0
     xf86LoaderReqSymLists(fbSymbols, NULL);
-
+#endif
     /* Load XAA if needed */
     if (!pXGI->NoAccel) 
 	{
@@ -4139,7 +4148,9 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
 				XGIFreeRec(pScrn);
 				return FALSE;
 			}
+#if 0
 			xf86LoaderReqSymLists(xaaSymbols, NULL);
+#endif
 		}
 #endif
 
@@ -4150,7 +4161,9 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
 			  XGIErrorLog(pScrn, "Could not load exa module\n");
 			  return FALSE;
 		   }
+#if 0
 		   xf86LoaderReqSymLists(exaSymbols, NULL);
+#endif
 		}
 #endif
 	}
@@ -4169,14 +4182,18 @@ XGIPreInit(ScrnInfoPtr pScrn, int flags)
             XGIFreeRec(pScrn);
             return FALSE;
         }
+#if 0
         xf86LoaderReqSymLists(shadowSymbols, NULL);
+#endif
     }
 
     /* Load the dri module if requested. */
 #ifdef XF86DRI
     if(pXGI->loadDRI) {
         if (xf86LoadSubModule(pScrn, "dri")) {
+#if 0
             xf86LoaderReqSymLists(driSymbols, drmSymbols, NULL);
+#endif
         }
         else {
             if (!IS_DUAL_HEAD(pXGI))
@@ -4771,7 +4788,9 @@ XGIScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 #if !defined(__powerpc__)
     if (!IS_DUAL_HEAD(pXGI) || !IS_SECOND_HEAD(pXGI)) {
         if (xf86LoadSubModule(pScrn, "vbe")) {
+#if 0
             xf86LoaderReqSymLists(vbeSymbols, NULL);
+#endif
             pXGI->pVbe = VBEExtendedInit(NULL, pXGI->pEnt->index,
                                          SET_BIOS_SCRATCH |
                                          RESTORE_BIOS_SCRATCH);
@@ -5044,7 +5063,6 @@ XGIScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     PDEBUG(ErrorF("--- AccelInit ---  \n"));
     PDEBUG(XGIDumpRegs(pScrn));
 
-    miInitializeBackingStore(pScreen);
     xf86SetBackingStore(pScreen);
     xf86SetSilkenMouse(pScreen);
 

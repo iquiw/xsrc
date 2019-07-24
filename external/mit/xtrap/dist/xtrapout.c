@@ -92,6 +92,7 @@ SOFTWARE.
 #include "config.h"
 #endif
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <X11/extensions/xtraplib.h>
 #include <X11/extensions/xtraplibp.h>
@@ -151,7 +152,7 @@ static void print_evt_callback(XETC *tc, XETrapDatum *data, BYTE *my_buf)
     static Time last_time = 0;
     int delta;
 
-    delta = abs((int)last_time ? data->u.event.u.keyButtonPointer.time -
+    delta = imaxabs((int)last_time ? (intmax_t)data->u.event.u.keyButtonPointer.time -
         (int)last_time  : (int)last_time);
     last_time = data->u.event.u.keyButtonPointer.time;
 

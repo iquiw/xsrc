@@ -834,7 +834,7 @@ drm_public int drmCheckModesettingSupported(const char *busid)
 	}
 #elif defined(__DragonFly__)
 	return 0;
-#elif defined(__OpenBSD__)
+#elif defined(__OpenBSD__) || defined(__NetBSD__)
 	int	fd;
 	struct drm_mode_card_res res;
 	drmModeResPtr r = 0;
@@ -987,7 +987,7 @@ drm_public int drmModePageFlipTarget(int fd, uint32_t crtc_id, uint32_t fb_id,
 
 drm_public int drmModeSetPlane(int fd, uint32_t plane_id, uint32_t crtc_id,
 		    uint32_t fb_id, uint32_t flags,
-		    int32_t crtc_x, int32_t crtc_y,
+		    uint32_t crtc_x, uint32_t crtc_y,
 		    uint32_t crtc_w, uint32_t crtc_h,
 		    uint32_t src_x, uint32_t src_y,
 		    uint32_t src_w, uint32_t src_h)

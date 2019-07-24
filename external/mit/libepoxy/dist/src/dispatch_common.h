@@ -35,6 +35,16 @@
 #define PLATFORM_HAS_EGL ENABLE_EGL
 #define PLATFORM_HAS_GLX 0
 #define PLATFORM_HAS_WGL 0
+#elif defined(__NetBSD__)
+# if !defined(PLATFORM_HAS_EGL)
+#  if defined(__amd64__) || defined(__i386__) || defined(__aarch64__) // XXX evbarm32
+#   define PLATFORM_HAS_EGL 1
+#  else
+#   define PLATFORM_HAS_EGL ENABLE_EGL
+#  endif
+# endif
+# define PLATFORM_HAS_GLX 1
+# define PLATFORM_HAS_WGL 0
 #else
 #define PLATFORM_HAS_EGL ENABLE_EGL
 #define PLATFORM_HAS_GLX ENABLE_GLX
