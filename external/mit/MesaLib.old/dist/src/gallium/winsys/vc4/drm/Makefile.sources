@@ -1,2 +1,0 @@
-C_SOURCES := \
-	vc4_drm_winsys.c
