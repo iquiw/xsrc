@@ -1,9 +1,0 @@
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-includedir=@includedir@
-includex11dir=@includedir@/X11
- 
-Name: Xproto
-Description: Xproto headers
-Version: 7.0.32
-Cflags: -I${includedir}
